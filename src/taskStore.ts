@@ -366,12 +366,12 @@ export class TaskStore {
 
   private async clearDemoWritableData(): Promise<void> {
     for (const file of this.getDataFiles()) {
-      await this.app.fileManager.trashFile(file);
+      await this.app.vault.trash(file, true);
     }
 
     const attachmentsRoot = this.app.vault.getAbstractFileByPath(this.attachmentsDir);
     if (attachmentsRoot) {
-      await this.app.fileManager.trashFile(attachmentsRoot);
+      await this.app.vault.trash(attachmentsRoot, true);
     }
 
     this.documents.clear();
