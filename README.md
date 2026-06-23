@@ -13,6 +13,16 @@ _belki_files/
    └─ <task-id>/
 ```
 
+## Screenshots
+
+| Today | Today with overdue tasks |
+| --- | --- |
+| ![belki Today view](docs/screenshots/today.png) | ![belki Today view with overdue tasks](docs/screenshots/today-overdue.png) |
+
+| Task details | Upcoming |
+| --- | --- |
+| ![belki task detail modal](docs/screenshots/task-detail.png) | ![belki Upcoming view](docs/screenshots/upcoming.png) |
+
 ## Features
 
 - Inbox, Today, Upcoming, Projects, Filters & Labels, Search, and Completed views
@@ -179,7 +189,7 @@ belki stores task data and attachments inside your Obsidian vault. It does not a
 
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE).
 
 ## Author
 
