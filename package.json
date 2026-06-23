@@ -1,5 +1,5 @@
 {
-  "name": "obsidian-belki-plugin",
+  "name": "obsidian-belki-tasks",
   "version": "0.1.0",
   "description": "A minimal Todoist-like task manager for Obsidian using local Markdown files.",
   "main": "main.js",
