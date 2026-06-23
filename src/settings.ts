@@ -187,8 +187,6 @@ export class BelkiSettingTab extends PluginSettingTab {
     containerEl.empty();
     applyBelkiFontSettings(containerEl, this.plugin.settings);
 
-    new Setting(containerEl).setName("General").setHeading();
-
     new Setting(containerEl)
       .setName("Old task file")
       .setDesc("Legacy Markdown file used by older belki versions.")
