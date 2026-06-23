@@ -1274,11 +1274,13 @@ button.belki-add-inline {
 
 .belki-button-primary {
   background: var(--belki-accent);
-  color: white;
+  color: #ffffff;
 }
 
-.belki-button-primary:hover {
+button.belki-button-primary:hover,
+button.belki-button-primary:focus-visible {
   background: var(--belki-accent-hover);
+  color: #ffffff;
 }
 
 .belki-empty {
