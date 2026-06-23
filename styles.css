@@ -10,6 +10,7 @@
   --belki-faint: #a8a6a1;
   --belki-accent: #37352f;
   --belki-accent-hover: #2f2e2a;
+  --belki-on-accent: #ffffff;
   --belki-danger: #e03e3e;
   --belki-danger-light: #fbe4e3;
   --belki-chip-bg: #f7f7f5;
@@ -35,6 +36,7 @@
   --belki-faint: var(--text-faint);
   --belki-accent: var(--text-normal);
   --belki-accent-hover: var(--text-normal);
+  --belki-on-accent: var(--background-primary);
   --belki-chip-bg: var(--background-secondary-alt);
   --belki-danger-light: rgba(224, 62, 62, 0.16);
 }
@@ -1274,13 +1276,24 @@ button.belki-add-inline {
 
 .belki-button-primary {
   background: var(--belki-accent);
-  color: #ffffff;
+  color: var(--belki-on-accent);
 }
 
-button.belki-button-primary:hover,
-button.belki-button-primary:focus-visible {
+.belki-root button.belki-button.belki-button-primary,
+.belki-root button.belki-button.belki-button-primary:hover,
+.belki-root button.belki-button.belki-button-primary:focus-visible,
+.belki-root button.belki-button.belki-button-primary:active {
+  color: var(--belki-on-accent) !important;
+}
+
+.belki-root button.belki-button.belki-button-primary:hover,
+.belki-root button.belki-button.belki-button-primary:focus-visible {
   background: var(--belki-accent-hover);
-  color: #ffffff;
+}
+
+.belki-root button.belki-button.belki-button-primary:disabled {
+  color: var(--belki-on-accent) !important;
+  opacity: 0.72;
 }
 
 .belki-empty {
