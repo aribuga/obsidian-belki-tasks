@@ -1283,15 +1283,18 @@ button.belki-add-inline {
 .belki-root button.belki-button.belki-button-primary:hover,
 .belki-root button.belki-button.belki-button-primary:focus-visible,
 .belki-root button.belki-button.belki-button-primary:active {
+  background: var(--belki-accent) !important;
+  border-color: transparent !important;
   color: var(--belki-on-accent) !important;
 }
 
 .belki-root button.belki-button.belki-button-primary:hover,
 .belki-root button.belki-button.belki-button-primary:focus-visible {
-  background: var(--belki-accent-hover);
+  background: var(--belki-accent-hover) !important;
 }
 
 .belki-root button.belki-button.belki-button-primary:disabled {
+  background: var(--belki-accent) !important;
   color: var(--belki-on-accent) !important;
   opacity: 0.72;
 }
