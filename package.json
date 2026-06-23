@@ -1,0 +1,25 @@
+{
+  "name": "obsidian-belki-plugin",
+  "version": "0.1.0",
+  "description": "A minimal Todoist-like task manager for Obsidian using local Markdown files.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production"
+  },
+  "keywords": [
+    "obsidian",
+    "tasks",
+    "todo"
+  ],
+  "author": "Yasin Aribuga",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.14.12",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.23.0",
+    "obsidian": "^1.7.2",
+    "tslib": "^2.6.3",
+    "typescript": "^5.5.3"
+  }
+}

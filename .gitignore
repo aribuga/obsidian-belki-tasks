@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Build and tool caches
+.cache/
+.parcel-cache/
+.eslintcache
+*.tsbuildinfo
+
+# Temporary files
+tmp/
+temp/

@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and upload release assets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Validate release metadata
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+
+          const manifest = JSON.parse(fs.readFileSync("manifest.json", "utf8"));
+          const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+          const versions = JSON.parse(fs.readFileSync("versions.json", "utf8"));
+          const tag = process.env.RELEASE_TAG;
+
+          function fail(message) {
+            console.error(message);
+            process.exit(1);
+          }
+
+          if (tag.startsWith("v")) {
+            fail("Release tags must not be prefixed with v.");
+          }
+
+          if (manifest.version !== pkg.version) {
+            fail(`manifest.json version (${manifest.version}) does not match package.json version (${pkg.version}).`);
+          }
+
+          if (tag !== manifest.version) {
+            fail(`Release tag (${tag}) must exactly match manifest.json version (${manifest.version}).`);
+          }
+
+          if (versions[manifest.version] !== manifest.minAppVersion) {
+            fail(`versions.json must map ${manifest.version} to ${manifest.minAppVersion}.`);
+          }
+
+          for (const file of ["manifest.json", "main.js", "styles.css"]) {
+            if (!fs.existsSync(file)) {
+              fail(`${file} is missing.`);
+            }
+          }
+          NODE
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            manifest.json
+            main.js
+            styles.css
