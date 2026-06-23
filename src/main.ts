@@ -126,12 +126,8 @@ export default class BelkiPlugin extends Plugin {
     );
   }
 
-  onunload(): void {
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_BELKI);
-  }
-
   async loadSettings(): Promise<void> {
-    const saved = await this.loadData();
+    const saved = toSettingsData(await this.loadData());
     this.settings = {
       ...DEFAULT_SETTINGS,
       ...saved,
@@ -214,13 +210,13 @@ export default class BelkiPlugin extends Plugin {
       if (view instanceof TaskBoardView) {
         view.openToday();
       }
-      this.app.workspace.revealLeaf(leaves[0]);
+      this.app.workspace.setActiveLeaf(leaves[0], { focus: true });
       return;
     }
 
     const leaf = this.app.workspace.getLeaf(true);
     await leaf.setViewState({ type: VIEW_TYPE_BELKI, active: true });
-    this.app.workspace.revealLeaf(leaf);
+    this.app.workspace.setActiveLeaf(leaf, { focus: true });
   }
 
   private async refreshIfTaskFile(file: TAbstractFile): Promise<void> {
@@ -233,4 +229,12 @@ export default class BelkiPlugin extends Plugin {
 function cleanProjectName(value: string | undefined): string {
   const clean = value?.trim().replace(/^>+\s*/, "");
   return clean || "Inbox";
+}
+
+function toSettingsData(value: unknown): Partial<BelkiSettings> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return value as Partial<BelkiSettings>;
 }

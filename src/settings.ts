@@ -160,17 +160,12 @@ export function applyBelkiFontSettings(
   element: HTMLElement,
   settings: BelkiSettings
 ): void {
-  element.style.setProperty("--belki-font-ui", fontStackForOption(settings.uiFont));
-  element.style.setProperty(
-    "--belki-font-task-title",
-    fontStackForOption(settings.taskTitleFont)
-  );
-  element.style.setProperty(
-    "--belki-font-task-description",
-    fontStackForOption(settings.taskDescriptionFont)
-  );
-  element.style.setProperty("--belki-font-label", fontStackForOption(settings.labelFont));
-  element.style.fontFamily = "var(--belki-font-ui)";
+  element.setCssProps({
+    "--belki-font-ui": fontStackForOption(settings.uiFont),
+    "--belki-font-task-title": fontStackForOption(settings.taskTitleFont),
+    "--belki-font-task-description": fontStackForOption(settings.taskDescriptionFont),
+    "--belki-font-label": fontStackForOption(settings.labelFont)
+  });
 }
 
 interface BelkiSettingsPlugin extends Plugin {
@@ -192,7 +187,7 @@ export class BelkiSettingTab extends PluginSettingTab {
     containerEl.empty();
     applyBelkiFontSettings(containerEl, this.plugin.settings);
 
-    containerEl.createEl("h2", { text: "belki" });
+    new Setting(containerEl).setName("belki").setHeading();
 
     new Setting(containerEl)
       .setName("Old task file")
@@ -251,7 +246,7 @@ export class BelkiSettingTab extends PluginSettingTab {
           });
       });
 
-    containerEl.createEl("h3", { text: "Fonts" });
+    new Setting(containerEl).setName("Fonts").setHeading();
 
     this.addFontSetting(
       "UI Font",
@@ -274,7 +269,7 @@ export class BelkiSettingTab extends PluginSettingTab {
       "labelFont"
     );
 
-    containerEl.createEl("h3", { text: "Sidebar icons" });
+    new Setting(containerEl).setName("Sidebar icons").setHeading();
 
     this.addIconSetting("Search icon", "search");
     this.addIconSetting("Inbox icon", "inbox");
@@ -284,7 +279,7 @@ export class BelkiSettingTab extends PluginSettingTab {
     this.addIconSetting("Projects icon", "projects");
     this.addIconSetting("Completed icon", "completed");
 
-    containerEl.createEl("h3", { text: "Project colors" });
+    new Setting(containerEl).setName("Project colors").setHeading();
 
     const projects = this.plugin.getProjectNames();
     if (projects.length === 0) {
@@ -298,7 +293,7 @@ export class BelkiSettingTab extends PluginSettingTab {
       this.addProjectColorSetting(project);
     }
 
-    containerEl.createEl("h3", { text: "Label colors" });
+    new Setting(containerEl).setName("Label colors").setHeading();
 
     this.addLabelRegistrySetting();
 
@@ -367,11 +362,13 @@ export class BelkiSettingTab extends PluginSettingTab {
         });
       })
       .addButton((button) => {
-        button.setButtonText("Reset").onClick(async () => {
-          delete this.plugin.settings.projectColors[project];
-          await this.plugin.saveSettings();
-          this.plugin.refreshBelkiViews();
-          this.display();
+        button.setButtonText("Reset").onClick(() => {
+          void (async () => {
+            delete this.plugin.settings.projectColors[project];
+            await this.plugin.saveSettings();
+            this.plugin.refreshBelkiViews();
+            this.display();
+          })();
         });
       });
   }
@@ -388,19 +385,21 @@ export class BelkiSettingTab extends PluginSettingTab {
         });
       })
       .addButton((button) => {
-        button.setButtonText("Add").onClick(async () => {
-          const label = normalizeLabelName(pendingLabel);
-          if (!label) {
-            return;
-          }
+        button.setButtonText("Add").onClick(() => {
+          void (async () => {
+            const label = normalizeLabelName(pendingLabel);
+            if (!label) {
+              return;
+            }
 
-          this.plugin.settings.labelRegistry = dedupeLabels([
-            ...this.plugin.settings.labelRegistry,
-            label
-          ]);
-          await this.plugin.saveSettings();
-          this.plugin.refreshBelkiViews();
-          this.display();
+            this.plugin.settings.labelRegistry = dedupeLabels([
+              ...this.plugin.settings.labelRegistry,
+              label
+            ]);
+            await this.plugin.saveSettings();
+            this.plugin.refreshBelkiViews();
+            this.display();
+          })();
         });
       });
   }
@@ -420,11 +419,13 @@ export class BelkiSettingTab extends PluginSettingTab {
         });
       })
       .addButton((button) => {
-        button.setButtonText("Reset").onClick(async () => {
-          delete this.plugin.settings.labelColors[label];
-          await this.plugin.saveSettings();
-          this.plugin.refreshBelkiViews();
-          this.display();
+        button.setButtonText("Reset").onClick(() => {
+          void (async () => {
+            delete this.plugin.settings.labelColors[label];
+            await this.plugin.saveSettings();
+            this.plugin.refreshBelkiViews();
+            this.display();
+          })();
         });
       });
   }

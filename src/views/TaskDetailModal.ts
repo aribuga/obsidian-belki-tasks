@@ -104,10 +104,12 @@ export class TaskDetailModal extends Modal {
         text: "Delete task",
         attr: { type: "button" }
       })
-      .addEventListener("click", async () => {
-        await this.options.store.deleteTask(this.draft.id);
-        this.options.onChange();
-        this.close();
+      .addEventListener("click", () => {
+        void (async () => {
+          await this.options.store.deleteTask(this.draft.id);
+          this.options.onChange();
+          this.close();
+        })();
       });
 
     const footerActions = footer.createDiv({ cls: "belki-detail-actions" });
@@ -120,8 +122,8 @@ export class TaskDetailModal extends Modal {
         text: "Save",
         attr: { type: "button" }
       })
-      .addEventListener("click", async () => {
-        await this.save();
+      .addEventListener("click", () => {
+        void this.save();
       });
 
     titleInput.focus();
@@ -205,10 +207,10 @@ export class TaskDetailModal extends Modal {
           }
         });
         setIcon(downloadButton, "download");
-        downloadButton.addEventListener("click", async (event) => {
+        downloadButton.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
-          await this.downloadAttachment(path);
+          void this.downloadAttachment(path);
         });
 
         const removeButton = actions.createEl("button", {
@@ -237,18 +239,20 @@ export class TaskDetailModal extends Modal {
         multiple: "true"
       }
     });
-    fileInput.addEventListener("change", async () => {
-      const files = Array.from(fileInput.files || []);
-      for (const file of files) {
-        const path = await this.options.store.addAttachmentFromFile(this.draft.id, file);
-        if (path) {
-          this.draft.attachments = [...this.draft.attachments, path];
+    fileInput.addEventListener("change", () => {
+      void (async () => {
+        const files = Array.from(fileInput.files || []);
+        for (const file of files) {
+          const path = await this.options.store.addAttachmentFromFile(this.draft.id, file);
+          if (path) {
+            this.draft.attachments = [...this.draft.attachments, path];
+          }
         }
-      }
 
-      fileInput.value = "";
-      renderList();
-      this.options.onChange();
+        fileInput.value = "";
+        renderList();
+        this.options.onChange();
+      })();
     });
 
     section
@@ -305,10 +309,10 @@ export class TaskDetailModal extends Modal {
         }
       });
       setIcon(downloadButton, "download");
-      downloadButton.addEventListener("click", async (event) => {
+      downloadButton.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        await this.downloadAttachment(path);
+        void this.downloadAttachment(path);
       });
 
       const removeButton = actions.createEl("button", {
@@ -357,10 +361,10 @@ export class TaskDetailModal extends Modal {
       const data = await this.app.vault.readBinary(file);
       const blob = new Blob([data]);
       const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
+      const link = activeDocument.createElement("a");
       link.href = url;
       link.download = file.name;
-      document.body.appendChild(link);
+      activeDocument.body.appendChild(link);
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 0);
@@ -422,9 +426,11 @@ export class TaskDetailModal extends Modal {
         cleanProjectName(this.draft.project),
         this.options.settings.projectColors
       );
-      projectDot.style.backgroundColor = color.regular;
-      projectPicker.style.backgroundColor = color.light;
-      projectPicker.style.borderColor = color.light;
+      projectDot.setCssStyles({ backgroundColor: color.regular });
+      projectPicker.setCssStyles({
+        backgroundColor: color.light,
+        borderColor: color.light
+      });
     };
 
     const hideCreateRow = () => {
@@ -501,10 +507,12 @@ export class TaskDetailModal extends Modal {
     select.value = this.draft.priority;
     const updatePriorityStyle = () => {
       const color = getPriorityColor(this.draft.priority);
-      priorityWrap.style.setProperty("--belki-priority-text", color.color);
-      priorityWrap.style.setProperty("--belki-priority-bg", color.light);
-      priorityWrap.style.setProperty("--belki-priority-border", color.color);
-      indicator.style.backgroundColor = color.color;
+      priorityWrap.setCssProps({
+        "--belki-priority-text": color.color,
+        "--belki-priority-bg": color.light,
+        "--belki-priority-border": color.color
+      });
+      indicator.setCssStyles({ backgroundColor: color.color });
     };
     select.addEventListener("change", () => {
       this.draft.priority = select.value as Priority;
@@ -547,9 +555,13 @@ export class TaskDetailModal extends Modal {
           attr: { type: "button" }
         });
         const color = this.getLabelColor(label);
-        chip.style.backgroundColor = color.light;
-        chip.style.borderColor = color.light;
-        chip.createSpan({ cls: "belki-label-dot" }).style.backgroundColor = color.regular;
+        chip.setCssStyles({
+          backgroundColor: color.light,
+          borderColor: color.light
+        });
+        chip
+          .createSpan({ cls: "belki-label-dot" })
+          .setCssStyles({ backgroundColor: color.regular });
         chip.createSpan({ text: displayLabel(label) });
         chip.addEventListener("click", (event) => {
           event.preventDefault();

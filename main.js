@@ -247,17 +247,12 @@ function fontStackForOption(option) {
   return BELKI_FONT_STACKS[option] || BELKI_FONT_STACKS.system;
 }
 function applyBelkiFontSettings(element, settings) {
-  element.style.setProperty("--belki-font-ui", fontStackForOption(settings.uiFont));
-  element.style.setProperty(
-    "--belki-font-task-title",
-    fontStackForOption(settings.taskTitleFont)
-  );
-  element.style.setProperty(
-    "--belki-font-task-description",
-    fontStackForOption(settings.taskDescriptionFont)
-  );
-  element.style.setProperty("--belki-font-label", fontStackForOption(settings.labelFont));
-  element.style.fontFamily = "var(--belki-font-ui)";
+  element.setCssProps({
+    "--belki-font-ui": fontStackForOption(settings.uiFont),
+    "--belki-font-task-title": fontStackForOption(settings.taskTitleFont),
+    "--belki-font-task-description": fontStackForOption(settings.taskDescriptionFont),
+    "--belki-font-label": fontStackForOption(settings.labelFont)
+  });
 }
 var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
   constructor(app, plugin) {
@@ -268,7 +263,7 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     applyBelkiFontSettings(containerEl, this.plugin.settings);
-    containerEl.createEl("h2", { text: "belki" });
+    new import_obsidian.Setting(containerEl).setName("belki").setHeading();
     new import_obsidian.Setting(containerEl).setName("Old task file").setDesc("Legacy Markdown file used by older belki versions.").addText((text) => {
       text.setPlaceholder("belki/tasks.md").setValue(this.plugin.settings.tasksFilePath).onChange(async (value) => {
         this.plugin.settings.tasksFilePath = value.trim() || DEFAULT_SETTINGS.tasksFilePath;
@@ -299,7 +294,7 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
         this.plugin.refreshBelkiViews();
       });
     });
-    containerEl.createEl("h3", { text: "Fonts" });
+    new import_obsidian.Setting(containerEl).setName("Fonts").setHeading();
     this.addFontSetting(
       "UI Font",
       "Used for sidebar, headings, buttons, settings, and the general interface.",
@@ -320,7 +315,7 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
       "Used for label chip text.",
       "labelFont"
     );
-    containerEl.createEl("h3", { text: "Sidebar icons" });
+    new import_obsidian.Setting(containerEl).setName("Sidebar icons").setHeading();
     this.addIconSetting("Search icon", "search");
     this.addIconSetting("Inbox icon", "inbox");
     this.addIconSetting("Today icon", "today");
@@ -328,7 +323,7 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
     this.addIconSetting("Filters icon", "filters");
     this.addIconSetting("Projects icon", "projects");
     this.addIconSetting("Completed icon", "completed");
-    containerEl.createEl("h3", { text: "Project colors" });
+    new import_obsidian.Setting(containerEl).setName("Project colors").setHeading();
     const projects = this.plugin.getProjectNames();
     if (projects.length === 0) {
       containerEl.createDiv({
@@ -339,7 +334,7 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
     for (const project of projects) {
       this.addProjectColorSetting(project);
     }
-    containerEl.createEl("h3", { text: "Label colors" });
+    new import_obsidian.Setting(containerEl).setName("Label colors").setHeading();
     this.addLabelRegistrySetting();
     const labels = this.plugin.getLabelNames();
     if (labels.length === 0) {
@@ -384,11 +379,13 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
         this.plugin.refreshBelkiViews();
       });
     }).addButton((button) => {
-      button.setButtonText("Reset").onClick(async () => {
-        delete this.plugin.settings.projectColors[project];
-        await this.plugin.saveSettings();
-        this.plugin.refreshBelkiViews();
-        this.display();
+      button.setButtonText("Reset").onClick(() => {
+        void (async () => {
+          delete this.plugin.settings.projectColors[project];
+          await this.plugin.saveSettings();
+          this.plugin.refreshBelkiViews();
+          this.display();
+        })();
       });
     });
   }
@@ -399,18 +396,20 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
         pendingLabel = value;
       });
     }).addButton((button) => {
-      button.setButtonText("Add").onClick(async () => {
-        const label = normalizeLabelName(pendingLabel);
-        if (!label) {
-          return;
-        }
-        this.plugin.settings.labelRegistry = dedupeLabels([
-          ...this.plugin.settings.labelRegistry,
-          label
-        ]);
-        await this.plugin.saveSettings();
-        this.plugin.refreshBelkiViews();
-        this.display();
+      button.setButtonText("Add").onClick(() => {
+        void (async () => {
+          const label = normalizeLabelName(pendingLabel);
+          if (!label) {
+            return;
+          }
+          this.plugin.settings.labelRegistry = dedupeLabels([
+            ...this.plugin.settings.labelRegistry,
+            label
+          ]);
+          await this.plugin.saveSettings();
+          this.plugin.refreshBelkiViews();
+          this.display();
+        })();
       });
     });
   }
@@ -424,11 +423,13 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
         this.plugin.refreshBelkiViews();
       });
     }).addButton((button) => {
-      button.setButtonText("Reset").onClick(async () => {
-        delete this.plugin.settings.labelColors[label];
-        await this.plugin.saveSettings();
-        this.plugin.refreshBelkiViews();
-        this.display();
+      button.setButtonText("Reset").onClick(() => {
+        void (async () => {
+          delete this.plugin.settings.labelColors[label];
+          await this.plugin.saveSettings();
+          this.plugin.refreshBelkiViews();
+          this.display();
+        })();
       });
     });
   }
@@ -606,12 +607,12 @@ var KNOWN_PROPERTIES2 = /* @__PURE__ */ new Set([
   "tags",
   "attachments"
 ]);
-function serializeTaskDocument(document2, tasks) {
+function serializeTaskDocument(document, tasks) {
   const orderedTasks = [...tasks].sort((a, b) => a.order - b.order);
   const tasksById = new Map(orderedTasks.map((task) => [task.id, task]));
   const serializedTaskIds = /* @__PURE__ */ new Set();
   const outputLines = [];
-  for (const block of document2.blocks) {
+  for (const block of document.blocks) {
     if (block.type === "raw") {
       outputLines.push(...block.lines);
       continue;
@@ -1123,9 +1124,9 @@ var TaskStore = class {
     }
     for (const file of files.sort((a, b) => a.path.localeCompare(b.path))) {
       const content = await this.app.vault.read(file);
-      const document2 = parseTaskDocument(content);
-      nextDocuments.set(file.path, document2);
-      for (const task of document2.tasks) {
+      const document = parseTaskDocument(content);
+      nextDocuments.set(file.path, document);
+      for (const task of document.tasks) {
         nextTasks.push({
           ...task,
           created: task.created || todayIso(),
@@ -1324,9 +1325,9 @@ var TaskStore = class {
   async writeSources(sourcePaths) {
     for (const sourcePath of dedupeStrings(sourcePaths.filter(Boolean))) {
       await this.ensureSourceDocument(sourcePath);
-      const document2 = this.documents.get(sourcePath) || { blocks: [], tasks: [] };
+      const document = this.documents.get(sourcePath) || { blocks: [], tasks: [] };
       const tasks = this.tasks.filter((task) => task.sourcePath === sourcePath).map((task) => normalizeTaskForSave(task, sourcePath));
-      const content = serializeTaskDocument(document2, tasks);
+      const content = serializeTaskDocument(document, tasks);
       const file = await this.ensureFile(sourcePath, "");
       await this.app.vault.modify(file, content);
       this.documents.set(sourcePath, parseTaskDocument(content));
@@ -1347,11 +1348,11 @@ var TaskStore = class {
   }
   async clearDemoWritableData() {
     for (const file of this.getDataFiles()) {
-      await this.app.vault.delete(file, true);
+      await this.app.fileManager.trashFile(file);
     }
     const attachmentsRoot = this.app.vault.getAbstractFileByPath(this.attachmentsDir);
     if (attachmentsRoot) {
-      await this.app.vault.delete(attachmentsRoot, true);
+      await this.app.fileManager.trashFile(attachmentsRoot);
     }
     this.documents.clear();
     this.tasks = [];
@@ -1606,11 +1607,13 @@ var AddTaskComposer = class {
     const updatePriorityStyle = () => {
       const priority = prioritySelect.value;
       const color = getPriorityColor(priority);
-      priorityWrap.style.setProperty("--belki-priority-text", color.color);
-      priorityWrap.style.setProperty("--belki-priority-bg", color.light);
-      priorityWrap.style.setProperty("--belki-priority-border", color.color);
+      priorityWrap.setCssProps({
+        "--belki-priority-text": color.color,
+        "--belki-priority-bg": color.light,
+        "--belki-priority-border": color.color
+      });
       priorityWrap.toggleClass("has-priority", priority !== "none");
-      priorityIndicator.style.backgroundColor = color.color;
+      priorityIndicator.setCssStyles({ backgroundColor: color.color });
     };
     prioritySelect.addEventListener("change", updatePriorityStyle);
     updatePriorityStyle();
@@ -1692,7 +1695,7 @@ var AddTaskComposer = class {
     };
     const updateMenuPosition = () => {
       menu.removeClass("is-align-right");
-      requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
         const rect = menu.getBoundingClientRect();
         if (rect.right > window.innerWidth - 16) {
           menu.addClass("is-align-right");
@@ -1740,8 +1743,10 @@ var AddTaskComposer = class {
           attr: { type: "button" }
         });
         const color = getLabelColor(label, options.labelColors);
-        chip.style.backgroundColor = color.light;
-        chip.style.borderColor = color.light;
+        chip.setCssStyles({
+          backgroundColor: color.light,
+          borderColor: color.light
+        });
         chip.addEventListener("click", () => {
           selectedLabels = selectedLabels.filter((candidate) => candidate !== label);
           renderLabels();
@@ -1817,9 +1822,11 @@ var AddTaskComposer = class {
     });
     const updateProjectDot = () => {
       const color = getProjectColor(this.readProject(), options.projectColors);
-      projectDot.style.backgroundColor = color.regular;
-      projectPicker.style.backgroundColor = color.light;
-      projectPicker.style.borderColor = color.light;
+      projectDot.setCssStyles({ backgroundColor: color.regular });
+      projectPicker.setCssStyles({
+        backgroundColor: color.light,
+        borderColor: color.light
+      });
     };
     this.projectSelect.addEventListener("change", () => {
       var _a, _b, _c, _d;
@@ -1850,21 +1857,26 @@ var AddTaskComposer = class {
       }
     });
     cancelButton.addEventListener("click", options.onCancel);
-    form.addEventListener("submit", async (event) => {
-      var _a;
+    form.addEventListener("submit", (event) => {
       event.preventDefault();
       addButton.setAttr("disabled", "true");
-      await options.onSubmit({
-        title: ((_a = this.titleInput) == null ? void 0 : _a.value) || "",
-        description: descriptionInput.value,
-        due: selectedDue,
-        deadline: selectedDeadline,
-        project: this.readProject(),
-        priority: prioritySelect.value,
-        labels: dedupeLabels(selectedLabels),
-        pendingAttachments
-      });
-      addButton.removeAttribute("disabled");
+      void (async () => {
+        var _a;
+        try {
+          await options.onSubmit({
+            title: ((_a = this.titleInput) == null ? void 0 : _a.value) || "",
+            description: descriptionInput.value,
+            due: selectedDue,
+            deadline: selectedDeadline,
+            project: this.readProject(),
+            priority: prioritySelect.value,
+            labels: dedupeLabels(selectedLabels),
+            pendingAttachments
+          });
+        } finally {
+          addButton.removeAttribute("disabled");
+        }
+      })();
     });
     updateDueButtons();
   }
@@ -1956,7 +1968,7 @@ var ImagePreviewModal = class extends import_obsidian5.Modal {
     };
   }
   onOpen() {
-    document.body.classList.add("belki-image-preview-open");
+    activeDocument.body.classList.add("belki-image-preview-open");
     this.containerEl.addClass("belki-image-lightbox-backdrop");
     this.modalEl.addClass("belki-image-lightbox-modal");
     this.modalEl.addEventListener("keydown", this.handleEscape, true);
@@ -1990,7 +2002,7 @@ var ImagePreviewModal = class extends import_obsidian5.Modal {
     }).addEventListener("click", () => this.close());
   }
   onClose() {
-    document.body.classList.remove("belki-image-preview-open");
+    activeDocument.body.classList.remove("belki-image-preview-open");
     this.modalEl.removeEventListener("keydown", this.handleEscape, true);
   }
 };
@@ -2068,10 +2080,12 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
       cls: "belki-detail-delete",
       text: "Delete task",
       attr: { type: "button" }
-    }).addEventListener("click", async () => {
-      await this.options.store.deleteTask(this.draft.id);
-      this.options.onChange();
-      this.close();
+    }).addEventListener("click", () => {
+      void (async () => {
+        await this.options.store.deleteTask(this.draft.id);
+        this.options.onChange();
+        this.close();
+      })();
     });
     const footerActions = footer.createDiv({ cls: "belki-detail-actions" });
     footerActions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } }).addEventListener("click", () => this.close());
@@ -2079,8 +2093,8 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
       cls: "belki-button belki-button-primary",
       text: "Save",
       attr: { type: "button" }
-    }).addEventListener("click", async () => {
-      await this.save();
+    }).addEventListener("click", () => {
+      void this.save();
     });
     titleInput.focus();
   }
@@ -2151,10 +2165,10 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
           }
         });
         (0, import_obsidian6.setIcon)(downloadButton, "download");
-        downloadButton.addEventListener("click", async (event) => {
+        downloadButton.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
-          await this.downloadAttachment(path);
+          void this.downloadAttachment(path);
         });
         const removeButton = actions.createEl("button", {
           cls: "belki-attachment-action belki-attachment-remove",
@@ -2181,17 +2195,19 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
         multiple: "true"
       }
     });
-    fileInput.addEventListener("change", async () => {
-      const files = Array.from(fileInput.files || []);
-      for (const file of files) {
-        const path = await this.options.store.addAttachmentFromFile(this.draft.id, file);
-        if (path) {
-          this.draft.attachments = [...this.draft.attachments, path];
+    fileInput.addEventListener("change", () => {
+      void (async () => {
+        const files = Array.from(fileInput.files || []);
+        for (const file of files) {
+          const path = await this.options.store.addAttachmentFromFile(this.draft.id, file);
+          if (path) {
+            this.draft.attachments = [...this.draft.attachments, path];
+          }
         }
-      }
-      fileInput.value = "";
-      renderList();
-      this.options.onChange();
+        fileInput.value = "";
+        renderList();
+        this.options.onChange();
+      })();
     });
     section.createEl("button", {
       cls: "belki-add-attachment-inline",
@@ -2234,10 +2250,10 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
         }
       });
       (0, import_obsidian6.setIcon)(downloadButton, "download");
-      downloadButton.addEventListener("click", async (event) => {
+      downloadButton.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        await this.downloadAttachment(path);
+        void this.downloadAttachment(path);
       });
       const removeButton = actions.createEl("button", {
         cls: "belki-image-attachment-action belki-attachment-remove",
@@ -2282,10 +2298,10 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
       const data = await this.app.vault.readBinary(file);
       const blob = new Blob([data]);
       const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
+      const link = activeDocument.createElement("a");
       link.href = url;
       link.download = file.name;
-      document.body.appendChild(link);
+      activeDocument.body.appendChild(link);
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 0);
@@ -2341,9 +2357,11 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
         cleanProjectName2(this.draft.project),
         this.options.settings.projectColors
       );
-      projectDot.style.backgroundColor = color.regular;
-      projectPicker.style.backgroundColor = color.light;
-      projectPicker.style.borderColor = color.light;
+      projectDot.setCssStyles({ backgroundColor: color.regular });
+      projectPicker.setCssStyles({
+        backgroundColor: color.light,
+        borderColor: color.light
+      });
     };
     const hideCreateRow = () => {
       createInput.value = "";
@@ -2412,10 +2430,12 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
     select.value = this.draft.priority;
     const updatePriorityStyle = () => {
       const color = getPriorityColor(this.draft.priority);
-      priorityWrap.style.setProperty("--belki-priority-text", color.color);
-      priorityWrap.style.setProperty("--belki-priority-bg", color.light);
-      priorityWrap.style.setProperty("--belki-priority-border", color.color);
-      indicator.style.backgroundColor = color.color;
+      priorityWrap.setCssProps({
+        "--belki-priority-text": color.color,
+        "--belki-priority-bg": color.light,
+        "--belki-priority-border": color.color
+      });
+      indicator.setCssStyles({ backgroundColor: color.color });
     };
     select.addEventListener("change", () => {
       this.draft.priority = select.value;
@@ -2454,9 +2474,11 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
           attr: { type: "button" }
         });
         const color = this.getLabelColor(label);
-        chip.style.backgroundColor = color.light;
-        chip.style.borderColor = color.light;
-        chip.createSpan({ cls: "belki-label-dot" }).style.backgroundColor = color.regular;
+        chip.setCssStyles({
+          backgroundColor: color.light,
+          borderColor: color.light
+        });
+        chip.createSpan({ cls: "belki-label-dot" }).setCssStyles({ backgroundColor: color.regular });
         chip.createSpan({ text: displayLabel(label) });
         chip.addEventListener("click", (event) => {
           event.preventDefault();
@@ -2740,9 +2762,11 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
         this.mode === "projects" && this.selectedProject === cleanProject
       );
       const color = getProjectColor(cleanProject, this.settings.projectColors);
-      button.style.setProperty("--belki-project-bg", color.light);
-      button.style.setProperty("--belki-project-color", color.regular);
-      button.createSpan({ cls: "belki-project-dot" }).style.backgroundColor = color.regular;
+      button.setCssProps({
+        "--belki-project-bg": color.light,
+        "--belki-project-color": color.regular
+      });
+      button.createSpan({ cls: "belki-project-dot" }).setCssStyles({ backgroundColor: color.regular });
       button.createEl("span", { cls: "belki-nav-label", text: cleanProject });
       button.createEl("span", { cls: "belki-count", text: String(count) });
       this.enableProjectDrop(button, cleanProject);
@@ -2883,13 +2907,15 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
         text: this.settings.sortMode === option.mode ? "\u2713" : ""
       });
       item.createSpan({ text: option.label });
-      item.addEventListener("click", async (event) => {
+      item.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
         this.settings.sortMode = option.mode;
         this.sortPopoverOpen = false;
-        await this.saveSettings();
-        this.render();
+        void (async () => {
+          await this.saveSettings();
+          this.render();
+        })();
       });
     }
   }
@@ -2985,7 +3011,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     const labelsHeader = labelsSection.createDiv({ cls: "belki-labels-header" });
     labelsHeader.createEl("h2", { text: "Labels" });
     labelsHeader.createEl("button", { cls: "belki-label-add", text: "+", attr: { type: "button" } }).addEventListener("click", () => {
-      void this.createLabelFromPrompt();
+      this.createLabelFromPrompt();
     });
     const labelList = labelsSection.createDiv({ cls: "belki-filter-list" });
     const labels = this.getAllLabels();
@@ -3016,7 +3042,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     if (color) {
       dot.setText("");
       dot.addClass("belki-label-dot");
-      dot.style.backgroundColor = color;
+      dot.setCssStyles({ backgroundColor: color });
     }
     row.createSpan({ cls: "belki-filter-name", text: name });
     row.createSpan({ cls: "belki-row-count", text: String(count) });
@@ -3045,11 +3071,13 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     }
     select.value = this.settings.defaultOverdueRange;
     select.addEventListener("click", (event) => event.stopPropagation());
-    select.addEventListener("change", async () => {
+    select.addEventListener("change", () => {
       const scrollSnapshot = this.getMainScrollSnapshot();
       this.settings.defaultOverdueRange = normalizeOverdueRange(select.value);
-      await this.saveSettings();
-      this.renderPreservingMainScroll(scrollSnapshot);
+      void (async () => {
+        await this.saveSettings();
+        this.renderPreservingMainScroll(scrollSnapshot);
+      })();
     });
   }
   enableTodayDrop(section) {
@@ -3071,7 +3099,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
       }
       section.removeClass("is-drop-target");
     });
-    section.addEventListener("drop", async (event) => {
+    section.addEventListener("drop", (event) => {
       const task = this.getDraggedTask(event);
       this.clearDropTargets();
       if (!task || task.completed || isToday(task.due) || !isBeforeToday(task.due)) {
@@ -3079,7 +3107,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
       }
       event.preventDefault();
       event.stopPropagation();
-      await this.store.updateTask(task.id, { due: todayIso() });
+      void this.store.updateTask(task.id, { due: todayIso() });
     });
   }
   enableProjectDrop(button, project) {
@@ -3102,7 +3130,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
       }
       button.removeClass("is-drop-target");
     });
-    button.addEventListener("drop", async (event) => {
+    button.addEventListener("drop", (event) => {
       const task = this.getDraggedTask(event);
       this.clearDropTargets();
       if (!task || task.completed || cleanProjectName3(task.project) === project) {
@@ -3110,7 +3138,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
       }
       event.preventDefault();
       event.stopPropagation();
-      await this.store.updateTask(task.id, { project });
+      void this.store.updateTask(task.id, { project });
     });
   }
   enableDueDateDrop(section, due) {
@@ -3133,7 +3161,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
       }
       section.removeClass("is-drop-target");
     });
-    section.addEventListener("drop", async (event) => {
+    section.addEventListener("drop", (event) => {
       const task = this.getDraggedTask(event);
       this.clearDropTargets();
       if (!task || task.completed || task.due === due) {
@@ -3141,7 +3169,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
       }
       event.preventDefault();
       event.stopPropagation();
-      await this.store.updateTask(task.id, { due });
+      void this.store.updateTask(task.id, { due });
     });
   }
   clearDropTargets() {
@@ -3174,11 +3202,13 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
   createDragImage(row) {
     const dragImage = row.cloneNode(true);
     dragImage.addClass("belki-drag-preview");
-    dragImage.style.position = "absolute";
-    dragImage.style.top = "-9999px";
-    dragImage.style.left = "-9999px";
-    dragImage.style.width = `${row.offsetWidth}px`;
-    document.body.appendChild(dragImage);
+    dragImage.setCssStyles({
+      position: "absolute",
+      top: "-9999px",
+      left: "-9999px",
+      width: `${row.offsetWidth}px`
+    });
+    activeDocument.body.appendChild(dragImage);
     return dragImage;
   }
   getDraggedTask(event) {
@@ -3271,8 +3301,10 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
       }
     });
     const checkboxPriorityColor = getPriorityColor(task.priority);
-    checkbox.style.setProperty("--belki-priority-text", checkboxPriorityColor.color);
-    checkbox.style.setProperty("--belki-priority-bg", checkboxPriorityColor.light);
+    checkbox.setCssProps({
+      "--belki-priority-text": checkboxPriorityColor.color,
+      "--belki-priority-bg": checkboxPriorityColor.light
+    });
     checkbox.toggleClass("is-checked", task.completed);
     checkbox.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -3300,8 +3332,10 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
       for (const label of task.labels) {
         const chip = meta.createSpan({ cls: "belki-task-label", text: displayLabel(label) });
         const labelColor = getLabelColor(label, this.settings.labelColors);
-        chip.style.borderColor = labelColor.light;
-        chip.style.backgroundColor = labelColor.light;
+        chip.setCssStyles({
+          borderColor: labelColor.light,
+          backgroundColor: labelColor.light
+        });
       }
     }
     if (task.attachments.length > 0) {
@@ -3313,8 +3347,8 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     const project = cleanProjectName3(task.project);
     const projectColor = getProjectColor(project, this.settings.projectColors);
     const projectChip = row.createDiv({ cls: "belki-task-project" });
-    projectChip.style.backgroundColor = projectColor.light;
-    projectChip.createSpan({ cls: "belki-project-dot" }).style.backgroundColor = projectColor.regular;
+    projectChip.setCssStyles({ backgroundColor: projectColor.light });
+    projectChip.createSpan({ cls: "belki-project-dot" }).setCssStyles({ backgroundColor: projectColor.regular });
     projectChip.createSpan({ text: project });
     row.createEl("button", {
       cls: "belki-task-delete",
@@ -3323,9 +3357,9 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
         type: "button",
         "aria-label": "Delete task"
       }
-    }).addEventListener("click", async (event) => {
+    }).addEventListener("click", (event) => {
       event.stopPropagation();
-      await this.store.deleteTask(task.id);
+      void this.store.deleteTask(task.id);
     });
   }
   openTaskDetail(task) {
@@ -3686,25 +3720,70 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     ]);
     void this.saveSettings();
   }
-  async createLabelFromPrompt() {
-    const rawName = window.prompt("Label name");
-    const label = normalizeLabelName(rawName || "");
-    if (!label) {
-      return;
-    }
-    this.settings.labelRegistry = dedupeLabels([
-      ...this.settings.labelRegistry,
-      label
-    ]);
-    await this.saveSettings();
-    this.activeLabel = label;
-    this.activeFilter = null;
-    this.render();
+  createLabelFromPrompt() {
+    new LabelPromptModal(this.app, (rawName) => {
+      const label = normalizeLabelName(rawName);
+      if (!label) {
+        return;
+      }
+      this.settings.labelRegistry = dedupeLabels([
+        ...this.settings.labelRegistry,
+        label
+      ]);
+      this.activeLabel = label;
+      this.activeFilter = null;
+      void (async () => {
+        await this.saveSettings();
+        this.render();
+      })();
+    }).open();
   }
   stopEscape(event) {
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
+  }
+};
+var LabelPromptModal = class extends import_obsidian7.Modal {
+  constructor(app, onSubmit) {
+    super(app);
+    this.onSubmit = onSubmit;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("belki-label-prompt");
+    contentEl.createEl("h2", { text: "Create label" });
+    const input = contentEl.createEl("input", {
+      cls: "belki-label-prompt-input",
+      attr: {
+        type: "text",
+        placeholder: "#label"
+      }
+    });
+    const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
+    actions.createEl("button", {
+      cls: "belki-button",
+      text: "Cancel",
+      attr: { type: "button" }
+    }).addEventListener("click", () => this.close());
+    const submitButton = actions.createEl("button", {
+      cls: "belki-button belki-button-primary",
+      text: "Create",
+      attr: { type: "button" }
+    });
+    const submit = () => {
+      this.onSubmit(input.value);
+      this.close();
+    };
+    submitButton.addEventListener("click", submit);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        submit();
+      }
+    });
+    input.focus();
   }
 };
 function byOrder(a, b) {
@@ -3966,11 +4045,8 @@ var BelkiPlugin = class extends import_obsidian8.Plugin {
       })
     );
   }
-  onunload() {
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_BELKI);
-  }
   async loadSettings() {
-    const saved = await this.loadData();
+    const saved = toSettingsData(await this.loadData());
     this.settings = {
       ...DEFAULT_SETTINGS,
       ...saved,
@@ -4042,12 +4118,12 @@ var BelkiPlugin = class extends import_obsidian8.Plugin {
       if (view instanceof TaskBoardView) {
         view.openToday();
       }
-      this.app.workspace.revealLeaf(leaves[0]);
+      this.app.workspace.setActiveLeaf(leaves[0], { focus: true });
       return;
     }
     const leaf = this.app.workspace.getLeaf(true);
     await leaf.setViewState({ type: VIEW_TYPE_BELKI, active: true });
-    this.app.workspace.revealLeaf(leaf);
+    this.app.workspace.setActiveLeaf(leaf, { focus: true });
   }
   async refreshIfTaskFile(file) {
     if (this.store.isTaskStorageFile(file.path)) {
@@ -4058,4 +4134,10 @@ var BelkiPlugin = class extends import_obsidian8.Plugin {
 function cleanProjectName4(value) {
   const clean = value == null ? void 0 : value.trim().replace(/^>+\s*/, "");
   return clean || "Inbox";
+}
+function toSettingsData(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return value;
 }

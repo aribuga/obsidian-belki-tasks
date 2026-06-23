@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, setIcon } from "obsidian";
+import { App, ItemView, Modal, WorkspaceLeaf, setIcon } from "obsidian";
 import { getLabelColor, getProjectColor } from "../colors";
 import {
   compareIsoDates,
@@ -227,9 +227,13 @@ export class TaskBoardView extends ItemView {
         this.mode === "projects" && this.selectedProject === cleanProject
       );
       const color = getProjectColor(cleanProject, this.settings.projectColors);
-      button.style.setProperty("--belki-project-bg", color.light);
-      button.style.setProperty("--belki-project-color", color.regular);
-      button.createSpan({ cls: "belki-project-dot" }).style.backgroundColor = color.regular;
+      button.setCssProps({
+        "--belki-project-bg": color.light,
+        "--belki-project-color": color.regular
+      });
+      button
+        .createSpan({ cls: "belki-project-dot" })
+        .setCssStyles({ backgroundColor: color.regular });
       button.createEl("span", { cls: "belki-nav-label", text: cleanProject });
       button.createEl("span", { cls: "belki-count", text: String(count) });
       this.enableProjectDrop(button, cleanProject);
@@ -395,13 +399,15 @@ export class TaskBoardView extends ItemView {
         text: this.settings.sortMode === option.mode ? "✓" : ""
       });
       item.createSpan({ text: option.label });
-      item.addEventListener("click", async (event) => {
+      item.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
         this.settings.sortMode = option.mode;
         this.sortPopoverOpen = false;
-        await this.saveSettings();
-        this.render();
+        void (async () => {
+          await this.saveSettings();
+          this.render();
+        })();
       });
     }
   }
@@ -518,7 +524,7 @@ export class TaskBoardView extends ItemView {
     labelsHeader
       .createEl("button", { cls: "belki-label-add", text: "+", attr: { type: "button" } })
       .addEventListener("click", () => {
-        void this.createLabelFromPrompt();
+        this.createLabelFromPrompt();
       });
 
     const labelList = labelsSection.createDiv({ cls: "belki-filter-list" });
@@ -562,7 +568,7 @@ export class TaskBoardView extends ItemView {
     if (color) {
       dot.setText("");
       dot.addClass("belki-label-dot");
-      dot.style.backgroundColor = color;
+      dot.setCssStyles({ backgroundColor: color });
     }
     row.createSpan({ cls: "belki-filter-name", text: name });
     row.createSpan({ cls: "belki-row-count", text: String(count) });
@@ -600,11 +606,13 @@ export class TaskBoardView extends ItemView {
 
     select.value = this.settings.defaultOverdueRange;
     select.addEventListener("click", (event) => event.stopPropagation());
-    select.addEventListener("change", async () => {
+    select.addEventListener("change", () => {
       const scrollSnapshot = this.getMainScrollSnapshot();
       this.settings.defaultOverdueRange = normalizeOverdueRange(select.value);
-      await this.saveSettings();
-      this.renderPreservingMainScroll(scrollSnapshot);
+      void (async () => {
+        await this.saveSettings();
+        this.renderPreservingMainScroll(scrollSnapshot);
+      })();
     });
   }
 
@@ -632,7 +640,7 @@ export class TaskBoardView extends ItemView {
 
       section.removeClass("is-drop-target");
     });
-    section.addEventListener("drop", async (event) => {
+    section.addEventListener("drop", (event) => {
       const task = this.getDraggedTask(event);
       this.clearDropTargets();
       if (!task || task.completed || isToday(task.due) || !isBeforeToday(task.due)) {
@@ -641,7 +649,7 @@ export class TaskBoardView extends ItemView {
 
       event.preventDefault();
       event.stopPropagation();
-      await this.store.updateTask(task.id, { due: todayIso() });
+      void this.store.updateTask(task.id, { due: todayIso() });
     });
   }
 
@@ -670,7 +678,7 @@ export class TaskBoardView extends ItemView {
 
       button.removeClass("is-drop-target");
     });
-    button.addEventListener("drop", async (event) => {
+    button.addEventListener("drop", (event) => {
       const task = this.getDraggedTask(event);
       this.clearDropTargets();
       if (!task || task.completed || cleanProjectName(task.project) === project) {
@@ -679,7 +687,7 @@ export class TaskBoardView extends ItemView {
 
       event.preventDefault();
       event.stopPropagation();
-      await this.store.updateTask(task.id, { project });
+      void this.store.updateTask(task.id, { project });
     });
   }
 
@@ -708,7 +716,7 @@ export class TaskBoardView extends ItemView {
 
       section.removeClass("is-drop-target");
     });
-    section.addEventListener("drop", async (event) => {
+    section.addEventListener("drop", (event) => {
       const task = this.getDraggedTask(event);
       this.clearDropTargets();
       if (!task || task.completed || task.due === due) {
@@ -717,7 +725,7 @@ export class TaskBoardView extends ItemView {
 
       event.preventDefault();
       event.stopPropagation();
-      await this.store.updateTask(task.id, { due });
+      void this.store.updateTask(task.id, { due });
     });
   }
 
@@ -758,11 +766,13 @@ export class TaskBoardView extends ItemView {
   private createDragImage(row: HTMLElement): HTMLElement {
     const dragImage = row.cloneNode(true) as HTMLElement;
     dragImage.addClass("belki-drag-preview");
-    dragImage.style.position = "absolute";
-    dragImage.style.top = "-9999px";
-    dragImage.style.left = "-9999px";
-    dragImage.style.width = `${row.offsetWidth}px`;
-    document.body.appendChild(dragImage);
+    dragImage.setCssStyles({
+      position: "absolute",
+      top: "-9999px",
+      left: "-9999px",
+      width: `${row.offsetWidth}px`
+    });
+    activeDocument.body.appendChild(dragImage);
     return dragImage;
   }
 
@@ -871,8 +881,10 @@ export class TaskBoardView extends ItemView {
       }
     });
     const checkboxPriorityColor = getPriorityColor(task.priority);
-    checkbox.style.setProperty("--belki-priority-text", checkboxPriorityColor.color);
-    checkbox.style.setProperty("--belki-priority-bg", checkboxPriorityColor.light);
+    checkbox.setCssProps({
+      "--belki-priority-text": checkboxPriorityColor.color,
+      "--belki-priority-bg": checkboxPriorityColor.light
+    });
     checkbox.toggleClass("is-checked", task.completed);
     checkbox.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -903,8 +915,10 @@ export class TaskBoardView extends ItemView {
       for (const label of task.labels) {
         const chip = meta.createSpan({ cls: "belki-task-label", text: displayLabel(label) });
         const labelColor = getLabelColor(label, this.settings.labelColors);
-        chip.style.borderColor = labelColor.light;
-        chip.style.backgroundColor = labelColor.light;
+        chip.setCssStyles({
+          borderColor: labelColor.light,
+          backgroundColor: labelColor.light
+        });
       }
     }
     if (task.attachments.length > 0) {
@@ -917,8 +931,10 @@ export class TaskBoardView extends ItemView {
     const project = cleanProjectName(task.project);
     const projectColor = getProjectColor(project, this.settings.projectColors);
     const projectChip = row.createDiv({ cls: "belki-task-project" });
-    projectChip.style.backgroundColor = projectColor.light;
-    projectChip.createSpan({ cls: "belki-project-dot" }).style.backgroundColor = projectColor.regular;
+    projectChip.setCssStyles({ backgroundColor: projectColor.light });
+    projectChip
+      .createSpan({ cls: "belki-project-dot" })
+      .setCssStyles({ backgroundColor: projectColor.regular });
     projectChip.createSpan({ text: project });
 
     row
@@ -930,9 +946,9 @@ export class TaskBoardView extends ItemView {
           "aria-label": "Delete task"
         }
       })
-      .addEventListener("click", async (event) => {
+      .addEventListener("click", (event) => {
         event.stopPropagation();
-        await this.store.deleteTask(task.id);
+        void this.store.deleteTask(task.id);
       });
   }
 
@@ -1363,27 +1379,83 @@ export class TaskBoardView extends ItemView {
     void this.saveSettings();
   }
 
-  private async createLabelFromPrompt(): Promise<void> {
-    const rawName = window.prompt("Label name");
-    const label = normalizeLabelName(rawName || "");
-    if (!label) {
-      return;
-    }
+  private createLabelFromPrompt(): void {
+    new LabelPromptModal(this.app, (rawName) => {
+      const label = normalizeLabelName(rawName);
+      if (!label) {
+        return;
+      }
 
-    this.settings.labelRegistry = dedupeLabels([
-      ...this.settings.labelRegistry,
-      label
-    ]);
-    await this.saveSettings();
-    this.activeLabel = label;
-    this.activeFilter = null;
-    this.render();
+      this.settings.labelRegistry = dedupeLabels([
+        ...this.settings.labelRegistry,
+        label
+      ]);
+      this.activeLabel = label;
+      this.activeFilter = null;
+      void (async () => {
+        await this.saveSettings();
+        this.render();
+      })();
+    }).open();
   }
 
   private stopEscape(event: KeyboardEvent): void {
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
+  }
+}
+
+class LabelPromptModal extends Modal {
+  constructor(
+    app: App,
+    private onSubmit: (value: string) => void
+  ) {
+    super(app);
+  }
+
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("belki-label-prompt");
+    contentEl.createEl("h2", { text: "Create label" });
+
+    const input = contentEl.createEl("input", {
+      cls: "belki-label-prompt-input",
+      attr: {
+        type: "text",
+        placeholder: "#label"
+      }
+    });
+
+    const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
+    actions
+      .createEl("button", {
+        cls: "belki-button",
+        text: "Cancel",
+        attr: { type: "button" }
+      })
+      .addEventListener("click", () => this.close());
+
+    const submitButton = actions.createEl("button", {
+      cls: "belki-button belki-button-primary",
+      text: "Create",
+      attr: { type: "button" }
+    });
+
+    const submit = () => {
+      this.onSubmit(input.value);
+      this.close();
+    };
+
+    submitButton.addEventListener("click", submit);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        submit();
+      }
+    });
+    input.focus();
   }
 }
 

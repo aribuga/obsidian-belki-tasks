@@ -1,6 +1,6 @@
 {
   "name": "obsidian-belki-tasks",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A minimal Todoist-like task manager using local Markdown files.",
   "main": "main.js",
   "scripts": {
@@ -16,7 +16,6 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.14.12",
-    "builtin-modules": "^3.3.0",
     "esbuild": "^0.23.0",
     "obsidian": "^1.7.2",
     "tslib": "^2.6.3",

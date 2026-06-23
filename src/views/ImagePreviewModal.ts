@@ -21,7 +21,7 @@ export class ImagePreviewModal extends Modal {
   }
 
   onOpen(): void {
-    document.body.classList.add("belki-image-preview-open");
+    activeDocument.body.classList.add("belki-image-preview-open");
     this.containerEl.addClass("belki-image-lightbox-backdrop");
     this.modalEl.addClass("belki-image-lightbox-modal");
     this.modalEl.addEventListener("keydown", this.handleEscape, true);
@@ -62,7 +62,7 @@ export class ImagePreviewModal extends Modal {
   }
 
   onClose(): void {
-    document.body.classList.remove("belki-image-preview-open");
+    activeDocument.body.classList.remove("belki-image-preview-open");
     this.modalEl.removeEventListener("keydown", this.handleEscape, true);
   }
 }

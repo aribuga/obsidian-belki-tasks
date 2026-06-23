@@ -116,11 +116,13 @@ export class AddTaskComposer {
     const updatePriorityStyle = () => {
       const priority = prioritySelect.value as Priority;
       const color = getPriorityColor(priority);
-      priorityWrap.style.setProperty("--belki-priority-text", color.color);
-      priorityWrap.style.setProperty("--belki-priority-bg", color.light);
-      priorityWrap.style.setProperty("--belki-priority-border", color.color);
+      priorityWrap.setCssProps({
+        "--belki-priority-text": color.color,
+        "--belki-priority-bg": color.light,
+        "--belki-priority-border": color.color
+      });
       priorityWrap.toggleClass("has-priority", priority !== "none");
-      priorityIndicator.style.backgroundColor = color.color;
+      priorityIndicator.setCssStyles({ backgroundColor: color.color });
     };
     prioritySelect.addEventListener("change", updatePriorityStyle);
     updatePriorityStyle();
@@ -211,7 +213,7 @@ export class AddTaskComposer {
 
     const updateMenuPosition = () => {
       menu.removeClass("is-align-right");
-      requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
         const rect = menu.getBoundingClientRect();
         if (rect.right > window.innerWidth - 16) {
           menu.addClass("is-align-right");
@@ -263,8 +265,10 @@ export class AddTaskComposer {
           attr: { type: "button" }
         });
         const color = getLabelColor(label, options.labelColors);
-        chip.style.backgroundColor = color.light;
-        chip.style.borderColor = color.light;
+        chip.setCssStyles({
+          backgroundColor: color.light,
+          borderColor: color.light
+        });
         chip.addEventListener("click", () => {
           selectedLabels = selectedLabels.filter((candidate) => candidate !== label);
           renderLabels();
@@ -353,9 +357,11 @@ export class AddTaskComposer {
 
     const updateProjectDot = () => {
       const color = getProjectColor(this.readProject(), options.projectColors);
-      projectDot.style.backgroundColor = color.regular;
-      projectPicker.style.backgroundColor = color.light;
-      projectPicker.style.borderColor = color.light;
+      projectDot.setCssStyles({ backgroundColor: color.regular });
+      projectPicker.setCssStyles({
+        backgroundColor: color.light,
+        borderColor: color.light
+      });
     };
 
     this.projectSelect.addEventListener("change", () => {
@@ -388,21 +394,26 @@ export class AddTaskComposer {
     });
 
     cancelButton.addEventListener("click", options.onCancel);
-    form.addEventListener("submit", async (event) => {
+    form.addEventListener("submit", (event) => {
       event.preventDefault();
 
       addButton.setAttr("disabled", "true");
-      await options.onSubmit({
-        title: this.titleInput?.value || "",
-        description: descriptionInput.value,
-        due: selectedDue,
-        deadline: selectedDeadline,
-        project: this.readProject(),
-        priority: prioritySelect.value as Priority,
-        labels: dedupeLabels(selectedLabels),
-        pendingAttachments
-      });
-      addButton.removeAttribute("disabled");
+      void (async () => {
+        try {
+          await options.onSubmit({
+            title: this.titleInput?.value || "",
+            description: descriptionInput.value,
+            due: selectedDue,
+            deadline: selectedDeadline,
+            project: this.readProject(),
+            priority: prioritySelect.value as Priority,
+            labels: dedupeLabels(selectedLabels),
+            pendingAttachments
+          });
+        } finally {
+          addButton.removeAttribute("disabled");
+        }
+      })();
     });
 
     updateDueButtons();
