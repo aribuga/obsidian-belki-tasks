@@ -6,6 +6,7 @@ import { BelkiSettings, normalizeDataFolderPath } from "./settings";
 import { BelkiTask, CreateTaskInput, ParsedTaskDocument, TaskPatch } from "./types";
 import { dedupeLabels } from "./labels";
 import { DEMO_MAIN_CONTENT, buildDemoSeedData } from "./demoData";
+import { normalizeTaskProject } from "./projects";
 
 type Listener = () => void;
 
@@ -54,7 +55,10 @@ export class TaskStore {
   getProjects(): string[] {
     const projects = new Set<string>();
     for (const task of this.tasks) {
-      projects.add(task.project || "Inbox");
+      const project = normalizeTaskProject(task.project);
+      if (project) {
+        projects.add(project);
+      }
     }
 
     return [...projects].sort((a, b) => a.localeCompare(b));
@@ -131,7 +135,7 @@ export class TaskStore {
       created,
       due: normalizeOptional(input.due),
       deadline: normalizeOptional(input.deadline),
-      project: normalizeProject(input.project || this.settings.defaultProject),
+      project: normalizeTaskProject(input.project),
       priority: input.priority || "none",
       description: normalizeOptional(input.description),
       labels: normalizeLabels(input.labels || []),
@@ -164,7 +168,7 @@ export class TaskStore {
         deadline:
           "deadline" in patch ? normalizeOptional(patch.deadline) : candidate.deadline,
         project:
-          "project" in patch ? normalizeProject(patch.project) : candidate.project,
+          "project" in patch ? normalizeTaskProject(patch.project) : candidate.project,
         description:
           "description" in patch
             ? normalizeOptional(patch.description)
@@ -503,16 +507,11 @@ function normalizeTaskForSave(task: BelkiTask, sourcePath: string): BelkiTask {
   return {
     ...task,
     created: normalizeOptional(task.created) || todayIso(),
-    project: normalizeProject(task.project),
+    project: normalizeTaskProject(task.project),
     labels: dedupeLabels(task.labels),
     attachments: normalizeAttachments(task.attachments),
     sourcePath
   };
-}
-
-function normalizeProject(value: string | undefined): string {
-  const project = value?.trim().replace(/^>+\s*/, "");
-  return project || "Inbox";
 }
 
 function normalizeOptional(value: string | undefined): string | undefined {

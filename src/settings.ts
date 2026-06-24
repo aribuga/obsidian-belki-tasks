@@ -1,6 +1,7 @@
 import { App, normalizePath, Plugin, PluginSettingTab, Setting } from "obsidian";
 import { colorForName } from "./colors";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "./labels";
+import { normalizeTaskProject } from "./projects";
 import {
   BelkiFontOption,
   BelkiSortMode,
@@ -41,7 +42,7 @@ export interface BelkiIconSettings {
 export const DEFAULT_SETTINGS: BelkiSettings = {
   tasksFilePath: "belki/tasks.md",
   dataFolderPath: DEFAULT_DATA_FOLDER_PATH,
-  defaultProject: "Inbox",
+  defaultProject: "",
   icons: {
     search: "🔎",
     inbox: "📥",
@@ -144,6 +145,10 @@ export function normalizeFontOption(value: string | undefined): BelkiFontOption 
     : "system";
 }
 
+export function normalizeDefaultProject(value: string | undefined): string {
+  return normalizeTaskProject(value) || "";
+}
+
 export function fontOptionLabel(option: BelkiFontOption): string {
   return FONT_OPTION_LABELS[option];
 }
@@ -212,19 +217,6 @@ export class BelkiSettingTab extends PluginSettingTab {
             this.plugin.settings.dataFolderPath = normalizeDataFolderPath(value);
             await this.plugin.saveSettings();
             await this.plugin.reloadTasks();
-          });
-      });
-
-    new Setting(containerEl)
-      .setName("Default project")
-      .setDesc("Used when a new task does not specify a project.")
-      .addText((text) => {
-        text
-          .setPlaceholder("Inbox")
-          .setValue(this.plugin.settings.defaultProject)
-          .onChange(async (value) => {
-            this.plugin.settings.defaultProject = value.trim() || DEFAULT_SETTINGS.defaultProject;
-            await this.plugin.saveSettings();
           });
       });
 

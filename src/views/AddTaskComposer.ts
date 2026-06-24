@@ -3,6 +3,7 @@ import { CreateTaskInput, PRIORITIES, Priority } from "../types";
 import { getLabelColor, getProjectColor } from "../colors";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
 import { getPriorityColor, getPriorityLabel } from "../priority";
+import { normalizeTaskProject, uniqueRealProjects } from "../projects";
 
 interface ComposerOptions {
   projects: string[];
@@ -367,16 +368,16 @@ export class AddTaskComposer {
     const projectPicker = projectArea.createDiv({ cls: "belki-project-picker" });
     const projectDot = projectPicker.createSpan({ cls: "belki-project-dot belki-composer-project-dot" });
     this.projectSelect = projectPicker.createEl("select", { cls: "belki-project-select" });
-    const projects = uniqueProjects(["Inbox", options.defaultProject, ...options.projects]);
+    const projects = uniqueRealProjects([options.defaultProject, ...options.projects]);
+    this.projectSelect.createEl("option", { text: "Inbox", value: "" });
     for (const project of projects) {
-      const cleanProject = cleanProjectName(project);
-      this.projectSelect.createEl("option", { text: cleanProject, value: cleanProject });
+      this.projectSelect.createEl("option", { text: project, value: project });
     }
     this.projectSelect.createEl("option", { text: "New project...", value: "__new__" });
-    const defaultProject = cleanProjectName(options.defaultProject);
-    this.projectSelect.value = projects.map(cleanProjectName).includes(defaultProject)
+    const defaultProject = normalizeTaskProject(options.defaultProject) || "";
+    this.projectSelect.value = projects.includes(defaultProject)
       ? defaultProject
-      : "Inbox";
+      : "";
 
     this.customProjectInput = projectArea.createEl("input", {
       cls: "belki-chip-input belki-custom-project is-hidden",
@@ -387,7 +388,17 @@ export class AddTaskComposer {
     });
 
     const updateProjectDot = () => {
-      const color = getProjectColor(this.readProject(), options.projectColors);
+      const project = this.readProject();
+      if (!project) {
+        projectDot.setCssStyles({ backgroundColor: "var(--belki-faint)" });
+        projectPicker.setCssStyles({
+          backgroundColor: "var(--belki-hover)",
+          borderColor: "var(--belki-border)"
+        });
+        return;
+      }
+
+      const color = getProjectColor(project, options.projectColors);
       projectDot.setCssStyles({ backgroundColor: color.regular });
       projectPicker.setCssStyles({
         backgroundColor: color.light,
@@ -454,17 +465,13 @@ export class AddTaskComposer {
     this.titleInput?.focus();
   }
 
-  private readProject(): string {
+  private readProject(): string | undefined {
     if (this.projectSelect?.value === "__new__") {
-      return cleanProjectName(this.customProjectInput?.value || "Inbox");
+      return normalizeTaskProject(this.customProjectInput?.value);
     }
 
-    return cleanProjectName(this.projectSelect?.value || "Inbox");
+    return normalizeTaskProject(this.projectSelect?.value);
   }
-}
-
-function uniqueProjects(projects: string[]): string[] {
-  return [...new Set(projects.map(cleanProjectName).filter(Boolean))];
 }
 
 function createChipButton(
@@ -517,11 +524,6 @@ function createIcon(
   const icon = parent.createSpan({ cls: className });
   setIcon(icon, iconName);
   return icon;
-}
-
-function cleanProjectName(value: string): string {
-  const clean = value.trim().replace(/^>+\s*/, "");
-  return clean || "Inbox";
 }
 
 function isImageFile(file: File): boolean {

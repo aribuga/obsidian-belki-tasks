@@ -45,12 +45,13 @@ belki stores tasks as Markdown list items with metadata underneath:
   created:: 2026-06-22
   due:: 2026-06-22
   deadline:: 2026-06-25
-  project:: Inbox
   priority:: P1
   description:: Optional description
   labels:: client, urgent
   attachments:: [[_belki_files/Attachments/task-unique-id/image.png]]
 ```
+
+Tasks without a project appear in the Inbox smart view and do not write a `project::` line. When a real project is selected, belki writes `project:: Project Name`.
 
 Completed tasks use `[x]` and include:
 

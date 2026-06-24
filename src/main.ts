@@ -3,6 +3,7 @@ import {
   BelkiSettingTab,
   BelkiSettings,
   DEFAULT_SETTINGS,
+  normalizeDefaultProject,
   normalizeDataFolderPath,
   normalizeFontOption,
   normalizeLabelColorMap,
@@ -14,6 +15,7 @@ import { dedupeLabels } from "./labels";
 import { TaskStore } from "./taskStore";
 import { TaskBoardView, VIEW_TYPE_BELKI } from "./views/TaskBoardView";
 import { DEMO_LABELS } from "./demoData";
+import { cleanProjectName, uniqueRealProjects } from "./projects";
 
 export default class BelkiPlugin extends Plugin {
   settings: BelkiSettings;
@@ -132,6 +134,7 @@ export default class BelkiPlugin extends Plugin {
       ...DEFAULT_SETTINGS,
       ...saved,
       dataFolderPath: normalizeDataFolderPath(saved?.dataFolderPath),
+      defaultProject: normalizeDefaultProject(saved?.defaultProject),
       icons: {
         ...DEFAULT_SETTINGS.icons,
         ...saved?.icons
@@ -181,14 +184,11 @@ export default class BelkiPlugin extends Plugin {
   }
 
   getProjectNames(): string[] {
-    return [...new Set([
-      "Inbox",
+    return uniqueRealProjects([
       cleanProjectName(this.settings.defaultProject),
       ...this.store.getProjects().map(cleanProjectName),
       ...Object.keys(this.settings.projectColors).map(cleanProjectName)
-    ])]
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b));
+    ]);
   }
 
   getLabelNames(): string[] {
@@ -224,11 +224,6 @@ export default class BelkiPlugin extends Plugin {
       await this.reloadTasks();
     }
   }
-}
-
-function cleanProjectName(value: string | undefined): string {
-  const clean = value?.trim().replace(/^>+\s*/, "");
-  return clean || "Inbox";
 }
 
 function toSettingsData(value: unknown): Partial<BelkiSettings> {

@@ -7,6 +7,7 @@ import { TaskStore } from "../taskStore";
 import { BelkiTask, PRIORITIES, Priority } from "../types";
 import { ImagePreviewModal } from "./ImagePreviewModal";
 import { getPriorityColor, getPriorityLabel } from "../priority";
+import { normalizeTaskProject, uniqueRealProjects } from "../projects";
 
 interface TaskDetailModalOptions {
   task: BelkiTask;
@@ -415,8 +416,7 @@ export class TaskDetailModal extends Modal {
     const createValue = "__belki_create_project__";
 
     const getProjects = () =>
-      uniqueProjects([
-        "Inbox",
+      uniqueRealProjects([
         this.options.settings.defaultProject,
         ...this.options.projects,
         ...Object.keys(this.options.settings.projectColors),
@@ -425,19 +425,27 @@ export class TaskDetailModal extends Modal {
 
     const renderOptions = () => {
       select.empty();
+      select.createEl("option", { text: "No project", value: "" });
       for (const project of getProjects()) {
         select.createEl("option", { text: project, value: project });
       }
 
       select.createEl("option", { text: "Create project...", value: createValue });
-      select.value = cleanProjectName(this.draft.project);
+      select.value = normalizeTaskProject(this.draft.project) || "";
     };
 
     const updateProjectStyle = () => {
-      const color = getProjectColor(
-        cleanProjectName(this.draft.project),
-        this.options.settings.projectColors
-      );
+      const project = normalizeTaskProject(this.draft.project);
+      if (!project) {
+        projectDot.setCssStyles({ backgroundColor: "var(--belki-faint)" });
+        projectPicker.setCssStyles({
+          backgroundColor: "var(--belki-hover)",
+          borderColor: "var(--belki-border)"
+        });
+        return;
+      }
+
+      const color = getProjectColor(project, this.options.settings.projectColors);
       projectDot.setCssStyles({ backgroundColor: color.regular });
       projectPicker.setCssStyles({
         backgroundColor: color.light,
@@ -448,11 +456,11 @@ export class TaskDetailModal extends Modal {
     const hideCreateRow = () => {
       createInput.value = "";
       createRow.addClass("is-hidden");
-      select.value = cleanProjectName(this.draft.project);
+      select.value = normalizeTaskProject(this.draft.project) || "";
     };
 
     const createProject = () => {
-      const project = optionalProjectName(createInput.value);
+      const project = normalizeTaskProject(createInput.value);
       if (!project) {
         createInput.focus();
         return;
@@ -467,12 +475,12 @@ export class TaskDetailModal extends Modal {
     select.addEventListener("change", () => {
       if (select.value === createValue) {
         createRow.removeClass("is-hidden");
-        select.value = cleanProjectName(this.draft.project);
+        select.value = normalizeTaskProject(this.draft.project) || "";
         createInput.focus();
         return;
       }
 
-      this.draft.project = cleanProjectName(select.value);
+      this.draft.project = normalizeTaskProject(select.value);
       createRow.addClass("is-hidden");
       updateProjectStyle();
     });
@@ -688,26 +696,4 @@ function attachmentName(path: string): string {
 
 function isImagePath(path: string): boolean {
   return /\.(png|jpe?g|gif|webp|svg)$/i.test(path);
-}
-
-function uniqueProjects(projects: Array<string | undefined>): string[] {
-  return [...new Set(projects.map(cleanProjectName).filter(Boolean))].sort((a, b) => {
-    if (a === "Inbox") {
-      return -1;
-    }
-    if (b === "Inbox") {
-      return 1;
-    }
-
-    return a.localeCompare(b);
-  });
-}
-
-function cleanProjectName(value: string | undefined): string {
-  const clean = value?.trim().replace(/^>+\s*/, "");
-  return clean || "Inbox";
-}
-
-function optionalProjectName(value: string | null): string | undefined {
-  return value?.trim().replace(/^>+\s*/, "") || undefined;
 }

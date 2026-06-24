@@ -29,7 +29,7 @@ export interface BelkiTask {
   created?: string;
   due?: string;
   deadline?: string;
-  project: string;
+  project?: string;
   priority: Priority;
   description?: string;
   labels: string[];

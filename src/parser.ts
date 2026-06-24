@@ -1,5 +1,6 @@
 import { BelkiTask, ParsedTaskDocument, Priority, PRIORITIES, TaskProperty } from "./types";
 import { dedupeLabels } from "./labels";
+import { normalizeTaskProject } from "./projects";
 
 const TASK_LINE_PATTERN = /^- \[( |x|X)\] (.*)$/;
 const PROPERTY_PATTERN = /^\s{2,}([A-Za-z][A-Za-z0-9_-]*)::\s*(.*)$/;
@@ -65,7 +66,7 @@ export function parseTaskDocument(markdown: string): ParsedTaskDocument {
       created: properties.created || undefined,
       due: properties.due || undefined,
       deadline: properties.deadline || undefined,
-      project: properties.project || "Inbox",
+      project: normalizeTaskProject(properties.project),
       priority: parsePriority(properties.priority),
       description: properties.description || undefined,
       labels: parseLabels(properties.labels || properties.tags),

@@ -21,6 +21,11 @@ import { AddTaskComposer } from "./AddTaskComposer";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
 import { TaskDetailModal } from "./TaskDetailModal";
 import { getPriorityClass, getPriorityColor } from "../priority";
+import {
+  normalizeTaskProject,
+  projectDisplayName,
+  uniqueRealProjects
+} from "../projects";
 
 export const VIEW_TYPE_BELKI = "belki-task-board";
 
@@ -239,8 +244,12 @@ export class TaskBoardView extends ItemView {
     projectsSection.createDiv({ cls: "belki-sidebar-heading", text: "Projects" });
 
     for (const project of this.store.getProjects()) {
-      const cleanProject = cleanProjectName(project);
-      const count = active.filter((task) => cleanProjectName(task.project) === cleanProject).length;
+      const cleanProject = normalizeTaskProject(project);
+      if (!cleanProject) {
+        continue;
+      }
+
+      const count = active.filter((task) => normalizeTaskProject(task.project) === cleanProject).length;
       const button = projectsSection.createEl("button", {
         cls: "belki-project-button"
       });
@@ -345,7 +354,7 @@ export class TaskBoardView extends ItemView {
         labels: this.getAllLabels(),
         labelColors: this.settings.labelColors,
         projectColors: this.settings.projectColors,
-        defaultProject: this.selectedProject || "Inbox",
+        defaultProject: this.selectedProject || "",
         defaultDue: this.mode === "today" ? todayIso() : undefined,
         onCancel: () => {
           this.composerOpen = false;
@@ -478,16 +487,20 @@ export class TaskBoardView extends ItemView {
     if (this.mode === "projects") {
       const projects = this.selectedProject
         ? [this.selectedProject]
-        : uniqueProjects([
-          "Inbox",
+        : uniqueRealProjects([
           this.settings.defaultProject,
           ...this.store.getProjects(),
           ...Object.keys(this.settings.projectColors)
         ]);
 
+      if (projects.length === 0) {
+        this.renderEmptySection(parent, "No projects yet.");
+        return;
+      }
+
       for (const project of projects) {
         const projectTasks = this.sortTasks(
-          active.filter((task) => cleanProjectName(task.project) === project)
+          active.filter((task) => normalizeTaskProject(task.project) === project)
         );
         const section = this.createSection(parent, project, projectTasks.length);
         this.enableProjectDrop(section, project);
@@ -680,7 +693,7 @@ export class TaskBoardView extends ItemView {
     button.dataset.project = project;
     button.addEventListener("dragover", (event) => {
       const task = this.getDraggedTask(event);
-      if (!task || task.completed || cleanProjectName(task.project) === project) {
+      if (!task || task.completed || normalizeTaskProject(task.project) === project) {
         return;
       }
 
@@ -703,7 +716,7 @@ export class TaskBoardView extends ItemView {
     button.addEventListener("drop", (event) => {
       const task = this.getDraggedTask(event);
       this.clearDropTargets();
-      if (!task || task.completed || cleanProjectName(task.project) === project) {
+      if (!task || task.completed || normalizeTaskProject(task.project) === project) {
         return;
       }
 
@@ -765,7 +778,7 @@ export class TaskBoardView extends ItemView {
     for (const projectTarget of Array.from(
       this.containerEl.querySelectorAll<HTMLElement>(".belki-project-drop-zone")
     )) {
-      if (cleanProjectName(task.project) !== projectTarget.dataset.project) {
+      if (normalizeTaskProject(task.project) !== projectTarget.dataset.project) {
         projectTarget.addClass("is-drop-available");
       }
     }
@@ -819,9 +832,8 @@ export class TaskBoardView extends ItemView {
     const canMoveToUpcomingDate =
       this.mode === "upcoming" &&
       this.getUpcomingDropDates().some((date) => date !== task.due);
-    const currentProject = cleanProjectName(task.project);
-    const canMoveToProject = uniqueProjects([
-      "Inbox",
+    const currentProject = normalizeTaskProject(task.project);
+    const canMoveToProject = uniqueRealProjects([
       this.settings.defaultProject,
       ...this.store.getProjects(),
       ...Object.keys(this.settings.projectColors)
@@ -950,14 +962,16 @@ export class TaskBoardView extends ItemView {
       });
     }
 
-    const project = cleanProjectName(task.project);
-    const projectColor = getProjectColor(project, this.settings.projectColors);
-    const projectChip = row.createDiv({ cls: "belki-task-project" });
-    projectChip.setCssStyles({ backgroundColor: projectColor.light });
-    projectChip
-      .createSpan({ cls: "belki-project-dot" })
-      .setCssStyles({ backgroundColor: projectColor.regular });
-    projectChip.createSpan({ text: project });
+    const project = normalizeTaskProject(task.project);
+    if (project) {
+      const projectColor = getProjectColor(project, this.settings.projectColors);
+      const projectChip = row.createDiv({ cls: "belki-task-project" });
+      projectChip.setCssStyles({ backgroundColor: projectColor.light });
+      projectChip
+        .createSpan({ cls: "belki-project-dot" })
+        .setCssStyles({ backgroundColor: projectColor.regular });
+      projectChip.createSpan({ text: project });
+    }
 
     row
       .createEl("button", {
@@ -977,8 +991,7 @@ export class TaskBoardView extends ItemView {
   private openTaskDetail(task: BelkiTask): void {
     new TaskDetailModal(this.app, {
       task,
-      projects: uniqueProjects([
-        "Inbox",
+      projects: uniqueRealProjects([
         this.settings.defaultProject,
         ...this.store.getProjects(),
         ...Object.keys(this.settings.projectColors)
@@ -1011,8 +1024,8 @@ export class TaskBoardView extends ItemView {
 
     if (this.mode === "projects") {
       return this.sortTasks(this.selectedProject
-        ? active.filter((task) => cleanProjectName(task.project) === this.selectedProject)
-        : active
+        ? active.filter((task) => normalizeTaskProject(task.project) === this.selectedProject)
+        : active.filter((task) => Boolean(normalizeTaskProject(task.project)))
       );
     }
 
@@ -1049,7 +1062,7 @@ export class TaskBoardView extends ItemView {
 
   private getInboxTasks(tasks: BelkiTask[]): BelkiTask[] {
     return this.sortTasks(
-      tasks.filter((task) => !task.due && (!task.project || task.project === "Inbox"))
+      tasks.filter((task) => !normalizeTaskProject(task.project))
     );
   }
 
@@ -1133,7 +1146,7 @@ export class TaskBoardView extends ItemView {
       return "Upcoming";
     }
     if (this.mode === "projects") {
-      return this.selectedProject ? cleanProjectName(this.selectedProject) : "Projects";
+      return this.selectedProject || "Projects";
     }
     if (this.mode === "completed") {
       return "Completed";
@@ -1327,7 +1340,7 @@ export class TaskBoardView extends ItemView {
           result.createDiv({ cls: "belki-search-description", text: task.description });
         }
         const meta = result.createDiv({ cls: "belki-search-meta" });
-        meta.createSpan({ text: cleanProjectName(task.project) });
+        meta.createSpan({ text: projectDisplayName(task.project) });
         if (task.due) {
           meta.createSpan({ text: formatDueChip(task.due) });
         }
@@ -1362,12 +1375,12 @@ export class TaskBoardView extends ItemView {
     } else if (task.due && isAfterToday(task.due)) {
       this.mode = "upcoming";
       this.selectedProject = null;
-    } else if (!task.due && cleanProjectName(task.project) === "Inbox") {
+    } else if (!normalizeTaskProject(task.project)) {
       this.mode = "inbox";
       this.selectedProject = null;
     } else {
       this.mode = "projects";
-      this.selectedProject = cleanProjectName(task.project);
+      this.selectedProject = normalizeTaskProject(task.project) || null;
     }
 
     this.render();
@@ -1518,7 +1531,7 @@ function compareTasksByMode(a: BelkiTask, b: BelkiTask, mode: BelkiSortMode): nu
 
   if (mode === "project") {
     return (
-      cleanProjectName(a.project).localeCompare(cleanProjectName(b.project)) ||
+      projectDisplayName(a.project).localeCompare(projectDisplayName(b.project)) ||
       compareSmart(a, b)
     );
   }
@@ -1590,24 +1603,6 @@ function compareOptionalDateDesc(
     return 1;
   }
   return 0;
-}
-
-function cleanProjectName(value: string | undefined): string {
-  const clean = value?.trim().replace(/^>+\s*/, "");
-  return clean || "Inbox";
-}
-
-function uniqueProjects(projects: Array<string | undefined>): string[] {
-  return [...new Set(projects.map(cleanProjectName).filter(Boolean))].sort((a, b) => {
-    if (a === "Inbox") {
-      return -1;
-    }
-    if (b === "Inbox") {
-      return 1;
-    }
-
-    return a.localeCompare(b);
-  });
 }
 
 function formatDueChip(value: string): string {
@@ -1708,7 +1703,7 @@ function searchableText(task: BelkiTask): string {
   return [
     task.title,
     task.description,
-    task.project,
+    projectDisplayName(task.project),
     ...task.labels
   ]
     .filter(Boolean)

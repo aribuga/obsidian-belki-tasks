@@ -1,5 +1,6 @@
 import { BelkiTask, ParsedTaskDocument } from "./types";
 import { dedupeLabels } from "./labels";
+import { normalizeTaskProject } from "./projects";
 
 const KNOWN_PROPERTIES = new Set([
   "id",
@@ -85,7 +86,10 @@ function serializeTaskLines(task: BelkiTask): string[] {
     lines.push(`  deadline:: ${singleLine(task.deadline)}`);
   }
 
-  lines.push(`  project:: ${singleLine(task.project || "Inbox")}`);
+  const project = normalizeTaskProject(task.project);
+  if (project) {
+    lines.push(`  project:: ${singleLine(project)}`);
+  }
   lines.push(`  priority:: ${singleLine(task.priority || "none")}`);
 
   if (task.description) {

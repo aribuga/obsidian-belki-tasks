@@ -121,6 +121,28 @@ function hexToRgb(hex) {
   };
 }
 
+// src/projects.ts
+var INBOX_VIEW_NAME = "Inbox";
+function cleanProjectName(value) {
+  return (value || "").trim().replace(/^>+\s*/, "");
+}
+function isReservedInboxProject(value) {
+  return cleanProjectName(value).toLowerCase() === "inbox";
+}
+function normalizeTaskProject(value) {
+  const project = cleanProjectName(value);
+  if (!project || isReservedInboxProject(project)) {
+    return void 0;
+  }
+  return project;
+}
+function projectDisplayName(value) {
+  return normalizeTaskProject(value) || INBOX_VIEW_NAME;
+}
+function uniqueRealProjects(projects) {
+  return [...new Set(projects.map(normalizeTaskProject).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
 // src/types.ts
 var PRIORITIES = ["none", "P1", "P2", "P3", "P4"];
 var SORT_MODES = [
@@ -157,7 +179,7 @@ var DEFAULT_DATA_FOLDER_PATH = "_belki_files";
 var DEFAULT_SETTINGS = {
   tasksFilePath: "belki/tasks.md",
   dataFolderPath: DEFAULT_DATA_FOLDER_PATH,
-  defaultProject: "Inbox",
+  defaultProject: "",
   icons: {
     search: "\u{1F50E}",
     inbox: "\u{1F4E5}",
@@ -237,6 +259,9 @@ function normalizeOverdueRange(value) {
 function normalizeFontOption(value) {
   return FONT_OPTIONS.includes(value) ? value : "system";
 }
+function normalizeDefaultProject(value) {
+  return normalizeTaskProject(value) || "";
+}
 function fontOptionLabel(option) {
   return FONT_OPTION_LABELS[option];
 }
@@ -275,12 +300,6 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
         this.plugin.settings.dataFolderPath = normalizeDataFolderPath(value);
         await this.plugin.saveSettings();
         await this.plugin.reloadTasks();
-      });
-    });
-    new import_obsidian.Setting(containerEl).setName("Default project").setDesc("Used when a new task does not specify a project.").addText((text) => {
-      text.setPlaceholder("Inbox").setValue(this.plugin.settings.defaultProject).onChange(async (value) => {
-        this.plugin.settings.defaultProject = value.trim() || DEFAULT_SETTINGS.defaultProject;
-        await this.plugin.saveSettings();
       });
     });
     new import_obsidian.Setting(containerEl).setName("Default overdue range").setDesc("Default range used by the Today overdue section.").addDropdown((dropdown) => {
@@ -531,7 +550,7 @@ function parseTaskDocument(markdown) {
       created: properties.created || void 0,
       due: properties.due || void 0,
       deadline: properties.deadline || void 0,
-      project: properties.project || "Inbox",
+      project: normalizeTaskProject(properties.project),
       priority: parsePriority(properties.priority),
       description: properties.description || void 0,
       labels: parseLabels(properties.labels || properties.tags),
@@ -649,7 +668,10 @@ function serializeTaskLines(task) {
   if (task.deadline) {
     lines.push(`  deadline:: ${singleLine(task.deadline)}`);
   }
-  lines.push(`  project:: ${singleLine(task.project || "Inbox")}`);
+  const project = normalizeTaskProject(task.project);
+  if (project) {
+    lines.push(`  project:: ${singleLine(project)}`);
+  }
   lines.push(`  priority:: ${singleLine(task.priority || "none")}`);
   if (task.description) {
     lines.push(`  description:: ${singleLine(task.description)}`);
@@ -1101,7 +1123,10 @@ var TaskStore = class {
   getProjects() {
     const projects = /* @__PURE__ */ new Set();
     for (const task of this.tasks) {
-      projects.add(task.project || "Inbox");
+      const project = normalizeTaskProject(task.project);
+      if (project) {
+        projects.add(project);
+      }
     }
     return [...projects].sort((a, b) => a.localeCompare(b));
   }
@@ -1165,7 +1190,7 @@ var TaskStore = class {
       created,
       due: normalizeOptional(input.due),
       deadline: normalizeOptional(input.deadline),
-      project: normalizeProject(input.project || this.settings.defaultProject),
+      project: normalizeTaskProject(input.project),
       priority: input.priority || "none",
       description: normalizeOptional(input.description),
       labels: normalizeLabels(input.labels || []),
@@ -1192,7 +1217,7 @@ var TaskStore = class {
         created: "created" in patch ? normalizeOptional(patch.created) : candidate.created,
         due: "due" in patch ? normalizeOptional(patch.due) : candidate.due,
         deadline: "deadline" in patch ? normalizeOptional(patch.deadline) : candidate.deadline,
-        project: "project" in patch ? normalizeProject(patch.project) : candidate.project,
+        project: "project" in patch ? normalizeTaskProject(patch.project) : candidate.project,
         description: "description" in patch ? normalizeOptional(patch.description) : candidate.description,
         labels: "labels" in patch ? normalizeLabels(patch.labels || []) : candidate.labels,
         attachments: "attachments" in patch ? normalizeAttachments(patch.attachments || []) : candidate.attachments,
@@ -1454,15 +1479,11 @@ function normalizeTaskForSave(task, sourcePath) {
   return {
     ...task,
     created: normalizeOptional(task.created) || todayIso(),
-    project: normalizeProject(task.project),
+    project: normalizeTaskProject(task.project),
     labels: dedupeLabels(task.labels),
     attachments: normalizeAttachments(task.attachments),
     sourcePath
   };
-}
-function normalizeProject(value) {
-  const project = value == null ? void 0 : value.trim().replace(/^>+\s*/, "");
-  return project || "Inbox";
 }
 function normalizeOptional(value) {
   const normalized = value == null ? void 0 : value.trim();
@@ -1831,14 +1852,14 @@ var AddTaskComposer = class {
     const projectPicker = projectArea.createDiv({ cls: "belki-project-picker" });
     const projectDot = projectPicker.createSpan({ cls: "belki-project-dot belki-composer-project-dot" });
     this.projectSelect = projectPicker.createEl("select", { cls: "belki-project-select" });
-    const projects = uniqueProjects(["Inbox", options.defaultProject, ...options.projects]);
+    const projects = uniqueRealProjects([options.defaultProject, ...options.projects]);
+    this.projectSelect.createEl("option", { text: "Inbox", value: "" });
     for (const project of projects) {
-      const cleanProject = cleanProjectName(project);
-      this.projectSelect.createEl("option", { text: cleanProject, value: cleanProject });
+      this.projectSelect.createEl("option", { text: project, value: project });
     }
     this.projectSelect.createEl("option", { text: "New project...", value: "__new__" });
-    const defaultProject = cleanProjectName(options.defaultProject);
-    this.projectSelect.value = projects.map(cleanProjectName).includes(defaultProject) ? defaultProject : "Inbox";
+    const defaultProject = normalizeTaskProject(options.defaultProject) || "";
+    this.projectSelect.value = projects.includes(defaultProject) ? defaultProject : "";
     this.customProjectInput = projectArea.createEl("input", {
       cls: "belki-chip-input belki-custom-project is-hidden",
       attr: {
@@ -1847,7 +1868,16 @@ var AddTaskComposer = class {
       }
     });
     const updateProjectDot = () => {
-      const color = getProjectColor(this.readProject(), options.projectColors);
+      const project = this.readProject();
+      if (!project) {
+        projectDot.setCssStyles({ backgroundColor: "var(--belki-faint)" });
+        projectPicker.setCssStyles({
+          backgroundColor: "var(--belki-hover)",
+          borderColor: "var(--belki-border)"
+        });
+        return;
+      }
+      const color = getProjectColor(project, options.projectColors);
       projectDot.setCssStyles({ backgroundColor: color.regular });
       projectPicker.setCssStyles({
         backgroundColor: color.light,
@@ -1913,14 +1943,11 @@ var AddTaskComposer = class {
   readProject() {
     var _a, _b, _c;
     if (((_a = this.projectSelect) == null ? void 0 : _a.value) === "__new__") {
-      return cleanProjectName(((_b = this.customProjectInput) == null ? void 0 : _b.value) || "Inbox");
+      return normalizeTaskProject((_b = this.customProjectInput) == null ? void 0 : _b.value);
     }
-    return cleanProjectName(((_c = this.projectSelect) == null ? void 0 : _c.value) || "Inbox");
+    return normalizeTaskProject((_c = this.projectSelect) == null ? void 0 : _c.value);
   }
 };
-function uniqueProjects(projects) {
-  return [...new Set(projects.map(cleanProjectName).filter(Boolean))];
-}
 function createChipButton(parent, label, iconName, ariaLabel) {
   const button = parent.createEl("button", {
     cls: "belki-chip-button",
@@ -1953,10 +1980,6 @@ function createIcon(parent, iconName, className = "belki-chip-icon") {
   const icon = parent.createSpan({ cls: className });
   (0, import_obsidian4.setIcon)(icon, iconName);
   return icon;
-}
-function cleanProjectName(value) {
-  const clean = value.trim().replace(/^>+\s*/, "");
-  return clean || "Inbox";
 }
 function isImageFile(file) {
   return file.type.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
@@ -2372,8 +2395,7 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
       attr: { type: "button" }
     });
     const createValue = "__belki_create_project__";
-    const getProjects = () => uniqueProjects2([
-      "Inbox",
+    const getProjects = () => uniqueRealProjects([
       this.options.settings.defaultProject,
       ...this.options.projects,
       ...Object.keys(this.options.settings.projectColors),
@@ -2381,17 +2403,24 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
     ]);
     const renderOptions = () => {
       select.empty();
+      select.createEl("option", { text: "No project", value: "" });
       for (const project of getProjects()) {
         select.createEl("option", { text: project, value: project });
       }
       select.createEl("option", { text: "Create project...", value: createValue });
-      select.value = cleanProjectName2(this.draft.project);
+      select.value = normalizeTaskProject(this.draft.project) || "";
     };
     const updateProjectStyle = () => {
-      const color = getProjectColor(
-        cleanProjectName2(this.draft.project),
-        this.options.settings.projectColors
-      );
+      const project = normalizeTaskProject(this.draft.project);
+      if (!project) {
+        projectDot.setCssStyles({ backgroundColor: "var(--belki-faint)" });
+        projectPicker.setCssStyles({
+          backgroundColor: "var(--belki-hover)",
+          borderColor: "var(--belki-border)"
+        });
+        return;
+      }
+      const color = getProjectColor(project, this.options.settings.projectColors);
       projectDot.setCssStyles({ backgroundColor: color.regular });
       projectPicker.setCssStyles({
         backgroundColor: color.light,
@@ -2401,10 +2430,10 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
     const hideCreateRow = () => {
       createInput.value = "";
       createRow.addClass("is-hidden");
-      select.value = cleanProjectName2(this.draft.project);
+      select.value = normalizeTaskProject(this.draft.project) || "";
     };
     const createProject = () => {
-      const project = optionalProjectName(createInput.value);
+      const project = normalizeTaskProject(createInput.value);
       if (!project) {
         createInput.focus();
         return;
@@ -2417,11 +2446,11 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
     select.addEventListener("change", () => {
       if (select.value === createValue) {
         createRow.removeClass("is-hidden");
-        select.value = cleanProjectName2(this.draft.project);
+        select.value = normalizeTaskProject(this.draft.project) || "";
         createInput.focus();
         return;
       }
-      this.draft.project = cleanProjectName2(select.value);
+      this.draft.project = normalizeTaskProject(select.value);
       createRow.addClass("is-hidden");
       updateProjectStyle();
     });
@@ -2614,24 +2643,6 @@ function attachmentName(path) {
 function isImagePath(path) {
   return /\.(png|jpe?g|gif|webp|svg)$/i.test(path);
 }
-function uniqueProjects2(projects) {
-  return [...new Set(projects.map(cleanProjectName2).filter(Boolean))].sort((a, b) => {
-    if (a === "Inbox") {
-      return -1;
-    }
-    if (b === "Inbox") {
-      return 1;
-    }
-    return a.localeCompare(b);
-  });
-}
-function cleanProjectName2(value) {
-  const clean = value == null ? void 0 : value.trim().replace(/^>+\s*/, "");
-  return clean || "Inbox";
-}
-function optionalProjectName(value) {
-  return (value == null ? void 0 : value.trim().replace(/^>+\s*/, "")) || void 0;
-}
 
 // src/views/TaskBoardView.ts
 var VIEW_TYPE_BELKI = "belki-task-board";
@@ -2812,8 +2823,11 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     const projectsSection = sidebar.createDiv({ cls: "belki-sidebar-section" });
     projectsSection.createDiv({ cls: "belki-sidebar-heading", text: "Projects" });
     for (const project of this.store.getProjects()) {
-      const cleanProject = cleanProjectName3(project);
-      const count = active.filter((task) => cleanProjectName3(task.project) === cleanProject).length;
+      const cleanProject = normalizeTaskProject(project);
+      if (!cleanProject) {
+        continue;
+      }
+      const count = active.filter((task) => normalizeTaskProject(task.project) === cleanProject).length;
       const button = projectsSection.createEl("button", {
         cls: "belki-project-button"
       });
@@ -2895,7 +2909,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
         labels: this.getAllLabels(),
         labelColors: this.settings.labelColors,
         projectColors: this.settings.projectColors,
-        defaultProject: this.selectedProject || "Inbox",
+        defaultProject: this.selectedProject || "",
         defaultDue: this.mode === "today" ? todayIso() : void 0,
         onCancel: () => {
           this.composerOpen = false;
@@ -3012,15 +3026,18 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
       return;
     }
     if (this.mode === "projects") {
-      const projects = this.selectedProject ? [this.selectedProject] : uniqueProjects3([
-        "Inbox",
+      const projects = this.selectedProject ? [this.selectedProject] : uniqueRealProjects([
         this.settings.defaultProject,
         ...this.store.getProjects(),
         ...Object.keys(this.settings.projectColors)
       ]);
+      if (projects.length === 0) {
+        this.renderEmptySection(parent, "No projects yet.");
+        return;
+      }
       for (const project of projects) {
         const projectTasks = this.sortTasks(
-          active.filter((task) => cleanProjectName3(task.project) === project)
+          active.filter((task) => normalizeTaskProject(task.project) === project)
         );
         const section2 = this.createSection(parent, project, projectTasks.length);
         this.enableProjectDrop(section2, project);
@@ -3175,7 +3192,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     button.dataset.project = project;
     button.addEventListener("dragover", (event) => {
       const task = this.getDraggedTask(event);
-      if (!task || task.completed || cleanProjectName3(task.project) === project) {
+      if (!task || task.completed || normalizeTaskProject(task.project) === project) {
         return;
       }
       event.preventDefault();
@@ -3193,7 +3210,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     button.addEventListener("drop", (event) => {
       const task = this.getDraggedTask(event);
       this.clearDropTargets();
-      if (!task || task.completed || cleanProjectName3(task.project) === project) {
+      if (!task || task.completed || normalizeTaskProject(task.project) === project) {
         return;
       }
       event.preventDefault();
@@ -3244,7 +3261,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     for (const projectTarget of Array.from(
       this.containerEl.querySelectorAll(".belki-project-drop-zone")
     )) {
-      if (cleanProjectName3(task.project) !== projectTarget.dataset.project) {
+      if (normalizeTaskProject(task.project) !== projectTarget.dataset.project) {
         projectTarget.addClass("is-drop-available");
       }
     }
@@ -3285,9 +3302,8 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     }
     const canMoveToToday = !isToday(task.due) && isBeforeToday(task.due);
     const canMoveToUpcomingDate = this.mode === "upcoming" && this.getUpcomingDropDates().some((date) => date !== task.due);
-    const currentProject = cleanProjectName3(task.project);
-    const canMoveToProject = uniqueProjects3([
-      "Inbox",
+    const currentProject = normalizeTaskProject(task.project);
+    const canMoveToProject = uniqueRealProjects([
       this.settings.defaultProject,
       ...this.store.getProjects(),
       ...Object.keys(this.settings.projectColors)
@@ -3404,12 +3420,14 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
         text: `\u{1F4CE} ${task.attachments.length}`
       });
     }
-    const project = cleanProjectName3(task.project);
-    const projectColor = getProjectColor(project, this.settings.projectColors);
-    const projectChip = row.createDiv({ cls: "belki-task-project" });
-    projectChip.setCssStyles({ backgroundColor: projectColor.light });
-    projectChip.createSpan({ cls: "belki-project-dot" }).setCssStyles({ backgroundColor: projectColor.regular });
-    projectChip.createSpan({ text: project });
+    const project = normalizeTaskProject(task.project);
+    if (project) {
+      const projectColor = getProjectColor(project, this.settings.projectColors);
+      const projectChip = row.createDiv({ cls: "belki-task-project" });
+      projectChip.setCssStyles({ backgroundColor: projectColor.light });
+      projectChip.createSpan({ cls: "belki-project-dot" }).setCssStyles({ backgroundColor: projectColor.regular });
+      projectChip.createSpan({ text: project });
+    }
     row.createEl("button", {
       cls: "belki-task-delete",
       text: "\xD7",
@@ -3425,8 +3443,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
   openTaskDetail(task) {
     new TaskDetailModal(this.app, {
       task,
-      projects: uniqueProjects3([
-        "Inbox",
+      projects: uniqueRealProjects([
         this.settings.defaultProject,
         ...this.store.getProjects(),
         ...Object.keys(this.settings.projectColors)
@@ -3453,7 +3470,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     }
     if (this.mode === "projects") {
       return this.sortTasks(
-        this.selectedProject ? active.filter((task) => cleanProjectName3(task.project) === this.selectedProject) : active
+        this.selectedProject ? active.filter((task) => normalizeTaskProject(task.project) === this.selectedProject) : active.filter((task) => Boolean(normalizeTaskProject(task.project)))
       );
     }
     if (this.mode === "filters") {
@@ -3481,7 +3498,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
   }
   getInboxTasks(tasks) {
     return this.sortTasks(
-      tasks.filter((task) => !task.due && (!task.project || task.project === "Inbox"))
+      tasks.filter((task) => !normalizeTaskProject(task.project))
     );
   }
   getTodayTasks(tasks) {
@@ -3545,7 +3562,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
       return "Upcoming";
     }
     if (this.mode === "projects") {
-      return this.selectedProject ? cleanProjectName3(this.selectedProject) : "Projects";
+      return this.selectedProject || "Projects";
     }
     if (this.mode === "completed") {
       return "Completed";
@@ -3715,7 +3732,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
           result.createDiv({ cls: "belki-search-description", text: task.description });
         }
         const meta = result.createDiv({ cls: "belki-search-meta" });
-        meta.createSpan({ text: cleanProjectName3(task.project) });
+        meta.createSpan({ text: projectDisplayName(task.project) });
         if (task.due) {
           meta.createSpan({ text: formatDueChip(task.due) });
         }
@@ -3747,12 +3764,12 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     } else if (task.due && isAfterToday(task.due)) {
       this.mode = "upcoming";
       this.selectedProject = null;
-    } else if (!task.due && cleanProjectName3(task.project) === "Inbox") {
+    } else if (!normalizeTaskProject(task.project)) {
       this.mode = "inbox";
       this.selectedProject = null;
     } else {
       this.mode = "projects";
-      this.selectedProject = cleanProjectName3(task.project);
+      this.selectedProject = normalizeTaskProject(task.project) || null;
     }
     this.render();
   }
@@ -3863,7 +3880,7 @@ function compareTasksByMode(a, b, mode) {
     return compareOptionalDateDesc(a.created, b.created) || byOrder(a, b);
   }
   if (mode === "project") {
-    return cleanProjectName3(a.project).localeCompare(cleanProjectName3(b.project)) || compareSmart(a, b);
+    return projectDisplayName(a.project).localeCompare(projectDisplayName(b.project)) || compareSmart(a, b);
   }
   if (mode === "alphabetical") {
     return a.title.localeCompare(b.title) || byOrder(a, b);
@@ -3914,21 +3931,6 @@ function compareOptionalDateDesc(a, b) {
     return 1;
   }
   return 0;
-}
-function cleanProjectName3(value) {
-  const clean = value == null ? void 0 : value.trim().replace(/^>+\s*/, "");
-  return clean || "Inbox";
-}
-function uniqueProjects3(projects) {
-  return [...new Set(projects.map(cleanProjectName3).filter(Boolean))].sort((a, b) => {
-    if (a === "Inbox") {
-      return -1;
-    }
-    if (b === "Inbox") {
-      return 1;
-    }
-    return a.localeCompare(b);
-  });
 }
 function formatDueChip(value) {
   const today = todayIso();
@@ -4009,7 +4011,7 @@ function searchableText(task) {
   return [
     task.title,
     task.description,
-    task.project,
+    projectDisplayName(task.project),
     ...task.labels
   ].filter(Boolean).join(" ").toLowerCase();
 }
@@ -4111,6 +4113,7 @@ var BelkiPlugin = class extends import_obsidian8.Plugin {
       ...DEFAULT_SETTINGS,
       ...saved,
       dataFolderPath: normalizeDataFolderPath(saved == null ? void 0 : saved.dataFolderPath),
+      defaultProject: normalizeDefaultProject(saved == null ? void 0 : saved.defaultProject),
       icons: {
         ...DEFAULT_SETTINGS.icons,
         ...saved == null ? void 0 : saved.icons
@@ -4156,12 +4159,11 @@ var BelkiPlugin = class extends import_obsidian8.Plugin {
     }
   }
   getProjectNames() {
-    return [.../* @__PURE__ */ new Set([
-      "Inbox",
-      cleanProjectName4(this.settings.defaultProject),
-      ...this.store.getProjects().map(cleanProjectName4),
-      ...Object.keys(this.settings.projectColors).map(cleanProjectName4)
-    ])].filter(Boolean).sort((a, b) => a.localeCompare(b));
+    return uniqueRealProjects([
+      cleanProjectName(this.settings.defaultProject),
+      ...this.store.getProjects().map(cleanProjectName),
+      ...Object.keys(this.settings.projectColors).map(cleanProjectName)
+    ]);
   }
   getLabelNames() {
     const taskLabels = this.store.getTasks().flatMap((task) => task.labels);
@@ -4191,10 +4193,6 @@ var BelkiPlugin = class extends import_obsidian8.Plugin {
     }
   }
 };
-function cleanProjectName4(value) {
-  const clean = value == null ? void 0 : value.trim().replace(/^>+\s*/, "");
-  return clean || "Inbox";
-}
 function toSettingsData(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
