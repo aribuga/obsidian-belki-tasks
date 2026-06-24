@@ -1556,12 +1556,17 @@ var AddTaskComposer = class {
     });
     const updateDueButtons = () => {
       for (const button of dueButtons) {
-        button.toggleClass("is-active", button.dataset.due === selectedDue);
+        const selected = button.dataset.due === selectedDue;
+        button.toggleClass("is-active", selected);
+        button.toggleClass("is-selected", selected);
+        button.setAttr("aria-pressed", String(selected));
       }
-      customDateButton == null ? void 0 : customDateButton.toggleClass(
-        "is-active",
-        Boolean(selectedDue && !dueButtons.some((button) => button.dataset.due === selectedDue))
+      const customSelected = Boolean(
+        selectedDue && !dueButtons.some((button) => button.dataset.due === selectedDue)
       );
+      customDateButton == null ? void 0 : customDateButton.toggleClass("is-active", customSelected);
+      customDateButton == null ? void 0 : customDateButton.toggleClass("is-selected", customSelected);
+      customDateButton == null ? void 0 : customDateButton.setAttr("aria-pressed", String(customSelected));
     };
     const setDue = (value) => {
       selectedDue = value;
@@ -1571,6 +1576,7 @@ var AddTaskComposer = class {
     };
     const addDueButton = (label, value, icon) => {
       const button = createChipButton(chipRow, label, icon);
+      button.addClass("belki-date-chip");
       button.dataset.due = value;
       button.addEventListener("click", () => setDue(value));
       dueButtons.push(button);
@@ -1580,6 +1586,7 @@ var AddTaskComposer = class {
     addDueButton("Tomorrow", addDaysIso2(1), "calendar-plus");
     addDueButton("No Date", "", "calendar-x");
     customDateButton = createChipButton(chipRow, "Custom date", "calendar-clock");
+    customDateButton.addClass("belki-date-chip");
     customDateButton.addEventListener("click", () => {
       customDateInput.removeClass("is-hidden");
       customDateInput.focus();
@@ -1692,31 +1699,51 @@ var AddTaskComposer = class {
       labelsPanel.addClass("is-hidden");
       deadlinePanel.addClass("is-hidden");
     };
+    const closeMenu = () => {
+      menu.addClass("is-hidden");
+      menu.removeClass("is-floating");
+      menu.removeClass("is-align-right");
+    };
     const updateMenuPosition = () => {
+      menu.addClass("is-floating");
       menu.removeClass("is-align-right");
       window.requestAnimationFrame(() => {
-        const rect = menu.getBoundingClientRect();
-        if (rect.right > window.innerWidth - 16) {
-          menu.addClass("is-align-right");
+        const buttonRect = moreButton.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        const menuWidth = Math.min(menuRect.width || 220, window.innerWidth - 24);
+        const menuHeight = menuRect.height || 92;
+        let left = buttonRect.left;
+        let top = buttonRect.bottom + 8;
+        if (left + menuWidth > window.innerWidth - 12) {
+          left = window.innerWidth - menuWidth - 12;
         }
+        if (top + menuHeight > window.innerHeight - 12) {
+          top = buttonRect.top - menuHeight - 8;
+        }
+        menu.setCssProps({
+          "--belki-menu-left": `${Math.max(12, left)}px`,
+          "--belki-menu-top": `${Math.max(12, top)}px`
+        });
       });
     };
     moreButton.addEventListener("click", () => {
       const shouldOpen = menu.hasClass("is-hidden");
       closePanels();
-      menu.toggleClass("is-hidden", !shouldOpen);
       if (shouldOpen) {
+        menu.removeClass("is-hidden");
         updateMenuPosition();
+      } else {
+        closeMenu();
       }
     });
     labelsButton.addEventListener("click", () => {
-      menu.addClass("is-hidden");
+      closeMenu();
       deadlinePanel.addClass("is-hidden");
       labelsPanel.toggleClass("is-hidden", !labelsPanel.hasClass("is-hidden"));
       labelInput.focus();
     });
     deadlineButton.addEventListener("click", () => {
-      menu.addClass("is-hidden");
+      closeMenu();
       labelsPanel.addClass("is-hidden");
       deadlinePanel.toggleClass("is-hidden", !deadlinePanel.hasClass("is-hidden"));
       deadlineInput.focus();
@@ -2037,6 +2064,13 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
     contentEl.addClass("belki-detail-modal");
     applyBelkiFontSettings(contentEl, this.options.settings);
     this.modalEl.addEventListener("keydown", this.handleEscape, true);
+    const mobileHeader = contentEl.createDiv({ cls: "belki-detail-mobile-header" });
+    mobileHeader.createEl("button", {
+      cls: "belki-detail-mobile-back",
+      text: "\u2190",
+      attr: { type: "button", "aria-label": "Back to task list" }
+    }).addEventListener("click", () => this.close());
+    mobileHeader.createDiv({ cls: "belki-detail-mobile-title", text: "Task details" });
     const shell = contentEl.createDiv({ cls: "belki-detail-shell" });
     const main = shell.createDiv({ cls: "belki-detail-main" });
     const side = shell.createDiv({ cls: "belki-detail-side" });
@@ -2095,7 +2129,9 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
     }).addEventListener("click", () => {
       void this.save();
     });
-    titleInput.focus();
+    if (!import_obsidian6.Platform.isMobile) {
+      titleInput.focus();
+    }
   }
   onClose() {
     this.modalEl.removeEventListener("keydown", this.handleEscape, true);
@@ -2523,6 +2559,13 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
       if (!input.value) {
         input.value = "#";
       }
+      window.setTimeout(() => {
+        input.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest"
+        });
+      }, 250);
     });
     input.addEventListener("input", () => {
       if (input.value && !input.value.startsWith("#")) {
@@ -2617,6 +2660,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     this.activeLabel = null;
     this.draggedTaskId = null;
     this.sortPopoverOpen = false;
+    this.sidebarScrollLeft = 0;
     this.handleRootKeyDown = (event) => {
       if (event.key !== "Escape") {
         return;
@@ -2692,7 +2736,9 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     this.render();
   }
   render() {
+    var _a, _b;
     const { containerEl } = this;
+    const sidebarScrollLeft = (_b = (_a = containerEl.querySelector(".belki-sidebar")) == null ? void 0 : _a.scrollLeft) != null ? _b : this.sidebarScrollLeft;
     containerEl.empty();
     containerEl.addClass("belki-root");
     containerEl.addClass("belki-view");
@@ -2704,6 +2750,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     if (this.searchOpen) {
       this.renderSearchOverlay(containerEl);
     }
+    this.restoreSidebarScroll(sidebarScrollLeft);
   }
   getMainScrollSnapshot() {
     const main = this.containerEl.querySelector(".belki-main");
@@ -2729,8 +2776,22 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
       main.scrollLeft = snapshot.left;
     });
   }
+  restoreSidebarScroll(scrollLeft) {
+    window.requestAnimationFrame(() => {
+      const sidebar = this.containerEl.querySelector(".belki-sidebar");
+      if (!sidebar) {
+        return;
+      }
+      sidebar.scrollLeft = scrollLeft;
+      this.sidebarScrollLeft = sidebar.scrollLeft;
+    });
+  }
   renderSidebar(parent) {
     const sidebar = parent.createEl("aside", { cls: "belki-sidebar" });
+    sidebar.scrollLeft = this.sidebarScrollLeft;
+    sidebar.addEventListener("scroll", () => {
+      this.sidebarScrollLeft = sidebar.scrollLeft;
+    });
     const sidebarAdd = sidebar.createEl("button", { cls: "belki-add-sidebar" });
     sidebarAdd.createSpan({ cls: "belki-add-plus", text: "+" });
     sidebarAdd.createSpan({ cls: "belki-add-text", text: "Add task" });

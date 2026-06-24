@@ -46,6 +46,7 @@ export class TaskBoardView extends ItemView {
   private activeLabel: string | null = null;
   private draggedTaskId: string | null = null;
   private sortPopoverOpen = false;
+  private sidebarScrollLeft = 0;
   private handleRootKeyDown = (event: KeyboardEvent): void => {
     if (event.key !== "Escape") {
       return;
@@ -143,6 +144,9 @@ export class TaskBoardView extends ItemView {
 
   private render(): void {
     const { containerEl } = this;
+    const sidebarScrollLeft =
+      containerEl.querySelector<HTMLElement>(".belki-sidebar")?.scrollLeft ??
+      this.sidebarScrollLeft;
     containerEl.empty();
     containerEl.addClass("belki-root");
     containerEl.addClass("belki-view");
@@ -156,6 +160,8 @@ export class TaskBoardView extends ItemView {
     if (this.searchOpen) {
       this.renderSearchOverlay(containerEl);
     }
+
+    this.restoreSidebarScroll(sidebarScrollLeft);
   }
 
   private getMainScrollSnapshot(): { top: number; left: number } | null {
@@ -190,8 +196,24 @@ export class TaskBoardView extends ItemView {
     });
   }
 
+  private restoreSidebarScroll(scrollLeft: number): void {
+    window.requestAnimationFrame(() => {
+      const sidebar = this.containerEl.querySelector<HTMLElement>(".belki-sidebar");
+      if (!sidebar) {
+        return;
+      }
+
+      sidebar.scrollLeft = scrollLeft;
+      this.sidebarScrollLeft = sidebar.scrollLeft;
+    });
+  }
+
   private renderSidebar(parent: HTMLElement): void {
     const sidebar = parent.createEl("aside", { cls: "belki-sidebar" });
+    sidebar.scrollLeft = this.sidebarScrollLeft;
+    sidebar.addEventListener("scroll", () => {
+      this.sidebarScrollLeft = sidebar.scrollLeft;
+    });
 
     const sidebarAdd = sidebar.createEl("button", { cls: "belki-add-sidebar" });
     sidebarAdd.createSpan({ cls: "belki-add-plus", text: "+" });

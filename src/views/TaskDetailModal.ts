@@ -1,4 +1,4 @@
-import { App, Modal, TFile, setIcon } from "obsidian";
+import { App, Modal, Platform, TFile, setIcon } from "obsidian";
 import { getLabelColor, getProjectColor } from "../colors";
 import { todayIso } from "../dateUtils";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
@@ -53,6 +53,16 @@ export class TaskDetailModal extends Modal {
     contentEl.addClass("belki-detail-modal");
     applyBelkiFontSettings(contentEl, this.options.settings);
     this.modalEl.addEventListener("keydown", this.handleEscape, true);
+
+    const mobileHeader = contentEl.createDiv({ cls: "belki-detail-mobile-header" });
+    mobileHeader
+      .createEl("button", {
+        cls: "belki-detail-mobile-back",
+        text: "←",
+        attr: { type: "button", "aria-label": "Back to task list" }
+      })
+      .addEventListener("click", () => this.close());
+    mobileHeader.createDiv({ cls: "belki-detail-mobile-title", text: "Task details" });
 
     const shell = contentEl.createDiv({ cls: "belki-detail-shell" });
     const main = shell.createDiv({ cls: "belki-detail-main" });
@@ -126,7 +136,9 @@ export class TaskDetailModal extends Modal {
         void this.save();
       });
 
-    titleInput.focus();
+    if (!Platform.isMobile) {
+      titleInput.focus();
+    }
   }
 
   onClose(): void {
@@ -614,6 +626,13 @@ export class TaskDetailModal extends Modal {
       if (!input.value) {
         input.value = "#";
       }
+      window.setTimeout(() => {
+        input.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest"
+        });
+      }, 250);
     });
     input.addEventListener("input", () => {
       if (input.value && !input.value.startsWith("#")) {

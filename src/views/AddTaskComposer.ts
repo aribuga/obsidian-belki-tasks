@@ -57,12 +57,17 @@ export class AddTaskComposer {
 
     const updateDueButtons = () => {
       for (const button of dueButtons) {
-        button.toggleClass("is-active", button.dataset.due === selectedDue);
+        const selected = button.dataset.due === selectedDue;
+        button.toggleClass("is-active", selected);
+        button.toggleClass("is-selected", selected);
+        button.setAttr("aria-pressed", String(selected));
       }
-      customDateButton?.toggleClass(
-        "is-active",
-        Boolean(selectedDue && !dueButtons.some((button) => button.dataset.due === selectedDue))
+      const customSelected = Boolean(
+        selectedDue && !dueButtons.some((button) => button.dataset.due === selectedDue)
       );
+      customDateButton?.toggleClass("is-active", customSelected);
+      customDateButton?.toggleClass("is-selected", customSelected);
+      customDateButton?.setAttr("aria-pressed", String(customSelected));
     };
 
     const setDue = (value: string) => {
@@ -78,6 +83,7 @@ export class AddTaskComposer {
       icon: string
     ): HTMLButtonElement => {
       const button = createChipButton(chipRow, label, icon);
+      button.addClass("belki-date-chip");
       button.dataset.due = value;
       button.addEventListener("click", () => setDue(value));
       dueButtons.push(button);
@@ -89,6 +95,7 @@ export class AddTaskComposer {
     addDueButton("No Date", "", "calendar-x");
 
     customDateButton = createChipButton(chipRow, "Custom date", "calendar-clock");
+    customDateButton.addClass("belki-date-chip");
     customDateButton.addEventListener("click", () => {
       customDateInput.removeClass("is-hidden");
       customDateInput.focus();
@@ -211,32 +218,56 @@ export class AddTaskComposer {
       deadlinePanel.addClass("is-hidden");
     };
 
+    const closeMenu = () => {
+      menu.addClass("is-hidden");
+      menu.removeClass("is-floating");
+      menu.removeClass("is-align-right");
+    };
+
     const updateMenuPosition = () => {
+      menu.addClass("is-floating");
       menu.removeClass("is-align-right");
       window.requestAnimationFrame(() => {
-        const rect = menu.getBoundingClientRect();
-        if (rect.right > window.innerWidth - 16) {
-          menu.addClass("is-align-right");
+        const buttonRect = moreButton.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        const menuWidth = Math.min(menuRect.width || 220, window.innerWidth - 24);
+        const menuHeight = menuRect.height || 92;
+        let left = buttonRect.left;
+        let top = buttonRect.bottom + 8;
+
+        if (left + menuWidth > window.innerWidth - 12) {
+          left = window.innerWidth - menuWidth - 12;
         }
+
+        if (top + menuHeight > window.innerHeight - 12) {
+          top = buttonRect.top - menuHeight - 8;
+        }
+
+        menu.setCssProps({
+          "--belki-menu-left": `${Math.max(12, left)}px`,
+          "--belki-menu-top": `${Math.max(12, top)}px`
+        });
       });
     };
 
     moreButton.addEventListener("click", () => {
       const shouldOpen = menu.hasClass("is-hidden");
       closePanels();
-      menu.toggleClass("is-hidden", !shouldOpen);
       if (shouldOpen) {
+        menu.removeClass("is-hidden");
         updateMenuPosition();
+      } else {
+        closeMenu();
       }
     });
     labelsButton.addEventListener("click", () => {
-      menu.addClass("is-hidden");
+      closeMenu();
       deadlinePanel.addClass("is-hidden");
       labelsPanel.toggleClass("is-hidden", !labelsPanel.hasClass("is-hidden"));
       labelInput.focus();
     });
     deadlineButton.addEventListener("click", () => {
-      menu.addClass("is-hidden");
+      closeMenu();
       labelsPanel.addClass("is-hidden");
       deadlinePanel.toggleClass("is-hidden", !deadlinePanel.hasClass("is-hidden"));
       deadlineInput.focus();
