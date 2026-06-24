@@ -90,6 +90,14 @@ _belki_files/Attachments/<task-id>/
 
 Image attachments show previews in the task detail modal and can be opened in a lightbox. Other attachments are shown as compact file rows. Attachments can be downloaded or removed from a task.
 
+## Obsidian Search and Excluded Files
+
+belki stores task data as local Markdown files in the configurable data folder, `_belki_files/` by default. Because these are real vault files, they can appear in Obsidian search, graph, and unlinked mentions.
+
+If you do not want belki task data to appear there, add `_belki_files/` to Obsidian Settings -> Files and links -> Excluded files. If you use a custom belki data folder, exclude that folder instead.
+
+belki itself only reads its configured data folder and does not scan the whole vault. Future vault-wide checklist import should respect Obsidian excluded folders.
+
 ## Sorting and Filtering
 
 The task board includes a Sorting menu with:
@@ -115,7 +123,9 @@ The Today view also includes an overdue range selector:
 
 ### From Community Plugins
 
-Once belki is accepted into the Obsidian Community Plugins directory:
+belki is available from the Obsidian Community Plugins directory:
+
+[https://community.obsidian.md/plugins/belki](https://community.obsidian.md/plugins/belki)
 
 1. Open Obsidian Settings.
 2. Go to Community plugins.
