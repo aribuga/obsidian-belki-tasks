@@ -2,6 +2,8 @@
 
 belki is a minimal Todoist-like task manager for Obsidian. It keeps your tasks inside your vault as readable Markdown and does not connect to Todoist or any external service.
 
+belki aims to sit between lightweight checkbox-based task plugins and heavier task-note systems: structured enough to work as a real task manager, but small enough to stay calm and easy to use.
+
 Task data is stored by default in:
 
 ```text
@@ -118,6 +120,16 @@ The Today view also includes an overdue range selector:
 - Last 7 days
 - Last 30 days
 - Older
+
+## Roadmap
+
+These are planned directions, not promises for the current release:
+
+- Natural language date parsing: Users should eventually be able to type dates like `tomorrow`, `next Friday`, or `in 3 days` and have belki convert them into due dates.
+- Standalone recurring tasks: belki should eventually support independent recurring tasks, such as daily, weekly, monthly, or completion-based repeats.
+- Vault-wide checklist import: belki should eventually be able to import existing Markdown checklists from across the vault. This must respect Obsidian excluded files and folders.
+- Better GTD-style workflows: belki may support lightweight GTD-style workflows such as Inbox, Next Actions, Waiting, Someday/Maybe, and Projects, without forcing users into a rigid system.
+- Minimal, understandable settings: belki should avoid settings bloat. Prefer clear defaults, simple options, and optional advanced workflows instead of an overwhelming settings menu.
 
 ## Installation
 
