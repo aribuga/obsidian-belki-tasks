@@ -1,4 +1,4 @@
-import { setIcon } from "obsidian";
+import { Platform, setIcon } from "obsidian";
 import { CreateTaskInput, PRIORITIES, Priority } from "../types";
 import { getLabelColor, getProjectColor } from "../colors";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
@@ -19,8 +19,8 @@ interface ComposerOptions {
 
 export class AddTaskComposer {
   private titleInput?: HTMLInputElement;
-  private projectSelect?: HTMLSelectElement;
   private customProjectInput?: HTMLInputElement;
+  private selectedProjectValue = "";
 
   render(parent: HTMLElement, options: ComposerOptions): void {
     const form = parent.createEl("form", { cls: "belki-composer" });
@@ -185,13 +185,14 @@ export class AddTaskComposer {
     });
 
     const moreWrap = chipRow.createDiv({ cls: "belki-composer-more" });
+    const mobilePanelSide = Platform.isMobile ? "above" : "below";
     const moreButton = createChipButton(moreWrap, "", "ellipsis", "More task options");
     moreButton.addClass("belki-more-button");
     const menu = moreWrap.createDiv({ cls: "belki-composer-menu is-hidden" });
     const labelsButton = createMenuItem(menu, "Labels", "tag");
     const deadlineButton = createMenuItem(menu, "Deadline", "diamond");
 
-    const labelsPanel = form.createDiv({ cls: "belki-composer-popover is-hidden" });
+    const labelsPanel = moreWrap.createDiv({ cls: "belki-composer-popover is-hidden" });
     const selectedLabelsEl = labelsPanel.createDiv({ cls: "belki-selected-labels" });
     const labelInput = labelsPanel.createEl("input", {
       cls: "belki-label-input",
@@ -202,7 +203,7 @@ export class AddTaskComposer {
     });
     const labelSuggestions = labelsPanel.createDiv({ cls: "belki-label-suggestions" });
 
-    const deadlinePanel = form.createDiv({ cls: "belki-composer-popover is-hidden" });
+    const deadlinePanel = moreWrap.createDiv({ cls: "belki-composer-popover is-hidden" });
     deadlinePanel.createDiv({ cls: "belki-popover-title", text: "Deadline" });
     const deadlineInput = deadlinePanel.createEl("input", {
       cls: "belki-deadline-input",
@@ -214,6 +215,14 @@ export class AddTaskComposer {
       selectedDeadline = deadlineInput.value;
     });
 
+    let detachOutsideListener = () => undefined;
+    let closeProjectMenu = () => undefined;
+
+    const clearOutsideListener = () => {
+      detachOutsideListener();
+      detachOutsideListener = () => undefined;
+    };
+
     const closePanels = () => {
       labelsPanel.addClass("is-hidden");
       deadlinePanel.addClass("is-hidden");
@@ -221,57 +230,81 @@ export class AddTaskComposer {
 
     const closeMenu = () => {
       menu.addClass("is-hidden");
-      menu.removeClass("is-floating");
-      menu.removeClass("is-align-right");
     };
 
-    const updateMenuPosition = () => {
-      menu.addClass("is-floating");
-      menu.removeClass("is-align-right");
-      window.requestAnimationFrame(() => {
-        const buttonRect = moreButton.getBoundingClientRect();
-        const menuRect = menu.getBoundingClientRect();
-        const menuWidth = Math.min(menuRect.width || 220, window.innerWidth - 24);
-        const menuHeight = menuRect.height || 92;
-        let left = buttonRect.left;
-        let top = buttonRect.bottom + 8;
+    const closeComposerPopovers = () => {
+      closeMenu();
+      closePanels();
+      closeProjectMenu();
+      clearOutsideListener();
+    };
 
-        if (left + menuWidth > window.innerWidth - 12) {
-          left = window.innerWidth - menuWidth - 12;
+    const watchLocalPopover = (
+      wrapper: HTMLElement,
+      popover: HTMLElement,
+      options: LocalPopoverOptions = {}
+    ) => {
+      clearOutsideListener();
+      alignLocalPopover(wrapper, popover, options);
+      const ownerDocument = wrapper.ownerDocument;
+      const handleOutsideClick = (event: PointerEvent) => {
+        if (
+          event.target instanceof Node &&
+          (wrapper.contains(event.target) || popover.contains(event.target))
+        ) {
+          return;
         }
 
-        if (top + menuHeight > window.innerHeight - 12) {
-          top = buttonRect.top - menuHeight - 8;
-        }
+        closeComposerPopovers();
+      };
 
-        menu.setCssProps({
-          "--belki-menu-left": `${Math.max(12, left)}px`,
-          "--belki-menu-top": `${Math.max(12, top)}px`
+      ownerDocument.addEventListener("pointerdown", handleOutsideClick, true);
+      detachOutsideListener = () => {
+        ownerDocument.removeEventListener("pointerdown", handleOutsideClick, true);
+      };
+    };
+
+    const keepLabelInputVisible = () => {
+      const ownerWindow = labelInput.ownerDocument.defaultView || window;
+      const scrollIntoView = () => {
+        labelInput.scrollIntoView({
+          block: "center",
+          inline: "nearest",
+          behavior: "smooth"
         });
-      });
+      };
+
+      ownerWindow.setTimeout(scrollIntoView, 80);
+      ownerWindow.setTimeout(scrollIntoView, 320);
+      ownerWindow.setTimeout(scrollIntoView, 650);
     };
 
     moreButton.addEventListener("click", () => {
       const shouldOpen = menu.hasClass("is-hidden");
-      closePanels();
+      closeComposerPopovers();
       if (shouldOpen) {
         menu.removeClass("is-hidden");
-        updateMenuPosition();
-      } else {
-        closeMenu();
+        watchLocalPopover(moreWrap, menu, { preferredSide: "below" });
       }
     });
     labelsButton.addEventListener("click", () => {
-      closeMenu();
-      deadlinePanel.addClass("is-hidden");
-      labelsPanel.toggleClass("is-hidden", !labelsPanel.hasClass("is-hidden"));
-      labelInput.focus();
+      const shouldOpen = labelsPanel.hasClass("is-hidden");
+      closeComposerPopovers();
+      if (shouldOpen) {
+        labelsPanel.removeClass("is-hidden");
+        watchLocalPopover(moreWrap, labelsPanel, { preferredSide: mobilePanelSide });
+        labelInput.focus();
+        keepLabelInputVisible();
+      }
     });
     deadlineButton.addEventListener("click", () => {
-      closeMenu();
-      labelsPanel.addClass("is-hidden");
-      deadlinePanel.toggleClass("is-hidden", !deadlinePanel.hasClass("is-hidden"));
-      deadlineInput.focus();
+      const shouldOpen = deadlinePanel.hasClass("is-hidden");
+      closeComposerPopovers();
+      if (shouldOpen) {
+        deadlinePanel.removeClass("is-hidden");
+        watchLocalPopover(moreWrap, deadlinePanel, { preferredSide: mobilePanelSide });
+        deadlineInput.focus();
+      }
     });
 
     const addLabel = (value: string) => {
@@ -344,6 +377,7 @@ export class AddTaskComposer {
       if (!labelInput.value) {
         labelInput.value = "#";
       }
+      keepLabelInputVisible();
     });
     labelInput.addEventListener("input", () => {
       if (labelInput.value && !labelInput.value.startsWith("#")) {
@@ -357,7 +391,7 @@ export class AddTaskComposer {
         addLabel(labelInput.value);
       }
       if (event.key === "Escape") {
-        closePanels();
+        closeComposerPopovers();
       }
     });
     renderLabels();
@@ -365,17 +399,25 @@ export class AddTaskComposer {
     const footer = form.createDiv({ cls: "belki-composer-footer" });
     const projectArea = footer.createDiv({ cls: "belki-composer-project" });
 
-    const projectPicker = projectArea.createDiv({ cls: "belki-project-picker" });
+    const projectPicker = projectArea.createEl("button", {
+      cls: "belki-project-picker belki-location-picker",
+      attr: {
+        type: "button",
+        "aria-haspopup": "listbox",
+        "aria-expanded": "false"
+      }
+    });
     const projectDot = projectPicker.createSpan({ cls: "belki-project-dot belki-composer-project-dot" });
-    this.projectSelect = projectPicker.createEl("select", { cls: "belki-project-select" });
+    const projectLabel = projectPicker.createSpan({ cls: "belki-project-trigger-label" });
+    const projectMenu = projectArea.createDiv({
+      cls: "belki-project-menu is-hidden",
+      attr: {
+        role: "listbox"
+      }
+    });
     const projects = uniqueRealProjects([options.defaultProject, ...options.projects]);
-    this.projectSelect.createEl("option", { text: "Inbox", value: "" });
-    for (const project of projects) {
-      this.projectSelect.createEl("option", { text: project, value: project });
-    }
-    this.projectSelect.createEl("option", { text: "New project...", value: "__new__" });
     const defaultProject = normalizeTaskProject(options.defaultProject) || "";
-    this.projectSelect.value = projects.includes(defaultProject)
+    this.selectedProjectValue = projects.includes(defaultProject)
       ? defaultProject
       : "";
 
@@ -387,8 +429,85 @@ export class AddTaskComposer {
       }
     });
 
+    closeProjectMenu = () => {
+      projectMenu.addClass("is-hidden");
+      projectPicker.setAttr("aria-expanded", "false");
+    };
+
+    const openProjectMenu = () => {
+      projectMenu.removeClass("is-hidden");
+      projectPicker.setAttr("aria-expanded", "true");
+      watchLocalPopover(projectArea, projectMenu, { preferredSide: "above" });
+    };
+
+    const selectProject = (value: string) => {
+      this.selectedProjectValue = value;
+      this.customProjectInput?.toggleClass("is-hidden", value !== "__new__");
+      if (value === "__new__") {
+        closeProjectMenu();
+        clearOutsideListener();
+        this.customProjectInput?.focus();
+      } else {
+        closeProjectMenu();
+        clearOutsideListener();
+      }
+      updateProjectDot();
+      renderProjectMenu();
+    };
+
+    const renderProjectOption = (
+      parent: HTMLElement,
+      label: string,
+      value: string,
+      projectColor?: { regular: string; light: string }
+    ) => {
+      const option = parent.createEl("button", {
+        cls: "belki-project-option",
+        attr: {
+          type: "button",
+          role: "option",
+          "aria-selected": String(this.selectedProjectValue === value)
+        }
+      });
+      option.toggleClass("is-selected", this.selectedProjectValue === value);
+      option.toggleClass("has-project", Boolean(projectColor));
+      option.createSpan({
+        cls: "belki-project-option-check",
+        text: this.selectedProjectValue === value ? "✓" : ""
+      });
+      if (projectColor) {
+        option
+          .createSpan({ cls: "belki-project-dot" })
+          .setCssStyles({ backgroundColor: projectColor.regular });
+      }
+      option.createSpan({ cls: "belki-project-option-label", text: label });
+      option.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        selectProject(value);
+      });
+    };
+
+    const renderProjectMenu = () => {
+      projectMenu.empty();
+      renderProjectOption(projectMenu, "Inbox", "");
+      projectMenu.createDiv({ cls: "belki-project-section-label", text: "Projects" });
+
+      for (const project of projects) {
+        renderProjectOption(
+          projectMenu,
+          project,
+          project,
+          getProjectColor(project, options.projectColors)
+        );
+      }
+
+      renderProjectOption(projectMenu, "New project...", "__new__");
+    };
+
     const updateProjectDot = () => {
       const project = this.readProject();
+      projectLabel.setText(project || "Inbox");
       if (!project) {
         projectDot.setCssStyles({ backgroundColor: "var(--belki-faint)" });
         projectPicker.setCssStyles({
@@ -406,17 +525,33 @@ export class AddTaskComposer {
       });
     };
 
-    this.projectSelect.addEventListener("change", () => {
-      this.customProjectInput?.toggleClass(
-        "is-hidden",
-        this.projectSelect?.value !== "__new__"
-      );
-      if (this.projectSelect?.value === "__new__") {
-        this.customProjectInput?.focus();
+    const hasOpenComposerPopover = () =>
+      !menu.hasClass("is-hidden") ||
+      !labelsPanel.hasClass("is-hidden") ||
+      !deadlinePanel.hasClass("is-hidden") ||
+      !projectMenu.hasClass("is-hidden");
+
+    projectPicker.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const shouldOpen = projectMenu.hasClass("is-hidden");
+      closeComposerPopovers();
+      if (shouldOpen) {
+        openProjectMenu();
       }
-      updateProjectDot();
     });
-    this.customProjectInput.addEventListener("input", updateProjectDot);
+    form.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && hasOpenComposerPopover()) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeComposerPopovers();
+      }
+    });
+    this.customProjectInput.addEventListener("input", () => {
+      updateProjectDot();
+      renderProjectMenu();
+    });
+    renderProjectMenu();
     updateProjectDot();
 
     const actions = footer.createDiv({ cls: "belki-composer-actions" });
@@ -466,11 +601,11 @@ export class AddTaskComposer {
   }
 
   private readProject(): string | undefined {
-    if (this.projectSelect?.value === "__new__") {
+    if (this.selectedProjectValue === "__new__") {
       return normalizeTaskProject(this.customProjectInput?.value);
     }
 
-    return normalizeTaskProject(this.projectSelect?.value);
+    return normalizeTaskProject(this.selectedProjectValue);
   }
 }
 
@@ -524,6 +659,53 @@ function createIcon(
   const icon = parent.createSpan({ cls: className });
   setIcon(icon, iconName);
   return icon;
+}
+
+interface LocalPopoverOptions {
+  preferredSide?: "above" | "below";
+}
+
+function alignLocalPopover(
+  wrapper: HTMLElement,
+  popover: HTMLElement,
+  options: LocalPopoverOptions = {}
+): void {
+  const ownerWindow = wrapper.ownerDocument.defaultView || window;
+  const margin = 12;
+  const preferredSide = options.preferredSide || "below";
+
+  popover.removeClass("is-align-right");
+  popover.removeClass("is-open-up");
+  popover.removeClass("is-open-down");
+
+  const wrapperRect = wrapper.getBoundingClientRect();
+  const popoverRect = popover.getBoundingClientRect();
+  const popoverWidth = popoverRect.width || 240;
+  const popoverHeight = popoverRect.height || 220;
+
+  if (
+    wrapperRect.left + popoverWidth > ownerWindow.innerWidth - margin &&
+    wrapperRect.right - popoverWidth >= margin
+  ) {
+    popover.addClass("is-align-right");
+  }
+
+  const fitsBelow = wrapperRect.bottom + popoverHeight + margin <= ownerWindow.innerHeight;
+  const fitsAbove = wrapperRect.top - popoverHeight - margin >= 0;
+  if (preferredSide === "above" && fitsAbove) {
+    popover.addClass("is-open-up");
+    return;
+  }
+  if (preferredSide === "above" && !fitsBelow) {
+    popover.addClass("is-open-up");
+    return;
+  }
+  if (preferredSide === "below" && !fitsBelow && fitsAbove) {
+    popover.addClass("is-open-up");
+    return;
+  }
+
+  popover.addClass("is-open-down");
 }
 
 function isImageFile(file: File): boolean {

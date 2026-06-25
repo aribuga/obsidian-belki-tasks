@@ -1,4 +1,4 @@
-import { App, normalizePath, TFile } from "obsidian";
+import { App, normalizePath, Notice, TAbstractFile, TFile, TFolder } from "obsidian";
 import { todayIso } from "./dateUtils";
 import { parseTaskDocument } from "./parser";
 import { serializeTaskDocument } from "./serializer";
@@ -16,6 +16,7 @@ export class TaskStore {
   private documents = new Map<string, ParsedTaskDocument>();
   private tasks: BelkiTask[] = [];
   private listeners = new Set<Listener>();
+  private warnedStorageIssues = new Set<string>();
 
   constructor(private app: App, private settings: BelkiSettings) {}
 
@@ -73,6 +74,12 @@ export class TaskStore {
   }
 
   async load(): Promise<void> {
+    console.debug("[belki] Loading task storage.", {
+      rootDir: this.rootDir,
+      dataDir: this.dataDir,
+      attachmentsDir: this.attachmentsDir,
+      mainFilePath: this.mainFilePath
+    });
     await this.ensureTaskStructure();
 
     const nextDocuments = new Map<string, ParsedTaskDocument>();
@@ -121,7 +128,11 @@ export class TaskStore {
     const created = todayIso();
     const id = createId();
     const sourcePath = this.monthlyPathForDate(created);
-    await this.ensureSourceDocument(sourcePath);
+    const sourceReady = await this.ensureSourceDocument(sourcePath);
+    if (!sourceReady) {
+      new Notice("belki could not create the task data file. Check the console for details.");
+      return;
+    }
     const attachments = normalizeAttachments(input.attachments || []);
     for (const file of input.pendingAttachments || []) {
       const path = await this.copyAttachmentFile(id, file);
@@ -259,11 +270,12 @@ export class TaskStore {
 
   private async copyAttachmentFile(taskId: string, file: File): Promise<string> {
     const folderPath = normalizePath(`${this.attachmentsDir}/${taskId}`);
-    await this.ensureFolder(folderPath);
-    const targetPath = await this.nextAttachmentPath(folderPath, file.name);
+    const folderReady = await this.ensureFolder(folderPath);
+    if (!folderReady) {
+      throw new Error(`belki cannot use attachment folder: ${folderPath}`);
+    }
     const data = await file.arrayBuffer();
-    await this.app.vault.createBinary(targetPath, data);
-    return targetPath;
+    return this.createUniqueBinaryFile(folderPath, file.name, data);
   }
 
   async migrateOldTaskFile(): Promise<number> {
@@ -293,7 +305,10 @@ export class TaskStore {
 
       const created = task.created || todayIso();
       const sourcePath = this.monthlyPathForDate(created);
-      await this.ensureSourceDocument(sourcePath);
+      const sourceReady = await this.ensureSourceDocument(sourcePath);
+      if (!sourceReady) {
+        continue;
+      }
       this.tasks.push({
         ...task,
         created,
@@ -349,6 +364,9 @@ export class TaskStore {
         .map((task) => normalizeTaskForSave(task, sourcePath));
       const content = serializeTaskDocument(document, tasks);
       const file = await this.ensureFile(sourcePath, "");
+      if (!file) {
+        continue;
+      }
       await this.app.vault.modify(file, content);
       this.documents.set(sourcePath, parseTaskDocument(content));
     }
@@ -402,52 +420,178 @@ export class TaskStore {
     return existing instanceof TFile ? existing : null;
   }
 
-  private async ensureSourceDocument(sourcePath: string): Promise<void> {
+  private async ensureSourceDocument(sourcePath: string): Promise<boolean> {
     if (this.documents.has(sourcePath)) {
-      return;
+      return true;
     }
 
     const file = await this.ensureFile(sourcePath, "");
+    if (!file) {
+      this.documents.set(sourcePath, { blocks: [], tasks: [] });
+      return false;
+    }
     const content = await this.app.vault.read(file);
     this.documents.set(sourcePath, parseTaskDocument(content));
+    return true;
   }
 
-  private async ensureFile(path: string, content: string): Promise<TFile> {
+  private async ensureFile(path: string, content: string): Promise<TFile | null> {
     const normalizedPath = normalizePath(path);
     const existing = this.app.vault.getAbstractFileByPath(normalizedPath);
     if (existing instanceof TFile) {
       return existing;
     }
+    if (existing) {
+      this.warnWrongType(normalizedPath, "file", existing);
+      return null;
+    }
 
-    await this.ensureParentFolders(normalizedPath);
-    return this.app.vault.create(normalizedPath, content);
+    const parentReady = await this.ensureParentFolders(normalizedPath);
+    if (!parentReady) {
+      return null;
+    }
+
+    try {
+      return await this.app.vault.create(normalizedPath, content);
+    } catch (error) {
+      if (!isAlreadyExistsError(error)) {
+        throw error;
+      }
+
+      const created = this.app.vault.getAbstractFileByPath(normalizedPath);
+      if (created instanceof TFile) {
+        return created;
+      }
+      if (created) {
+        this.warnWrongType(normalizedPath, "file", created);
+        return null;
+      }
+
+      console.warn("[belki] File already exists but is not available in the vault index yet.", {
+        path: normalizedPath,
+        error
+      });
+      return null;
+    }
   }
 
   private async replaceFile(path: string, content: string): Promise<TFile> {
     const file = await this.ensureFile(path, "");
+    if (!file) {
+      throw new Error(`belki cannot write file because the path is unavailable: ${path}`);
+    }
     await this.app.vault.modify(file, content);
     return file;
   }
 
-  private async ensureParentFolders(path: string): Promise<void> {
+  private async ensureParentFolders(path: string): Promise<boolean> {
     const parts = normalizePath(path).split("/");
     parts.pop();
 
     let current = "";
     for (const part of parts) {
       current = current ? `${current}/${part}` : part;
-      await this.ensureFolder(current);
+      const ready = await this.ensureFolder(current);
+      if (!ready) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private async ensureFolder(path: string): Promise<boolean> {
+    const normalizedPath = normalizePath(path);
+    const existing = this.app.vault.getAbstractFileByPath(normalizedPath);
+    if (existing instanceof TFolder) {
+      return true;
+    }
+    if (existing) {
+      this.warnWrongType(normalizedPath, "folder", existing);
+      return false;
+    }
+
+    const parentReady = await this.ensureParentFolders(normalizedPath);
+    if (!parentReady) {
+      return false;
+    }
+
+    try {
+      await this.app.vault.createFolder(normalizedPath);
+      return true;
+    } catch (error) {
+      if (!isAlreadyExistsError(error)) {
+        throw error;
+      }
+
+      const created = this.app.vault.getAbstractFileByPath(normalizedPath);
+      if (created instanceof TFolder) {
+        return true;
+      }
+      if (created) {
+        this.warnWrongType(normalizedPath, "folder", created);
+        return false;
+      }
+
+      console.warn("[belki] Folder already exists but is not available in the vault index yet.", {
+        path: normalizedPath,
+        error
+      });
+      return true;
     }
   }
 
-  private async ensureFolder(path: string): Promise<void> {
-    const normalizedPath = normalizePath(path);
-    if (this.app.vault.getAbstractFileByPath(normalizedPath)) {
+  private async createUniqueBinaryFile(
+    folderPath: string,
+    filename: string,
+    data: ArrayBuffer
+  ): Promise<string> {
+    const safeName = sanitizeFilename(filename);
+    const extensionStart = safeName.lastIndexOf(".");
+    const base =
+      extensionStart > 0 ? safeName.slice(0, extensionStart) : safeName;
+    const extension = extensionStart > 0 ? safeName.slice(extensionStart) : "";
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const targetPath =
+        attempt === 0
+          ? await this.nextAttachmentPath(folderPath, filename)
+          : await this.nextAttachmentPath(folderPath, `${base}-${Date.now()}-${attempt}${extension}`);
+      try {
+        await this.app.vault.createBinary(targetPath, data);
+        return targetPath;
+      } catch (error) {
+        if (isAlreadyExistsError(error)) {
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    throw new Error(`belki could not create a unique attachment path for ${filename}`);
+  }
+
+  private warnWrongType(
+    path: string,
+    expectedType: "file" | "folder",
+    existing: TAbstractFile
+  ): void {
+    const key = `${expectedType}:${path}`;
+    if (this.warnedStorageIssues.has(key)) {
       return;
     }
 
-    await this.ensureParentFolders(normalizedPath);
-    await this.app.vault.createFolder(normalizedPath);
+    this.warnedStorageIssues.add(key);
+    const actualType = existing instanceof TFolder ? "folder" : "file";
+    const message = `belki expected a ${expectedType} at "${path}", but found a ${actualType}.`;
+    new Notice(`${message} Please rename or move the conflicting vault item.`);
+    console.warn("[belki] Storage path type mismatch.", {
+      path,
+      expectedType,
+      actualType,
+      existing
+    });
   }
 
   private async nextAttachmentPath(folderPath: string, filename: string): Promise<string> {
@@ -534,6 +678,11 @@ function dedupeStrings(values: string[]): string[] {
 function sanitizeFilename(filename: string): string {
   const clean = filename.replace(/[\\/:*?"<>|]/g, "-").trim();
   return clean || "attachment";
+}
+
+function isAlreadyExistsError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /already exists|EEXIST/i.test(message);
 }
 
 function createId(): string {

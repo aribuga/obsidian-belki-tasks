@@ -58,7 +58,7 @@ export class TaskBoardView extends ItemView {
     }
 
     const openPopover = this.containerEl.querySelector<HTMLElement>(
-      ".belki-composer-popover:not(.is-hidden)"
+      ".belki-composer-popover:not(.is-hidden), .belki-project-menu:not(.is-hidden)"
     );
     if (openPopover) {
       this.stopEscape(event);

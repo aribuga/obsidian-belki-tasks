@@ -25,7 +25,6 @@ export default class BelkiPlugin extends Plugin {
     await this.loadSettings();
 
     this.store = new TaskStore(this.app, this.settings);
-    await this.store.load();
 
     this.registerView(
       VIEW_TYPE_BELKI,
@@ -126,6 +125,8 @@ export default class BelkiPlugin extends Plugin {
         }
       })
     );
+
+    void this.initializeStore();
   }
 
   async loadSettings(): Promise<void> {
@@ -222,6 +223,19 @@ export default class BelkiPlugin extends Plugin {
   private async refreshIfTaskFile(file: TAbstractFile): Promise<void> {
     if (this.store.isTaskStorageFile(file.path)) {
       await this.reloadTasks();
+    }
+  }
+
+  private async initializeStore(): Promise<void> {
+    try {
+      await this.store.load();
+    } catch (error) {
+      new Notice("belki could not initialize task storage. Open the developer console for details.");
+      console.error("[belki] Failed to initialize task storage.", {
+        dataFolderPath: this.settings.dataFolderPath,
+        tasksFilePath: this.settings.tasksFilePath,
+        error
+      });
     }
   }
 }

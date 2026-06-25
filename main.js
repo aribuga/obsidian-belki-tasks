@@ -1097,6 +1097,7 @@ var TaskStore = class {
     this.documents = /* @__PURE__ */ new Map();
     this.tasks = [];
     this.listeners = /* @__PURE__ */ new Set();
+    this.warnedStorageIssues = /* @__PURE__ */ new Set();
   }
   get filePath() {
     return (0, import_obsidian3.normalizePath)(this.settings.tasksFilePath);
@@ -1137,6 +1138,12 @@ var TaskStore = class {
     };
   }
   async load() {
+    console.debug("[belki] Loading task storage.", {
+      rootDir: this.rootDir,
+      dataDir: this.dataDir,
+      attachmentsDir: this.attachmentsDir,
+      mainFilePath: this.mainFilePath
+    });
     await this.ensureTaskStructure();
     const nextDocuments = /* @__PURE__ */ new Map();
     const nextTasks = [];
@@ -1177,7 +1184,11 @@ var TaskStore = class {
     const created = todayIso();
     const id = createId();
     const sourcePath = this.monthlyPathForDate(created);
-    await this.ensureSourceDocument(sourcePath);
+    const sourceReady = await this.ensureSourceDocument(sourcePath);
+    if (!sourceReady) {
+      new import_obsidian3.Notice("belki could not create the task data file. Check the console for details.");
+      return;
+    }
     const attachments = normalizeAttachments(input.attachments || []);
     for (const file of input.pendingAttachments || []) {
       const path = await this.copyAttachmentFile(id, file);
@@ -1281,11 +1292,12 @@ var TaskStore = class {
   }
   async copyAttachmentFile(taskId, file) {
     const folderPath = (0, import_obsidian3.normalizePath)(`${this.attachmentsDir}/${taskId}`);
-    await this.ensureFolder(folderPath);
-    const targetPath = await this.nextAttachmentPath(folderPath, file.name);
+    const folderReady = await this.ensureFolder(folderPath);
+    if (!folderReady) {
+      throw new Error(`belki cannot use attachment folder: ${folderPath}`);
+    }
     const data = await file.arrayBuffer();
-    await this.app.vault.createBinary(targetPath, data);
-    return targetPath;
+    return this.createUniqueBinaryFile(folderPath, file.name, data);
   }
   async migrateOldTaskFile() {
     const legacyFile = this.getLegacyTaskFile();
@@ -1308,7 +1320,10 @@ var TaskStore = class {
       }
       const created = task.created || todayIso();
       const sourcePath = this.monthlyPathForDate(created);
-      await this.ensureSourceDocument(sourcePath);
+      const sourceReady = await this.ensureSourceDocument(sourcePath);
+      if (!sourceReady) {
+        continue;
+      }
       this.tasks.push({
         ...task,
         created,
@@ -1353,6 +1368,9 @@ var TaskStore = class {
       const tasks = this.tasks.filter((task) => task.sourcePath === sourcePath).map((task) => normalizeTaskForSave(task, sourcePath));
       const content = serializeTaskDocument(document, tasks);
       const file = await this.ensureFile(sourcePath, "");
+      if (!file) {
+        continue;
+      }
       await this.app.vault.modify(file, content);
       this.documents.set(sourcePath, parseTaskDocument(content));
     }
@@ -1397,11 +1415,16 @@ var TaskStore = class {
   }
   async ensureSourceDocument(sourcePath) {
     if (this.documents.has(sourcePath)) {
-      return;
+      return true;
     }
     const file = await this.ensureFile(sourcePath, "");
+    if (!file) {
+      this.documents.set(sourcePath, { blocks: [], tasks: [] });
+      return false;
+    }
     const content = await this.app.vault.read(file);
     this.documents.set(sourcePath, parseTaskDocument(content));
+    return true;
   }
   async ensureFile(path, content) {
     const normalizedPath = (0, import_obsidian3.normalizePath)(path);
@@ -1409,11 +1432,40 @@ var TaskStore = class {
     if (existing instanceof import_obsidian3.TFile) {
       return existing;
     }
-    await this.ensureParentFolders(normalizedPath);
-    return this.app.vault.create(normalizedPath, content);
+    if (existing) {
+      this.warnWrongType(normalizedPath, "file", existing);
+      return null;
+    }
+    const parentReady = await this.ensureParentFolders(normalizedPath);
+    if (!parentReady) {
+      return null;
+    }
+    try {
+      return await this.app.vault.create(normalizedPath, content);
+    } catch (error) {
+      if (!isAlreadyExistsError(error)) {
+        throw error;
+      }
+      const created = this.app.vault.getAbstractFileByPath(normalizedPath);
+      if (created instanceof import_obsidian3.TFile) {
+        return created;
+      }
+      if (created) {
+        this.warnWrongType(normalizedPath, "file", created);
+        return null;
+      }
+      console.warn("[belki] File already exists but is not available in the vault index yet.", {
+        path: normalizedPath,
+        error
+      });
+      return null;
+    }
   }
   async replaceFile(path, content) {
     const file = await this.ensureFile(path, "");
+    if (!file) {
+      throw new Error(`belki cannot write file because the path is unavailable: ${path}`);
+    }
     await this.app.vault.modify(file, content);
     return file;
   }
@@ -1423,16 +1475,83 @@ var TaskStore = class {
     let current = "";
     for (const part of parts) {
       current = current ? `${current}/${part}` : part;
-      await this.ensureFolder(current);
+      const ready = await this.ensureFolder(current);
+      if (!ready) {
+        return false;
+      }
     }
+    return true;
   }
   async ensureFolder(path) {
     const normalizedPath = (0, import_obsidian3.normalizePath)(path);
-    if (this.app.vault.getAbstractFileByPath(normalizedPath)) {
+    const existing = this.app.vault.getAbstractFileByPath(normalizedPath);
+    if (existing instanceof import_obsidian3.TFolder) {
+      return true;
+    }
+    if (existing) {
+      this.warnWrongType(normalizedPath, "folder", existing);
+      return false;
+    }
+    const parentReady = await this.ensureParentFolders(normalizedPath);
+    if (!parentReady) {
+      return false;
+    }
+    try {
+      await this.app.vault.createFolder(normalizedPath);
+      return true;
+    } catch (error) {
+      if (!isAlreadyExistsError(error)) {
+        throw error;
+      }
+      const created = this.app.vault.getAbstractFileByPath(normalizedPath);
+      if (created instanceof import_obsidian3.TFolder) {
+        return true;
+      }
+      if (created) {
+        this.warnWrongType(normalizedPath, "folder", created);
+        return false;
+      }
+      console.warn("[belki] Folder already exists but is not available in the vault index yet.", {
+        path: normalizedPath,
+        error
+      });
+      return true;
+    }
+  }
+  async createUniqueBinaryFile(folderPath, filename, data) {
+    const safeName = sanitizeFilename(filename);
+    const extensionStart = safeName.lastIndexOf(".");
+    const base = extensionStart > 0 ? safeName.slice(0, extensionStart) : safeName;
+    const extension = extensionStart > 0 ? safeName.slice(extensionStart) : "";
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const targetPath = attempt === 0 ? await this.nextAttachmentPath(folderPath, filename) : await this.nextAttachmentPath(folderPath, `${base}-${Date.now()}-${attempt}${extension}`);
+      try {
+        await this.app.vault.createBinary(targetPath, data);
+        return targetPath;
+      } catch (error) {
+        if (isAlreadyExistsError(error)) {
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new Error(`belki could not create a unique attachment path for ${filename}`);
+  }
+  warnWrongType(path, expectedType, existing) {
+    const key = `${expectedType}:${path}`;
+    if (this.warnedStorageIssues.has(key)) {
       return;
     }
-    await this.ensureParentFolders(normalizedPath);
-    await this.app.vault.createFolder(normalizedPath);
+    this.warnedStorageIssues.add(key);
+    const actualType = existing instanceof import_obsidian3.TFolder ? "folder" : "file";
+    const message = `belki expected a ${expectedType} at "${path}", but found a ${actualType}.`;
+    new import_obsidian3.Notice(`${message} Please rename or move the conflicting vault item.`);
+    console.warn("[belki] Storage path type mismatch.", {
+      path,
+      expectedType,
+      actualType,
+      existing
+    });
   }
   async nextAttachmentPath(folderPath, filename) {
     const safeName = sanitizeFilename(filename);
@@ -1502,6 +1621,10 @@ function sanitizeFilename(filename) {
   const clean = filename.replace(/[\\/:*?"<>|]/g, "-").trim();
   return clean || "attachment";
 }
+function isAlreadyExistsError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /already exists|EEXIST/i.test(message);
+}
 function createId() {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).slice(2, 8);
@@ -1546,6 +1669,9 @@ function getPriorityClass(priority) {
 
 // src/views/AddTaskComposer.ts
 var AddTaskComposer = class {
+  constructor() {
+    this.selectedProjectValue = "";
+  }
   render(parent, options) {
     const form = parent.createEl("form", { cls: "belki-composer" });
     let selectedDue = options.defaultDue || "";
@@ -1690,12 +1816,13 @@ var AddTaskComposer = class {
       renderPendingAttachments();
     });
     const moreWrap = chipRow.createDiv({ cls: "belki-composer-more" });
+    const mobilePanelSide = import_obsidian4.Platform.isMobile ? "above" : "below";
     const moreButton = createChipButton(moreWrap, "", "ellipsis", "More task options");
     moreButton.addClass("belki-more-button");
     const menu = moreWrap.createDiv({ cls: "belki-composer-menu is-hidden" });
     const labelsButton = createMenuItem(menu, "Labels", "tag");
     const deadlineButton = createMenuItem(menu, "Deadline", "diamond");
-    const labelsPanel = form.createDiv({ cls: "belki-composer-popover is-hidden" });
+    const labelsPanel = moreWrap.createDiv({ cls: "belki-composer-popover is-hidden" });
     const selectedLabelsEl = labelsPanel.createDiv({ cls: "belki-selected-labels" });
     const labelInput = labelsPanel.createEl("input", {
       cls: "belki-label-input",
@@ -1705,7 +1832,7 @@ var AddTaskComposer = class {
       }
     });
     const labelSuggestions = labelsPanel.createDiv({ cls: "belki-label-suggestions" });
-    const deadlinePanel = form.createDiv({ cls: "belki-composer-popover is-hidden" });
+    const deadlinePanel = moreWrap.createDiv({ cls: "belki-composer-popover is-hidden" });
     deadlinePanel.createDiv({ cls: "belki-popover-title", text: "Deadline" });
     const deadlineInput = deadlinePanel.createEl("input", {
       cls: "belki-deadline-input",
@@ -1716,58 +1843,79 @@ var AddTaskComposer = class {
     deadlineInput.addEventListener("change", () => {
       selectedDeadline = deadlineInput.value;
     });
+    let detachOutsideListener = () => void 0;
+    let closeProjectMenu = () => void 0;
+    const clearOutsideListener = () => {
+      detachOutsideListener();
+      detachOutsideListener = () => void 0;
+    };
     const closePanels = () => {
       labelsPanel.addClass("is-hidden");
       deadlinePanel.addClass("is-hidden");
     };
     const closeMenu = () => {
       menu.addClass("is-hidden");
-      menu.removeClass("is-floating");
-      menu.removeClass("is-align-right");
     };
-    const updateMenuPosition = () => {
-      menu.addClass("is-floating");
-      menu.removeClass("is-align-right");
-      window.requestAnimationFrame(() => {
-        const buttonRect = moreButton.getBoundingClientRect();
-        const menuRect = menu.getBoundingClientRect();
-        const menuWidth = Math.min(menuRect.width || 220, window.innerWidth - 24);
-        const menuHeight = menuRect.height || 92;
-        let left = buttonRect.left;
-        let top = buttonRect.bottom + 8;
-        if (left + menuWidth > window.innerWidth - 12) {
-          left = window.innerWidth - menuWidth - 12;
+    const closeComposerPopovers = () => {
+      closeMenu();
+      closePanels();
+      closeProjectMenu();
+      clearOutsideListener();
+    };
+    const watchLocalPopover = (wrapper, popover, options2 = {}) => {
+      clearOutsideListener();
+      alignLocalPopover(wrapper, popover, options2);
+      const ownerDocument = wrapper.ownerDocument;
+      const handleOutsideClick = (event) => {
+        if (event.target instanceof Node && (wrapper.contains(event.target) || popover.contains(event.target))) {
+          return;
         }
-        if (top + menuHeight > window.innerHeight - 12) {
-          top = buttonRect.top - menuHeight - 8;
-        }
-        menu.setCssProps({
-          "--belki-menu-left": `${Math.max(12, left)}px`,
-          "--belki-menu-top": `${Math.max(12, top)}px`
+        closeComposerPopovers();
+      };
+      ownerDocument.addEventListener("pointerdown", handleOutsideClick, true);
+      detachOutsideListener = () => {
+        ownerDocument.removeEventListener("pointerdown", handleOutsideClick, true);
+      };
+    };
+    const keepLabelInputVisible = () => {
+      const ownerWindow = labelInput.ownerDocument.defaultView || window;
+      const scrollIntoView = () => {
+        labelInput.scrollIntoView({
+          block: "center",
+          inline: "nearest",
+          behavior: "smooth"
         });
-      });
+      };
+      ownerWindow.setTimeout(scrollIntoView, 80);
+      ownerWindow.setTimeout(scrollIntoView, 320);
+      ownerWindow.setTimeout(scrollIntoView, 650);
     };
     moreButton.addEventListener("click", () => {
       const shouldOpen = menu.hasClass("is-hidden");
-      closePanels();
+      closeComposerPopovers();
       if (shouldOpen) {
         menu.removeClass("is-hidden");
-        updateMenuPosition();
-      } else {
-        closeMenu();
+        watchLocalPopover(moreWrap, menu, { preferredSide: "below" });
       }
     });
     labelsButton.addEventListener("click", () => {
-      closeMenu();
-      deadlinePanel.addClass("is-hidden");
-      labelsPanel.toggleClass("is-hidden", !labelsPanel.hasClass("is-hidden"));
-      labelInput.focus();
+      const shouldOpen = labelsPanel.hasClass("is-hidden");
+      closeComposerPopovers();
+      if (shouldOpen) {
+        labelsPanel.removeClass("is-hidden");
+        watchLocalPopover(moreWrap, labelsPanel, { preferredSide: mobilePanelSide });
+        labelInput.focus();
+        keepLabelInputVisible();
+      }
     });
     deadlineButton.addEventListener("click", () => {
-      closeMenu();
-      labelsPanel.addClass("is-hidden");
-      deadlinePanel.toggleClass("is-hidden", !deadlinePanel.hasClass("is-hidden"));
-      deadlineInput.focus();
+      const shouldOpen = deadlinePanel.hasClass("is-hidden");
+      closeComposerPopovers();
+      if (shouldOpen) {
+        deadlinePanel.removeClass("is-hidden");
+        watchLocalPopover(moreWrap, deadlinePanel, { preferredSide: mobilePanelSide });
+        deadlineInput.focus();
+      }
     });
     const addLabel = (value) => {
       const label = normalizeLabelName(value);
@@ -1830,6 +1978,7 @@ var AddTaskComposer = class {
       if (!labelInput.value) {
         labelInput.value = "#";
       }
+      keepLabelInputVisible();
     });
     labelInput.addEventListener("input", () => {
       if (labelInput.value && !labelInput.value.startsWith("#")) {
@@ -1843,23 +1992,31 @@ var AddTaskComposer = class {
         addLabel(labelInput.value);
       }
       if (event.key === "Escape") {
-        closePanels();
+        closeComposerPopovers();
       }
     });
     renderLabels();
     const footer = form.createDiv({ cls: "belki-composer-footer" });
     const projectArea = footer.createDiv({ cls: "belki-composer-project" });
-    const projectPicker = projectArea.createDiv({ cls: "belki-project-picker" });
+    const projectPicker = projectArea.createEl("button", {
+      cls: "belki-project-picker belki-location-picker",
+      attr: {
+        type: "button",
+        "aria-haspopup": "listbox",
+        "aria-expanded": "false"
+      }
+    });
     const projectDot = projectPicker.createSpan({ cls: "belki-project-dot belki-composer-project-dot" });
-    this.projectSelect = projectPicker.createEl("select", { cls: "belki-project-select" });
+    const projectLabel = projectPicker.createSpan({ cls: "belki-project-trigger-label" });
+    const projectMenu = projectArea.createDiv({
+      cls: "belki-project-menu is-hidden",
+      attr: {
+        role: "listbox"
+      }
+    });
     const projects = uniqueRealProjects([options.defaultProject, ...options.projects]);
-    this.projectSelect.createEl("option", { text: "Inbox", value: "" });
-    for (const project of projects) {
-      this.projectSelect.createEl("option", { text: project, value: project });
-    }
-    this.projectSelect.createEl("option", { text: "New project...", value: "__new__" });
     const defaultProject = normalizeTaskProject(options.defaultProject) || "";
-    this.projectSelect.value = projects.includes(defaultProject) ? defaultProject : "";
+    this.selectedProjectValue = projects.includes(defaultProject) ? defaultProject : "";
     this.customProjectInput = projectArea.createEl("input", {
       cls: "belki-chip-input belki-custom-project is-hidden",
       attr: {
@@ -1867,8 +2024,72 @@ var AddTaskComposer = class {
         placeholder: "Project name"
       }
     });
+    closeProjectMenu = () => {
+      projectMenu.addClass("is-hidden");
+      projectPicker.setAttr("aria-expanded", "false");
+    };
+    const openProjectMenu = () => {
+      projectMenu.removeClass("is-hidden");
+      projectPicker.setAttr("aria-expanded", "true");
+      watchLocalPopover(projectArea, projectMenu, { preferredSide: "above" });
+    };
+    const selectProject = (value) => {
+      var _a, _b;
+      this.selectedProjectValue = value;
+      (_a = this.customProjectInput) == null ? void 0 : _a.toggleClass("is-hidden", value !== "__new__");
+      if (value === "__new__") {
+        closeProjectMenu();
+        clearOutsideListener();
+        (_b = this.customProjectInput) == null ? void 0 : _b.focus();
+      } else {
+        closeProjectMenu();
+        clearOutsideListener();
+      }
+      updateProjectDot();
+      renderProjectMenu();
+    };
+    const renderProjectOption = (parent2, label, value, projectColor) => {
+      const option = parent2.createEl("button", {
+        cls: "belki-project-option",
+        attr: {
+          type: "button",
+          role: "option",
+          "aria-selected": String(this.selectedProjectValue === value)
+        }
+      });
+      option.toggleClass("is-selected", this.selectedProjectValue === value);
+      option.toggleClass("has-project", Boolean(projectColor));
+      option.createSpan({
+        cls: "belki-project-option-check",
+        text: this.selectedProjectValue === value ? "\u2713" : ""
+      });
+      if (projectColor) {
+        option.createSpan({ cls: "belki-project-dot" }).setCssStyles({ backgroundColor: projectColor.regular });
+      }
+      option.createSpan({ cls: "belki-project-option-label", text: label });
+      option.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        selectProject(value);
+      });
+    };
+    const renderProjectMenu = () => {
+      projectMenu.empty();
+      renderProjectOption(projectMenu, "Inbox", "");
+      projectMenu.createDiv({ cls: "belki-project-section-label", text: "Projects" });
+      for (const project of projects) {
+        renderProjectOption(
+          projectMenu,
+          project,
+          project,
+          getProjectColor(project, options.projectColors)
+        );
+      }
+      renderProjectOption(projectMenu, "New project...", "__new__");
+    };
     const updateProjectDot = () => {
       const project = this.readProject();
+      projectLabel.setText(project || "Inbox");
       if (!project) {
         projectDot.setCssStyles({ backgroundColor: "var(--belki-faint)" });
         projectPicker.setCssStyles({
@@ -1884,18 +2105,28 @@ var AddTaskComposer = class {
         borderColor: color.light
       });
     };
-    this.projectSelect.addEventListener("change", () => {
-      var _a, _b, _c, _d;
-      (_b = this.customProjectInput) == null ? void 0 : _b.toggleClass(
-        "is-hidden",
-        ((_a = this.projectSelect) == null ? void 0 : _a.value) !== "__new__"
-      );
-      if (((_c = this.projectSelect) == null ? void 0 : _c.value) === "__new__") {
-        (_d = this.customProjectInput) == null ? void 0 : _d.focus();
+    const hasOpenComposerPopover = () => !menu.hasClass("is-hidden") || !labelsPanel.hasClass("is-hidden") || !deadlinePanel.hasClass("is-hidden") || !projectMenu.hasClass("is-hidden");
+    projectPicker.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const shouldOpen = projectMenu.hasClass("is-hidden");
+      closeComposerPopovers();
+      if (shouldOpen) {
+        openProjectMenu();
       }
-      updateProjectDot();
     });
-    this.customProjectInput.addEventListener("input", updateProjectDot);
+    form.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && hasOpenComposerPopover()) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeComposerPopovers();
+      }
+    });
+    this.customProjectInput.addEventListener("input", () => {
+      updateProjectDot();
+      renderProjectMenu();
+    });
+    renderProjectMenu();
     updateProjectDot();
     const actions = footer.createDiv({ cls: "belki-composer-actions" });
     const cancelButton = actions.createEl("button", {
@@ -1941,11 +2172,11 @@ var AddTaskComposer = class {
     (_a = this.titleInput) == null ? void 0 : _a.focus();
   }
   readProject() {
-    var _a, _b, _c;
-    if (((_a = this.projectSelect) == null ? void 0 : _a.value) === "__new__") {
-      return normalizeTaskProject((_b = this.customProjectInput) == null ? void 0 : _b.value);
+    var _a;
+    if (this.selectedProjectValue === "__new__") {
+      return normalizeTaskProject((_a = this.customProjectInput) == null ? void 0 : _a.value);
     }
-    return normalizeTaskProject((_c = this.projectSelect) == null ? void 0 : _c.value);
+    return normalizeTaskProject(this.selectedProjectValue);
   }
 };
 function createChipButton(parent, label, iconName, ariaLabel) {
@@ -1980,6 +2211,36 @@ function createIcon(parent, iconName, className = "belki-chip-icon") {
   const icon = parent.createSpan({ cls: className });
   (0, import_obsidian4.setIcon)(icon, iconName);
   return icon;
+}
+function alignLocalPopover(wrapper, popover, options = {}) {
+  const ownerWindow = wrapper.ownerDocument.defaultView || window;
+  const margin = 12;
+  const preferredSide = options.preferredSide || "below";
+  popover.removeClass("is-align-right");
+  popover.removeClass("is-open-up");
+  popover.removeClass("is-open-down");
+  const wrapperRect = wrapper.getBoundingClientRect();
+  const popoverRect = popover.getBoundingClientRect();
+  const popoverWidth = popoverRect.width || 240;
+  const popoverHeight = popoverRect.height || 220;
+  if (wrapperRect.left + popoverWidth > ownerWindow.innerWidth - margin && wrapperRect.right - popoverWidth >= margin) {
+    popover.addClass("is-align-right");
+  }
+  const fitsBelow = wrapperRect.bottom + popoverHeight + margin <= ownerWindow.innerHeight;
+  const fitsAbove = wrapperRect.top - popoverHeight - margin >= 0;
+  if (preferredSide === "above" && fitsAbove) {
+    popover.addClass("is-open-up");
+    return;
+  }
+  if (preferredSide === "above" && !fitsBelow) {
+    popover.addClass("is-open-up");
+    return;
+  }
+  if (preferredSide === "below" && !fitsBelow && fitsAbove) {
+    popover.addClass("is-open-up");
+    return;
+  }
+  popover.addClass("is-open-down");
 }
 function isImageFile(file) {
   return file.type.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
@@ -2677,7 +2938,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
         return;
       }
       const openPopover = this.containerEl.querySelector(
-        ".belki-composer-popover:not(.is-hidden)"
+        ".belki-composer-popover:not(.is-hidden), .belki-project-menu:not(.is-hidden)"
       );
       if (openPopover) {
         this.stopEscape(event);
@@ -4021,7 +4282,6 @@ var BelkiPlugin = class extends import_obsidian8.Plugin {
   async onload() {
     await this.loadSettings();
     this.store = new TaskStore(this.app, this.settings);
-    await this.store.load();
     this.registerView(
       VIEW_TYPE_BELKI,
       (leaf) => new TaskBoardView(leaf, this.store, this.settings, () => this.saveSettings())
@@ -4106,6 +4366,7 @@ var BelkiPlugin = class extends import_obsidian8.Plugin {
         }
       })
     );
+    void this.initializeStore();
   }
   async loadSettings() {
     const saved = toSettingsData(await this.loadData());
@@ -4190,6 +4451,18 @@ var BelkiPlugin = class extends import_obsidian8.Plugin {
   async refreshIfTaskFile(file) {
     if (this.store.isTaskStorageFile(file.path)) {
       await this.reloadTasks();
+    }
+  }
+  async initializeStore() {
+    try {
+      await this.store.load();
+    } catch (error) {
+      new import_obsidian8.Notice("belki could not initialize task storage. Open the developer console for details.");
+      console.error("[belki] Failed to initialize task storage.", {
+        dataFolderPath: this.settings.dataFolderPath,
+        tasksFilePath: this.settings.tasksFilePath,
+        error
+      });
     }
   }
 };
