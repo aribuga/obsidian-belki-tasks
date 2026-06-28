@@ -1,4 +1,4 @@
-import { Platform, setIcon } from "obsidian";
+import { App, Platform, setIcon } from "obsidian";
 import { CreateTaskInput, PRIORITIES, Priority, RepeatRule } from "../types";
 import { getLabelColor, getProjectColor } from "../colors";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
@@ -6,8 +6,10 @@ import { getPriorityColor, getPriorityLabel } from "../priority";
 import { normalizeTaskProject, uniqueRealProjects } from "../projects";
 import { addDaysIso, formatDueDateChip, nextWeekdayIso, todayIso } from "../dateUtils";
 import { getRepeatLabel, getRepeatPresets, repeatRulesEqual } from "../repeatUtils";
+import { CustomRepeatModal } from "./CustomRepeatModal";
 
 interface ComposerOptions {
+  app: App;
   projects: string[];
   labels: string[];
   labelColors: Record<string, string>;
@@ -635,10 +637,20 @@ export class AddTaskComposer {
             renderRepeatChip();
           });
         }
-        datePopover.createEl("button", {
-          cls: "belki-date-preset is-disabled",
+        const customRepeatBtn = datePopover.createEl("button", {
+          cls: "belki-date-preset",
           text: "Custom...",
-          attr: { type: "button", disabled: "true" }
+          attr: { type: "button" }
+        });
+        customRepeatBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          closeDueDatePopover();
+          clearOutsideListener();
+          new CustomRepeatModal(options.app, selectedRepeat, (rule) => {
+            selectedRepeat = rule;
+            renderDueDateButton();
+            renderRepeatChip();
+          }).open();
         });
       }
 

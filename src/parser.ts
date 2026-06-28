@@ -17,7 +17,8 @@ const KNOWN_PROPERTIES = new Set([
   "labels",
   "tags",
   "attachments",
-  "repeat"
+  "repeat",
+  "completedoccurrences"
 ]);
 
 export function parseTasks(markdown: string): BelkiTask[] {
@@ -74,6 +75,7 @@ export function parseTaskDocument(markdown: string): ParsedTaskDocument {
       labels: parseLabels(properties.labels || properties.tags),
       attachments: parseAttachments(properties.attachments),
       repeat: parseRepeat(properties.repeat),
+      completedOccurrences: parseCompletedOccurrences(properties["completedoccurrences"]),
       extraProperties,
       order
     });
@@ -146,6 +148,12 @@ function parseAttachments(value: string | undefined): string[] {
       return wikiLink ? wikiLink[1].trim() : attachment;
     })
     .filter(Boolean);
+}
+
+function parseCompletedOccurrences(value: string | undefined): string[] | undefined {
+  if (!value) return undefined;
+  const dates = value.split(",").map((s) => s.trim()).filter(Boolean);
+  return dates.length > 0 ? dates : undefined;
 }
 
 function cleanValue(value: string): string {

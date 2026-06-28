@@ -22,12 +22,19 @@ export type BelkiFontOption =
   | "dmSans";
 
 export type RepeatFrequency = "daily" | "weekly" | "weekdays" | "monthly" | "yearly";
+export type RepeatMode = "scheduledDate" | "completedDate";
+export type RepeatEndsType = "never" | "onDate" | "afterOccurrences";
 
 export interface RepeatRule {
   frequency: RepeatFrequency;
+  interval: number;
+  mode: RepeatMode;
   weekday?: number;
   dayOfMonth?: number;
   month?: number;
+  ends: RepeatEndsType;
+  endsDate?: string;
+  endsCount?: number;
 }
 
 export interface BelkiTask {
@@ -44,6 +51,7 @@ export interface BelkiTask {
   labels: string[];
   attachments: string[];
   repeat?: RepeatRule;
+  completedOccurrences?: string[];
   extraProperties: TaskProperty[];
   order: number;
   sourcePath?: string;

@@ -1,7 +1,8 @@
 import { App, normalizePath, Notice, TAbstractFile, TFile, TFolder } from "obsidian";
-import { todayIso } from "./dateUtils";
+import { formatDueDateChip, todayIso } from "./dateUtils";
 import { parseTaskDocument } from "./parser";
 import { serializeTaskDocument } from "./serializer";
+import { isRepeatEnded, nextOccurrence } from "./repeatUtils";
 import { BelkiSettings, normalizeDataFolderPath } from "./settings";
 import { BelkiTask, CreateTaskInput, ParsedTaskDocument, TaskPatch } from "./types";
 import { dedupeLabels } from "./labels";
@@ -201,6 +202,31 @@ export class TaskStore {
   async toggleComplete(id: string): Promise<void> {
     const task = this.tasks.find((candidate) => candidate.id === id);
     if (!task) {
+      return;
+    }
+
+    // Recurring task: advance due date instead of marking completed
+    if (task.repeat && !task.completed) {
+      const today = todayIso();
+      const fromDate = task.repeat.mode === "completedDate" ? today : (task.due || today);
+      const nextDue = nextOccurrence(task.repeat, fromDate);
+      const occurrences = [...(task.completedOccurrences || []), today];
+
+      if (isRepeatEnded(task.repeat, occurrences.length, nextDue)) {
+        // Repeat is done — mark as normally completed
+        await this.updateTask(id, {
+          completedOccurrences: occurrences,
+          repeat: undefined,
+          completed: true,
+          completedDate: today
+        });
+      } else {
+        await this.updateTask(id, {
+          completedOccurrences: occurrences,
+          due: nextDue
+        });
+        new Notice(`Recurring task rescheduled to ${formatDueDateChip(nextDue)}`);
+      }
       return;
     }
 

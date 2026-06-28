@@ -2,6 +2,7 @@ import { App, Modal, Platform, TFile, setIcon } from "obsidian";
 import { getLabelColor, getProjectColor } from "../colors";
 import { addDaysIso, formatDueDateChip, nextWeekdayIso, todayIso } from "../dateUtils";
 import { getRepeatLabel, getRepeatPresets, repeatRulesEqual } from "../repeatUtils";
+import { CustomRepeatModal } from "./CustomRepeatModal";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
 import { applyBelkiFontSettings, BelkiSettings } from "../settings";
 import { TaskStore } from "../taskStore";
@@ -153,6 +154,28 @@ export class TaskDetailModal extends Modal {
       });
 
     const footerActions = footer.createDiv({ cls: "belki-detail-actions" });
+
+    if (this.draft.repeat && !this.draft.completed) {
+      footerActions
+        .createEl("button", {
+          cls: "belki-button belki-button-danger",
+          text: "Complete permanently",
+          attr: { type: "button" }
+        })
+        .addEventListener("click", () => {
+          void (async () => {
+            await this.options.store.updateTask(this.draft.id, {
+              repeat: undefined,
+              completedOccurrences: this.draft.completedOccurrences,
+              completed: true,
+              completedDate: todayIso()
+            });
+            this.options.onChange();
+            this.close();
+          })();
+        });
+    }
+
     footerActions
       .createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } })
       .addEventListener("click", () => this.close());
@@ -632,10 +655,18 @@ export class TaskDetailModal extends Modal {
             renderPicker();
           });
         }
-        popover.createEl("button", {
-          cls: "belki-date-preset is-disabled",
+        const customRepeatBtn = popover.createEl("button", {
+          cls: "belki-date-preset",
           text: "Custom...",
-          attr: { type: "button", disabled: "true" }
+          attr: { type: "button" }
+        });
+        customRepeatBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          closePopover();
+          new CustomRepeatModal(this.app, this.draft.repeat, (rule) => {
+            this.draft.repeat = rule;
+            renderPicker();
+          }).open();
         });
       }
 

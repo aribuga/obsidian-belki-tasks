@@ -334,7 +334,7 @@ export class TaskBoardView extends ItemView {
       nav,
       "Completed",
       "completed",
-      tasks.filter((task) => task.completed).length,
+      tasks.filter((task) => task.completed || (task.completedOccurrences && task.completedOccurrences.length > 0)).length,
       "completed"
     );
   }
@@ -404,6 +404,7 @@ export class TaskBoardView extends ItemView {
     if (this.composerOpen) {
       const composer = new AddTaskComposer();
       composer.render(addArea, {
+        app: this.app,
         projects: this.getActiveProjects(),
         labels: this.getAllLabels(),
         labelColors: this.settings.labelColors,
@@ -1134,6 +1135,12 @@ export class TaskBoardView extends ItemView {
         text: `📎 ${task.attachments.length}`
       });
     }
+    if (!task.completed && task.completedOccurrences && task.completedOccurrences.length > 0) {
+      const last = task.completedOccurrences[task.completedOccurrences.length - 1];
+      const lastSpan = meta.createSpan({ cls: "belki-task-last-completed" });
+      setIcon(lastSpan.createSpan({ cls: "belki-chip-icon" }), "check");
+      lastSpan.createSpan({ text: formatDueChip(last) });
+    }
 
     const project = normalizeTaskProject(task.project);
     if (project) {
@@ -1195,7 +1202,10 @@ export class TaskBoardView extends ItemView {
     }
 
     if (this.mode === "completed") {
-      return this.sortTasks(tasks.filter((task) => task.completed && !archivedSet.has(normalizeTaskProject(task.project) || "")));
+      return this.sortTasks(tasks.filter((task) =>
+        !archivedSet.has(normalizeTaskProject(task.project) || "") &&
+        (task.completed || (task.completedOccurrences && task.completedOccurrences.length > 0))
+      ));
     }
 
     if (this.mode === "projects") {

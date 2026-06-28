@@ -15,7 +15,8 @@ const KNOWN_PROPERTIES = new Set([
   "labels",
   "tags",
   "attachments",
-  "repeat"
+  "repeat",
+  "completedoccurrences"
 ]);
 
 export function serializeTasks(tasks: BelkiTask[]): string {
@@ -90,6 +91,10 @@ function serializeTaskLines(task: BelkiTask): string[] {
 
   if (task.repeat) {
     lines.push(`  repeat:: ${serializeRepeat(task.repeat)}`);
+  }
+
+  if (task.completedOccurrences && task.completedOccurrences.length > 0) {
+    lines.push(`  completedOccurrences:: ${task.completedOccurrences.join(", ")}`);
   }
 
   const project = normalizeTaskProject(task.project);
