@@ -1,6 +1,6 @@
 import { App, Modal, Platform, TFile, setIcon } from "obsidian";
 import { getLabelColor, getProjectColor } from "../colors";
-import { todayIso } from "../dateUtils";
+import { addDaysIso, formatDueDateChip, nextWeekdayIso, todayIso } from "../dateUtils";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
 import { applyBelkiFontSettings, BelkiSettings } from "../settings";
 import { TaskStore } from "../taskStore";
@@ -177,7 +177,7 @@ export class TaskDetailModal extends Modal {
   private renderSidePanel(parent: HTMLElement): void {
     parent.createEl("h3", { text: "Task details" });
     this.renderProject(parent);
-    this.renderDate(parent, "Date", "due");
+    this.renderDueDatePicker(parent);
     this.renderDate(parent, "Deadline", "deadline");
     this.renderPriority(parent);
     this.renderLabels(parent);
@@ -528,6 +528,99 @@ export class TaskDetailModal extends Modal {
 
     renderOptions();
     updateProjectStyle();
+  }
+
+  private renderDueDatePicker(parent: HTMLElement): void {
+    const field = this.createField(parent, "Date");
+    const wrap = field.createDiv({ cls: "belki-date-picker-wrap belki-date-picker-inline" });
+
+    let detachOutside: (() => void) | undefined;
+
+    const closePopover = () => {
+      wrap.querySelector(".belki-date-popover-inline")?.addClass("is-hidden");
+      detachOutside?.();
+      detachOutside = undefined;
+    };
+
+    const renderPicker = () => {
+      wrap.empty();
+      const hasDate = Boolean(this.draft.due);
+
+      const btnRow = wrap.createDiv({ cls: "belki-date-btn-row" });
+      const btn = btnRow.createEl("button", {
+        cls: `belki-detail-date-btn${hasDate ? " is-active" : ""}`,
+        attr: { type: "button" }
+      });
+      const iconSpan = btn.createSpan({ cls: "belki-chip-icon" });
+      setIcon(iconSpan, "calendar");
+      btn.createSpan({ text: formatDueDateChip(this.draft.due) });
+
+      if (hasDate) {
+        const clearBtn = btnRow.createEl("button", {
+          cls: "belki-date-chip-clear",
+          attr: { type: "button", "aria-label": "Clear date" }
+        });
+        clearBtn.setText("×");
+        clearBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.draft.due = undefined;
+          closePopover();
+          renderPicker();
+        });
+      }
+
+      const popover = wrap.createDiv({ cls: "belki-date-popover belki-date-popover-inline is-hidden" });
+
+      const selectDate = (value: string) => {
+        this.draft.due = value || undefined;
+        closePopover();
+        renderPicker();
+      };
+
+      const addPreset = (label: string, value: string) => {
+        const presetBtn = popover.createEl("button", {
+          cls: "belki-date-preset",
+          text: label,
+          attr: { type: "button" }
+        });
+        presetBtn.toggleClass("is-active", value === this.draft.due);
+        presetBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectDate(value);
+        });
+      };
+
+      addPreset("Today", todayIso());
+      addPreset("Tomorrow", addDaysIso(1));
+      addPreset("Next week", addDaysIso(7));
+      addPreset("Next weekend", nextWeekdayIso(6));
+
+      const customInput = popover.createEl("input", {
+        cls: "belki-date-custom-input",
+        attr: { type: "date" }
+      });
+      if (this.draft.due) customInput.value = this.draft.due;
+      customInput.addEventListener("change", () => {
+        if (customInput.value) selectDate(customInput.value);
+      });
+
+      btn.addEventListener("click", () => {
+        const isHidden = popover.hasClass("is-hidden");
+        closePopover();
+        if (isHidden) {
+          popover.removeClass("is-hidden");
+          const onOutside = (e: MouseEvent) => {
+            if (!wrap.contains(e.target as Node)) {
+              closePopover();
+            }
+          };
+          document.addEventListener("click", onOutside, { capture: true });
+          detachOutside = () => document.removeEventListener("click", onOutside, { capture: true });
+        }
+      });
+    };
+
+    renderPicker();
   }
 
   private renderDate(parent: HTMLElement, label: string, key: "due" | "deadline"): void {

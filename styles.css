@@ -1033,6 +1033,7 @@ button.belki-add-inline {
   color: var(--belki-accent);
 }
 
+.belki-date-chip.is-active,
 .belki-date-chip.is-selected {
   background: var(--belki-hover);
   border-color: var(--belki-text);
@@ -1040,10 +1041,134 @@ button.belki-add-inline {
   font-weight: 650;
 }
 
-.belki-date-chip.is-selected .belki-chip-label::before {
-  content: "✓";
-  display: inline-block;
-  margin-right: 5px;
+.belki-date-picker-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+
+.belki-date-chip-clear {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--belki-muted);
+  cursor: pointer;
+  display: flex;
+  font-size: 14px;
+  height: 20px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  width: 20px;
+}
+
+.belki-date-chip-clear:hover {
+  background: var(--belki-hover);
+  color: var(--belki-text);
+}
+
+.belki-date-popover {
+  background: var(--belki-chip-bg);
+  border: 1px solid var(--belki-border);
+  border-radius: 10px;
+  display: grid;
+  gap: 6px;
+  left: 0;
+  max-width: 240px;
+  min-width: min(200px, calc(100vw - 24px));
+  padding: 8px;
+  position: absolute;
+  top: calc(100% + 8px);
+  z-index: 1000;
+}
+
+.belki-date-popover.is-hidden {
+  display: none;
+}
+
+.belki-date-preset {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--belki-border);
+  border-radius: 6px;
+  color: var(--belki-muted);
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  height: 32px;
+  padding: 0 10px;
+  text-align: left;
+  width: 100%;
+}
+
+.belki-date-preset:hover {
+  background: var(--belki-hover);
+  color: var(--belki-text);
+}
+
+.belki-date-preset.is-active {
+  background: var(--belki-hover);
+  border-color: var(--belki-text);
+  color: var(--belki-text);
+  font-weight: 600;
+}
+
+.belki-date-custom-input {
+  background: var(--belki-surface);
+  border: 1px solid var(--belki-border);
+  border-radius: 6px;
+  color: var(--belki-text);
+  font-size: 13px;
+  height: 32px;
+  padding: 0 8px;
+  width: 100%;
+}
+
+.belki-date-picker-inline {
+  display: block;
+}
+
+.belki-date-btn-row {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.belki-date-popover-inline {
+  margin-top: 8px;
+  max-width: 100%;
+  position: static;
+  width: 100%;
+}
+
+.belki-date-popover-inline.is-hidden {
+  display: none;
+}
+
+.belki-detail-date-btn {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--belki-border);
+  border-radius: 6px;
+  color: var(--belki-muted);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13px;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+}
+
+.belki-detail-date-btn.is-active {
+  border-color: var(--belki-text);
+  color: var(--belki-text);
+  font-weight: 600;
+}
+
+.belki-detail-date-btn:hover {
+  background: var(--belki-hover);
 }
 
 .belki-chip-select-wrap {

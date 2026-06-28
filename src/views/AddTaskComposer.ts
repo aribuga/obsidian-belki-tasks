@@ -4,6 +4,7 @@ import { getLabelColor, getProjectColor } from "../colors";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
 import { getPriorityColor, getPriorityLabel } from "../priority";
 import { normalizeTaskProject, uniqueRealProjects } from "../projects";
+import { addDaysIso, formatDueDateChip, nextWeekdayIso, todayIso } from "../dateUtils";
 
 interface ComposerOptions {
   projects: string[];
@@ -45,66 +46,7 @@ export class AddTaskComposer {
     });
 
     const chipRow = form.createDiv({ cls: "belki-composer-chip-row" });
-    const dueButtons: HTMLButtonElement[] = [];
-    let customDateButton: HTMLButtonElement | undefined;
-
-    const customDateInput = chipRow.createEl("input", {
-      cls: "belki-custom-date-input is-hidden",
-      attr: {
-        type: "date",
-        value: selectedDue
-      }
-    });
-
-    const updateDueButtons = () => {
-      for (const button of dueButtons) {
-        const selected = button.dataset.due === selectedDue;
-        button.toggleClass("is-active", selected);
-        button.toggleClass("is-selected", selected);
-        button.setAttr("aria-pressed", String(selected));
-      }
-      const customSelected = Boolean(
-        selectedDue && !dueButtons.some((button) => button.dataset.due === selectedDue)
-      );
-      customDateButton?.toggleClass("is-active", customSelected);
-      customDateButton?.toggleClass("is-selected", customSelected);
-      customDateButton?.setAttr("aria-pressed", String(customSelected));
-    };
-
-    const setDue = (value: string) => {
-      selectedDue = value;
-      customDateInput.value = value;
-      customDateInput.addClass("is-hidden");
-      updateDueButtons();
-    };
-
-    const addDueButton = (
-      label: string,
-      value: string,
-      icon: string
-    ): HTMLButtonElement => {
-      const button = createChipButton(chipRow, label, icon);
-      button.addClass("belki-date-chip");
-      button.dataset.due = value;
-      button.addEventListener("click", () => setDue(value));
-      dueButtons.push(button);
-      return button;
-    };
-
-    addDueButton("Today", todayIso(), "calendar");
-    addDueButton("Tomorrow", addDaysIso(1), "calendar-plus");
-    addDueButton("No Date", "", "calendar-x");
-
-    customDateButton = createChipButton(chipRow, "Custom date", "calendar-clock");
-    customDateButton.addClass("belki-date-chip");
-    customDateButton.addEventListener("click", () => {
-      customDateInput.removeClass("is-hidden");
-      customDateInput.focus();
-    });
-    customDateInput.addEventListener("change", () => {
-      selectedDue = customDateInput.value;
-      updateDueButtons();
-    });
+    const dueDateWrap = chipRow.createDiv({ cls: "belki-date-picker-wrap" });
 
     const priorityWrap = chipRow.createDiv({ cls: "belki-chip-select-wrap" });
     createIcon(priorityWrap, "flag");
@@ -217,6 +159,7 @@ export class AddTaskComposer {
 
     let detachOutsideListener = () => undefined;
     let closeProjectMenu = () => undefined;
+    let closeDueDatePopover: () => void = () => undefined;
 
     const clearOutsideListener = () => {
       detachOutsideListener();
@@ -236,6 +179,7 @@ export class AddTaskComposer {
       closeMenu();
       closePanels();
       closeProjectMenu();
+      closeDueDatePopover();
       clearOutsideListener();
     };
 
@@ -529,7 +473,8 @@ export class AddTaskComposer {
       !menu.hasClass("is-hidden") ||
       !labelsPanel.hasClass("is-hidden") ||
       !deadlinePanel.hasClass("is-hidden") ||
-      !projectMenu.hasClass("is-hidden");
+      !projectMenu.hasClass("is-hidden") ||
+      Boolean(dueDateWrap.querySelector(".belki-date-popover:not(.is-hidden)"));
 
     projectPicker.addEventListener("click", (event) => {
       event.preventDefault();
@@ -593,7 +538,79 @@ export class AddTaskComposer {
       })();
     });
 
-    updateDueButtons();
+    const renderDueDateButton = () => {
+      dueDateWrap.empty();
+      const hasDate = Boolean(selectedDue);
+      const dueDateButton = dueDateWrap.createEl("button", {
+        cls: `belki-chip-button belki-date-chip${hasDate ? " is-active is-selected" : ""}`,
+        attr: { type: "button", "aria-label": "Set due date" }
+      });
+      const iconSpan = dueDateButton.createSpan({ cls: "belki-chip-icon" });
+      setIcon(iconSpan, "calendar");
+      dueDateButton.createSpan({ cls: "belki-chip-label", text: formatDueDateChip(selectedDue) });
+
+      if (hasDate) {
+        const clearBtn = dueDateWrap.createEl("button", {
+          cls: "belki-date-chip-clear",
+          text: "×",
+          attr: { type: "button", "aria-label": "Clear due date" }
+        });
+        clearBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectedDue = "";
+          closeDueDatePopover();
+          renderDueDateButton();
+        });
+      }
+
+      const datePopover = dueDateWrap.createDiv({ cls: "belki-composer-popover belki-date-popover is-hidden" });
+      closeDueDatePopover = () => datePopover.addClass("is-hidden");
+
+      const selectDate = (value: string) => {
+        selectedDue = value;
+        closeDueDatePopover();
+        clearOutsideListener();
+        renderDueDateButton();
+      };
+
+      const addPreset = (label: string, value: string) => {
+        const btn = datePopover.createEl("button", {
+          cls: "belki-date-preset",
+          text: label,
+          attr: { type: "button" }
+        });
+        btn.toggleClass("is-active", value === selectedDue);
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectDate(value);
+        });
+      };
+
+      addPreset("Today", todayIso());
+      addPreset("Tomorrow", addDaysIso(1));
+      addPreset("Next week", addDaysIso(7));
+      addPreset("Next weekend", nextWeekdayIso(6));
+
+      const customInput = datePopover.createEl("input", {
+        cls: "belki-date-custom-input",
+        attr: { type: "date" }
+      });
+      if (selectedDue) customInput.value = selectedDue;
+      customInput.addEventListener("change", () => {
+        if (customInput.value) selectDate(customInput.value);
+      });
+
+      dueDateButton.addEventListener("click", () => {
+        const shouldOpen = datePopover.hasClass("is-hidden");
+        closeComposerPopovers();
+        if (shouldOpen) {
+          datePopover.removeClass("is-hidden");
+          watchLocalPopover(dueDateWrap, datePopover, { preferredSide: mobilePanelSide });
+        }
+      });
+    };
+
+    renderDueDateButton();
   }
 
   focus(): void {
@@ -712,15 +729,3 @@ function isImageFile(file: File): boolean {
   return file.type.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
 }
 
-function todayIso(): string {
-  return addDaysIso(0);
-}
-
-function addDaysIso(offset: number): string {
-  const date = new Date();
-  date.setDate(date.getDate() + offset);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}

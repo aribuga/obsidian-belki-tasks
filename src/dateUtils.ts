@@ -48,6 +48,30 @@ export function isAfterToday(value: string | undefined): boolean {
   return isIsoDate(value) && value > todayIso();
 }
 
+export function nextWeekdayIso(targetDay: number): string {
+  const today = new Date();
+  const current = today.getDay();
+  let daysUntil = targetDay - current;
+  if (daysUntil <= 0) daysUntil += 7;
+  const date = new Date();
+  date.setDate(date.getDate() + daysUntil);
+  return toIsoDate(date);
+}
+
+export function formatDueDateChip(value: string | undefined): string {
+  if (!isIsoDate(value)) return "Date";
+  if (value === todayIso()) return "Today";
+  if (value === addDaysIso(1)) return "Tomorrow";
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  const thisYear = new Date().getFullYear();
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    ...(year !== thisYear ? { year: "numeric" } : {})
+  }).format(date);
+}
+
 export function formatDateLabel(value: string): string {
   if (!isIsoDate(value)) {
     return value;
