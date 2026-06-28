@@ -612,9 +612,53 @@ export class TaskBoardView extends ItemView {
       return;
     }
 
+    if (this.mode === "completed") {
+      this.renderCompletedView(parent, allTasks);
+      return;
+    }
+
     const visible = this.getVisibleTasks(allTasks);
     const section = this.createSection(parent, this.getTitle(), visible.length);
     this.renderTaskList(section, visible);
+  }
+
+  private renderCompletedView(parent: HTMLElement, allTasks: BelkiTask[]): void {
+    const archivedSet = new Set(this.settings.archivedProjects);
+    const completed = allTasks.filter((task) =>
+      !archivedSet.has(normalizeTaskProject(task.project) || "") &&
+      task.completed
+    );
+
+    if (completed.length === 0) {
+      this.renderEmptySection(parent, "No completed tasks yet.");
+      return;
+    }
+
+    const groups = new Map<string, BelkiTask[]>();
+    const noDate: BelkiTask[] = [];
+
+    for (const task of completed) {
+      const date = task.completedDate;
+      if (date) {
+        if (!groups.has(date)) groups.set(date, []);
+        groups.get(date)!.push(task);
+      } else {
+        noDate.push(task);
+      }
+    }
+
+    const sortedDates = [...groups.keys()].sort((a, b) => b.localeCompare(a));
+
+    for (const date of sortedDates) {
+      const tasks = groups.get(date)!;
+      const section = this.createSection(parent, formatCompletedHeader(date), tasks.length);
+      this.renderTaskList(section, tasks);
+    }
+
+    if (noDate.length > 0) {
+      const section = this.createSection(parent, "Earlier", noDate.length);
+      this.renderTaskList(section, noDate);
+    }
   }
 
   private renderFiltersAndLabels(parent: HTMLElement, allTasks: BelkiTask[]): void {
@@ -1965,6 +2009,14 @@ function formatGroupHeader(value: string): string {
   }
 
   return `${day} - ${weekday}`;
+}
+
+function formatCompletedHeader(date: string): string {
+  if (date === todayIso()) return "Today";
+  if (date === yesterdayIso()) return "Yesterday";
+  const parsed = parseIsoDate(date);
+  if (!parsed) return date;
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long" }).format(parsed);
 }
 
 function formatShortDate(value: string): string {
