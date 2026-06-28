@@ -3402,6 +3402,10 @@ var TaskDetailModal = class extends import_obsidian7.Modal {
         const ri = repeatChip.createSpan({ cls: "belki-chip-icon" });
         (0, import_obsidian7.setIcon)(ri, "repeat");
         repeatChip.createSpan({ text: getRepeatLabel(this.draft.repeat) });
+        repeatChip.addEventListener("click", (e) => {
+          e.stopPropagation();
+          btn.click();
+        });
         const clearRepeat = repeatRow.createEl("button", {
           cls: "belki-date-chip-clear",
           text: "\xD7",
