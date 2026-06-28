@@ -8,6 +8,7 @@ import { BelkiTask, PRIORITIES, Priority } from "../types";
 import { ImagePreviewModal } from "./ImagePreviewModal";
 import { getPriorityColor, getPriorityLabel } from "../priority";
 import { normalizeTaskProject, uniqueRealProjects } from "../projects";
+import { renderLinkedText } from "./TaskBoardView";
 
 interface TaskDetailModalOptions {
   task: BelkiTask;
@@ -96,13 +97,40 @@ export class TaskDetailModal extends Modal {
       this.draft.title = titleInput.value;
     });
 
+    const descRendered = main.createDiv({ cls: "belki-detail-description-rendered" });
+    const refreshRendered = (): void => {
+      descRendered.empty();
+      if (this.draft.description) {
+        renderLinkedText(this.draft.description, descRendered);
+        descRendered.removeClass("is-empty");
+      } else {
+        descRendered.addClass("is-empty");
+      }
+    };
+    refreshRendered();
+
     const descriptionInput = main.createEl("textarea", {
       cls: "belki-detail-description",
       attr: { placeholder: "Description" }
     });
     descriptionInput.value = this.draft.description || "";
+    descriptionInput.style.display = "none";
+
+    descRendered.addEventListener("click", (e) => {
+      if ((e.target as HTMLElement).tagName === "A") return;
+      descRendered.style.display = "none";
+      descriptionInput.style.display = "";
+      descriptionInput.focus();
+    });
+
     descriptionInput.addEventListener("input", () => {
       this.draft.description = descriptionInput.value;
+    });
+
+    descriptionInput.addEventListener("blur", () => {
+      refreshRendered();
+      descriptionInput.style.display = "none";
+      descRendered.style.display = "";
     });
 
     this.renderAttachments(main);

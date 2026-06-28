@@ -18,6 +18,8 @@
   --belki-font-task-title: var(--belki-font-ui);
   --belki-font-task-description: var(--belki-font-ui);
   --belki-font-label: var(--belki-font-ui);
+  --belki-mobile-safe-top: 24px;
+  --belki-mobile-safe-top: max(24px, env(safe-area-inset-top, 0px));
   color: var(--belki-text);
   font-family: var(--belki-font-ui);
   height: 100%;
@@ -1263,7 +1265,8 @@ button.belki-add-inline {
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
   display: grid;
   gap: 0;
-  left: 0;
+  left: auto;
+  right: 0;
   max-height: min(320px, calc(100vh - 48px));
   max-width: min(280px, calc(100vw - 36px));
   min-width: min(220px, calc(100vw - 24px));
@@ -1331,6 +1334,110 @@ button.belki-add-inline {
   margin: 5px 4px 2px;
   padding: 6px 4px 1px;
   text-transform: uppercase;
+}
+
+.belki-project-actions-wrap {
+  margin-left: auto;
+  position: relative;
+}
+
+.belki-project-actions-button {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  box-shadow: none;
+  color: var(--belki-muted);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 16px;
+  height: 28px;
+  justify-content: center;
+  padding: 0 8px;
+}
+
+.belki-project-actions-button:hover {
+  background: var(--belki-hover);
+  color: var(--belki-text);
+}
+
+.belki-project-option.is-destructive {
+  color: var(--color-red, #e05252);
+}
+
+.belki-project-option.is-destructive:hover {
+  background: color-mix(in srgb, var(--color-red, #e05252) 10%, transparent);
+}
+
+.belki-archived-badge {
+  background: var(--belki-hover);
+  border-radius: 4px;
+  color: var(--belki-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  text-transform: uppercase;
+}
+
+.belki-restore-button {
+  font-size: 12px;
+  height: 26px;
+  padding: 0 10px;
+}
+
+.belki-archived-button {
+  color: var(--belki-muted);
+  font-style: italic;
+}
+
+.belki-label-prompt-input {
+  border: 1px solid var(--belki-border);
+  border-radius: 6px;
+  box-shadow: none;
+  color: var(--belki-text);
+  font: inherit;
+  font-size: 14px;
+  height: 36px;
+  margin-bottom: 16px;
+  outline: none;
+  padding: 0 10px;
+  width: 100%;
+}
+
+.belki-label-prompt-input:focus {
+  border-color: var(--belki-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--belki-accent) 20%, transparent);
+}
+
+.belki-label-prompt-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.belki-modal-error {
+  color: var(--color-red, #e05252);
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.belki-modal-desc {
+  color: var(--belki-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.belki-button-destructive {
+  background: var(--color-red, #e05252);
+  color: #fff;
+}
+
+.belki-button-destructive:hover {
+  background: color-mix(in srgb, var(--color-red, #e05252) 85%, black);
 }
 
 .belki-detail-project-create {
@@ -1788,6 +1895,30 @@ button.belki-search-result.is-selected {
   outline: none;
   resize: vertical;
   width: 100%;
+}
+
+.belki-detail-description-rendered {
+  color: var(--belki-text);
+  cursor: text;
+  font-family: var(--belki-font-task-description);
+  font-size: 14px;
+  line-height: 1.5;
+  margin-top: 18px;
+  min-height: 180px;
+  white-space: pre-wrap;
+  width: 100%;
+  word-break: break-word;
+}
+
+.belki-detail-description-rendered.is-empty::before {
+  color: var(--belki-muted);
+  content: "Description";
+  pointer-events: none;
+}
+
+.belki-detail-description-rendered a.external-link {
+  color: var(--link-color, var(--interactive-accent));
+  text-decoration: underline;
 }
 
 .belki-detail-field {
@@ -2298,7 +2429,7 @@ button.belki-search-result.is-selected {
     min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
-    padding: calc(8px + env(safe-area-inset-top, 0px)) 10px 8px;
+    padding: calc(8px + var(--belki-mobile-safe-top)) 10px 8px;
     scrollbar-width: none;
     white-space: nowrap;
     -webkit-overflow-scrolling: touch;
@@ -2451,7 +2582,8 @@ button.belki-search-result.is-selected {
   .belki-deadline-input,
   .belki-detail-input,
   .belki-detail-title,
-  .belki-detail-description {
+  .belki-detail-description,
+  .belki-detail-description-rendered {
     font-size: 16px;
   }
 
@@ -2498,7 +2630,7 @@ button.belki-search-result.is-selected {
   .belki-composer-popover,
   .belki-label-input {
     scroll-margin-bottom: calc(260px + env(safe-area-inset-bottom, 0px));
-    scroll-margin-top: calc(72px + env(safe-area-inset-top, 0px));
+    scroll-margin-top: calc(72px + var(--belki-mobile-safe-top));
   }
 
   .belki-search-backdrop {
@@ -2544,7 +2676,7 @@ button.belki-search-result.is-selected {
     flex: 0 0 auto;
     gap: 8px;
     min-height: 52px;
-    padding: calc(8px + env(safe-area-inset-top, 0px)) 14px 8px;
+    padding: calc(8px + var(--belki-mobile-safe-top)) 14px 8px;
   }
 
   .belki-detail-shell {
@@ -2596,7 +2728,8 @@ button.belki-search-result.is-selected {
     padding-right: 4px;
   }
 
-  .belki-detail-description {
+  .belki-detail-description,
+  .belki-detail-description-rendered {
     min-height: 120px;
   }
 
@@ -2676,7 +2809,7 @@ button.belki-search-result.is-selected {
   gap: 8px;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: calc(8px + env(safe-area-inset-top, 0px)) 10px 8px;
+  padding: calc(8px + var(--belki-mobile-safe-top)) 10px 8px;
   scrollbar-width: none;
   white-space: nowrap;
   -webkit-overflow-scrolling: touch;
@@ -2754,7 +2887,7 @@ button.belki-search-result.is-selected {
   flex: 0 0 auto;
   gap: 8px;
   min-height: 52px;
-  padding: calc(8px + env(safe-area-inset-top, 0px)) 14px 8px;
+  padding: calc(8px + var(--belki-mobile-safe-top)) 14px 8px;
 }
 
 :where(.is-mobile, .mod-mobile) .belki-detail-shell {

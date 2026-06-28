@@ -29,6 +29,32 @@ import {
 
 export const VIEW_TYPE_BELKI = "belki-task-board";
 
+const LINK_RE = /(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s<>"')\]]+)|(www\.[a-zA-Z0-9][^\s<>"')\]]*)/g;
+
+export function renderLinkedText(text: string, el: HTMLElement): void {
+  LINK_RE.lastIndex = 0;
+  let last = 0;
+  let match: RegExpExecArray | null;
+  while ((match = LINK_RE.exec(text)) !== null) {
+    if (match.index > last) el.appendText(text.slice(last, match.index));
+    if (match[1]) {
+      const a = el.createEl("a", { text: match[2], href: match[3], cls: "external-link" });
+      a.setAttribute("rel", "noopener noreferrer");
+      last = match.index + match[1].length;
+    } else {
+      const full = match[0];
+      const url = full.replace(/[.,;:!?)\]]+$/, "");
+      const trailing = full.slice(url.length);
+      const href = url.startsWith("www.") ? `https://${url}` : url;
+      const a = el.createEl("a", { text: url, href, cls: "external-link" });
+      a.setAttribute("rel", "noopener noreferrer");
+      if (trailing) el.appendText(trailing);
+      last = match.index + full.length;
+    }
+  }
+  if (last < text.length) el.appendText(text.slice(last));
+}
+
 const SORT_OPTIONS: Array<{ mode: BelkiSortMode; label: string }> = [
   { mode: "smart", label: "Smart" },
   { mode: "due", label: "Due date" },
@@ -51,9 +77,17 @@ export class TaskBoardView extends ItemView {
   private activeLabel: string | null = null;
   private draggedTaskId: string | null = null;
   private sortPopoverOpen = false;
+  private projectActionsOpen: string | null = null;
   private sidebarScrollLeft = 0;
   private handleRootKeyDown = (event: KeyboardEvent): void => {
     if (event.key !== "Escape") {
+      return;
+    }
+
+    if (this.projectActionsOpen !== null) {
+      this.stopEscape(event);
+      this.projectActionsOpen = null;
+      this.render();
       return;
     }
 
@@ -144,6 +178,7 @@ export class TaskBoardView extends ItemView {
     this.searchQuery = "";
     this.composerOpen = false;
     this.sortPopoverOpen = false;
+    this.projectActionsOpen = null;
     this.render();
   }
 
@@ -243,13 +278,16 @@ export class TaskBoardView extends ItemView {
     const projectsSection = sidebar.createDiv({ cls: "belki-sidebar-section" });
     projectsSection.createDiv({ cls: "belki-sidebar-heading", text: "Projects" });
 
+    const archivedSet = new Set(this.settings.archivedProjects);
+    const activeTasks = active.filter((task) => !archivedSet.has(normalizeTaskProject(task.project) || ""));
+
     for (const project of this.store.getProjects()) {
       const cleanProject = normalizeTaskProject(project);
-      if (!cleanProject) {
+      if (!cleanProject || archivedSet.has(cleanProject)) {
         continue;
       }
 
-      const count = active.filter((task) => normalizeTaskProject(task.project) === cleanProject).length;
+      const count = activeTasks.filter((task) => normalizeTaskProject(task.project) === cleanProject).length;
       const button = projectsSection.createEl("button", {
         cls: "belki-project-button"
       });
@@ -271,6 +309,22 @@ export class TaskBoardView extends ItemView {
       button.addEventListener("click", () => {
         this.mode = "projects";
         this.selectedProject = cleanProject;
+        this.composerOpen = false;
+        this.render();
+      });
+    }
+
+    if (this.settings.archivedProjects.length > 0) {
+      const archiveButton = projectsSection.createEl("button", {
+        cls: "belki-project-button belki-archived-button"
+      });
+      archiveButton.toggleClass("is-active", this.mode === "archived");
+      archiveButton.createSpan({ cls: "belki-project-dot" });
+      archiveButton.createEl("span", { cls: "belki-nav-label", text: "Archived" });
+      archiveButton.createEl("span", { cls: "belki-count", text: String(this.settings.archivedProjects.length) });
+      archiveButton.addEventListener("click", () => {
+        this.mode = "archived";
+        this.selectedProject = null;
         this.composerOpen = false;
         this.render();
       });
@@ -350,7 +404,7 @@ export class TaskBoardView extends ItemView {
     if (this.composerOpen) {
       const composer = new AddTaskComposer();
       composer.render(addArea, {
-        projects: this.store.getProjects(),
+        projects: this.getActiveProjects(),
         labels: this.getAllLabels(),
         labelColors: this.settings.labelColors,
         projectColors: this.settings.projectColors,
@@ -485,13 +539,14 @@ export class TaskBoardView extends ItemView {
     }
 
     if (this.mode === "projects") {
+      const archivedSet = new Set(this.settings.archivedProjects);
       const projects = this.selectedProject
         ? [this.selectedProject]
         : uniqueRealProjects([
           this.settings.defaultProject,
           ...this.store.getProjects(),
           ...Object.keys(this.settings.projectColors)
-        ]);
+        ]).filter((p) => !archivedSet.has(p));
 
       if (projects.length === 0) {
         this.renderEmptySection(parent, "No projects yet.");
@@ -502,10 +557,17 @@ export class TaskBoardView extends ItemView {
         const projectTasks = this.sortTasks(
           active.filter((task) => normalizeTaskProject(task.project) === project)
         );
-        const section = this.createSection(parent, project, projectTasks.length);
+        const section = this.createSection(parent, project, projectTasks.length, (header) => {
+          this.renderProjectActionsButton(header, project);
+        });
         this.enableProjectDrop(section, project);
         this.renderTaskList(section, projectTasks);
       }
+      return;
+    }
+
+    if (this.mode === "archived") {
+      this.renderArchivedProjectsView(parent, allTasks);
       return;
     }
 
@@ -622,6 +684,113 @@ export class TaskBoardView extends ItemView {
     header.createSpan({ cls: "belki-section-count", text: String(count) });
     renderHeaderAction?.(header);
     return section;
+  }
+
+  private getActiveProjects(): string[] {
+    const archivedSet = new Set(this.settings.archivedProjects);
+    return uniqueRealProjects([
+      this.settings.defaultProject,
+      ...this.store.getProjects(),
+      ...Object.keys(this.settings.projectColors)
+    ]).filter((p) => !archivedSet.has(p));
+  }
+
+  private renderProjectActionsButton(header: HTMLElement, project: string): void {
+    const wrapper = header.createDiv({ cls: "belki-project-actions-wrap" });
+    const button = wrapper.createEl("button", {
+      cls: "belki-project-actions-button",
+      attr: { type: "button", "aria-label": "Project actions" }
+    });
+    button.createSpan({ text: "…" });
+
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.projectActionsOpen = this.projectActionsOpen === project ? null : project;
+      this.render();
+    });
+
+    if (this.projectActionsOpen !== project) return;
+
+    const menu = wrapper.createDiv({ cls: "belki-project-menu is-open-down" });
+
+    const renameItem = menu.createEl("button", { cls: "belki-project-option", text: "Rename project", attr: { type: "button" } });
+    renameItem.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.projectActionsOpen = null;
+      new RenameProjectModal(this.app, project, this.getActiveProjects(), async (newName) => {
+        await this.store.renameProject(project, newName);
+        if (this.selectedProject === project) this.selectedProject = newName;
+        const colorOverride = this.settings.projectColors[project];
+        if (colorOverride) {
+          this.settings.projectColors[newName] = colorOverride;
+          delete this.settings.projectColors[project];
+        }
+        await this.saveSettings();
+        this.render();
+      }).open();
+    });
+
+    const archiveItem = menu.createEl("button", { cls: "belki-project-option", text: "Archive project", attr: { type: "button" } });
+    archiveItem.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.projectActionsOpen = null;
+      this.settings.archivedProjects = [...this.settings.archivedProjects, project];
+      if (this.selectedProject === project) {
+        this.selectedProject = null;
+        this.mode = "projects";
+      }
+      void this.saveSettings().then(() => this.render());
+    });
+
+    const deleteItem = menu.createEl("button", { cls: "belki-project-option is-destructive", text: "Delete project", attr: { type: "button" } });
+    deleteItem.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.projectActionsOpen = null;
+      const taskCount = this.store.getTasks().filter(
+        (task) => normalizeTaskProject(task.project) === project
+      ).length;
+      new DeleteProjectModal(this.app, project, taskCount, async () => {
+        await this.store.deleteProject(project);
+        delete this.settings.projectColors[project];
+        if (this.selectedProject === project) {
+          this.selectedProject = null;
+          this.mode = "projects";
+        }
+        await this.saveSettings();
+        this.render();
+      }).open();
+    });
+  }
+
+  private renderArchivedProjectsView(parent: HTMLElement, allTasks: BelkiTask[]): void {
+    const archivedProjects = this.settings.archivedProjects;
+
+    if (archivedProjects.length === 0) {
+      this.renderEmptySection(parent, "No archived projects.");
+      return;
+    }
+
+    for (const project of archivedProjects) {
+      const projectTasks = allTasks.filter(
+        (task) => normalizeTaskProject(task.project) === project
+      );
+      const section = this.createSection(parent, project, projectTasks.length, (header) => {
+        const badge = header.createSpan({ cls: "belki-archived-badge", text: "Archived" });
+        badge.setCssStyles({ marginLeft: "auto" });
+        const restoreBtn = header.createEl("button", {
+          cls: "belki-button belki-restore-button",
+          text: "Restore",
+          attr: { type: "button" }
+        });
+        restoreBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          this.settings.archivedProjects = this.settings.archivedProjects.filter((p) => p !== project);
+          void this.saveSettings().then(() => this.render());
+        });
+      });
+      this.renderTaskList(section, this.sortTasks(projectTasks));
+    }
   }
 
   private renderOverdueRangeSelect(parent: HTMLElement): void {
@@ -929,7 +1098,7 @@ export class TaskBoardView extends ItemView {
     content.createDiv({ cls: "belki-task-title", text: task.title });
 
     if (task.description) {
-      content.createDiv({ cls: "belki-task-description", text: task.description });
+      renderLinkedText(task.description, content.createDiv({ cls: "belki-task-description" }));
     }
 
     const meta = content.createDiv({ cls: "belki-task-meta" });
@@ -1004,7 +1173,10 @@ export class TaskBoardView extends ItemView {
   }
 
   private getVisibleTasks(tasks: BelkiTask[]): BelkiTask[] {
-    const active = tasks.filter((task) => !task.completed);
+    const archivedSet = new Set(this.settings.archivedProjects);
+    const active = tasks.filter(
+      (task) => !task.completed && !archivedSet.has(normalizeTaskProject(task.project) || "")
+    );
 
     if (this.mode === "inbox") {
       return this.getInboxTasks(active);
@@ -1019,7 +1191,7 @@ export class TaskBoardView extends ItemView {
     }
 
     if (this.mode === "completed") {
-      return this.sortTasks(tasks.filter((task) => task.completed));
+      return this.sortTasks(tasks.filter((task) => task.completed && !archivedSet.has(normalizeTaskProject(task.project) || "")));
     }
 
     if (this.mode === "projects") {
@@ -1027,6 +1199,10 @@ export class TaskBoardView extends ItemView {
         ? active.filter((task) => normalizeTaskProject(task.project) === this.selectedProject)
         : active.filter((task) => Boolean(normalizeTaskProject(task.project)))
       );
+    }
+
+    if (this.mode === "archived") {
+      return [];
     }
 
     if (this.mode === "filters") {
@@ -1150,6 +1326,9 @@ export class TaskBoardView extends ItemView {
     }
     if (this.mode === "completed") {
       return "Completed";
+    }
+    if (this.mode === "archived") {
+      return "Archived projects";
     }
     if (this.mode === "filters") {
       if (this.activeFilter) {
@@ -1337,7 +1516,7 @@ export class TaskBoardView extends ItemView {
         result.toggleClass("is-selected", index === selectedIndex);
         result.createDiv({ cls: "belki-search-title", text: task.title });
         if (task.description) {
-          result.createDiv({ cls: "belki-search-description", text: task.description });
+          renderLinkedText(task.description, result.createDiv({ cls: "belki-search-description" }));
         }
         const meta = result.createDiv({ cls: "belki-search-meta" });
         meta.createSpan({ text: projectDisplayName(task.project) });
@@ -1438,6 +1617,101 @@ export class TaskBoardView extends ItemView {
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
+  }
+}
+
+class RenameProjectModal extends Modal {
+  constructor(
+    app: App,
+    private currentName: string,
+    private existingProjects: string[],
+    private onSubmit: (newName: string) => Promise<void>
+  ) {
+    super(app);
+  }
+
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("belki-project-rename-modal");
+    contentEl.createEl("h2", { text: "Rename project" });
+
+    const input = contentEl.createEl("input", {
+      cls: "belki-label-prompt-input",
+      attr: { type: "text", value: this.currentName }
+    });
+    input.select();
+
+    let errorEl: HTMLElement | null = null;
+
+    const showError = (msg: string) => {
+      if (!errorEl) {
+        errorEl = contentEl.createDiv({ cls: "belki-modal-error" });
+        actions.before(errorEl);
+      }
+      errorEl.setText(msg);
+    };
+
+    const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
+    actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } })
+      .addEventListener("click", () => this.close());
+
+    const submitButton = actions.createEl("button", {
+      cls: "belki-button belki-button-primary",
+      text: "Rename",
+      attr: { type: "button" }
+    });
+
+    const submit = () => {
+      const newName = input.value.trim();
+      if (!newName) { showError("Project name cannot be empty."); return; }
+      if (newName === this.currentName) { this.close(); return; }
+      if (this.existingProjects.some((p) => p.toLowerCase() === newName.toLowerCase())) {
+        showError("A project with that name already exists.");
+        return;
+      }
+      void this.onSubmit(newName).then(() => this.close());
+    };
+
+    submitButton.addEventListener("click", submit);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") { event.preventDefault(); submit(); }
+    });
+    input.focus();
+  }
+}
+
+class DeleteProjectModal extends Modal {
+  constructor(
+    app: App,
+    private projectName: string,
+    private taskCount: number,
+    private onConfirm: () => Promise<void>
+  ) {
+    super(app);
+  }
+
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("belki-project-delete-modal");
+    contentEl.createEl("h2", { text: `Delete "${this.projectName}"?` });
+
+    const desc = this.taskCount > 0
+      ? `This will delete the project only. ${this.taskCount} task${this.taskCount === 1 ? "" : "s"} will be moved to Inbox. Tasks will not be deleted.`
+      : "This will delete the project. It has no tasks.";
+    contentEl.createEl("p", { text: desc, cls: "belki-modal-desc" });
+
+    const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
+    actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } })
+      .addEventListener("click", () => this.close());
+    actions.createEl("button", {
+      cls: "belki-button belki-button-destructive",
+      text: "Delete project",
+      attr: { type: "button" }
+    }).addEventListener("click", () => {
+      void this.onConfirm().then(() => this.close());
+    });
   }
 }
 
