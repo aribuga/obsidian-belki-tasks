@@ -4926,6 +4926,14 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
           borderColor: labelColor.light,
           backgroundColor: labelColor.light
         });
+        chip.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.mode = "filters";
+          this.activeLabel = label;
+          this.activeFilter = null;
+          this.selectedProject = null;
+          this.render();
+        });
       }
     }
     if (task.attachments.length > 0) {

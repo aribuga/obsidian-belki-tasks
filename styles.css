@@ -648,13 +648,22 @@
 }
 
 .belki-task-label {
+  appearance: none;
+  background: transparent;
   border: 1px solid var(--belki-border);
   border-radius: 999px;
+  box-shadow: none;
   color: var(--belki-muted);
+  cursor: pointer;
   font-family: var(--belki-font-label);
   font-size: 12px;
   line-height: 1.2;
   padding: 1px 6px;
+  transition: opacity 0.1s;
+}
+
+.belki-task-label:hover {
+  opacity: 0.75;
 }
 
 .belki-task-attachments {
