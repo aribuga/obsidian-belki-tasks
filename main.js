@@ -192,6 +192,7 @@ var DEFAULT_SETTINGS = {
   projectColors: {},
   labelColors: {},
   labelRegistry: [],
+  archivedProjects: [],
   sortMode: "smart",
   defaultOverdueRange: "last7",
   uiFont: "system",
@@ -1255,6 +1256,26 @@ var TaskStore = class {
     const sourcePath = task.sourcePath || this.monthlyPathForDate(task.created || todayIso());
     this.tasks = this.tasks.filter((candidate) => candidate.id !== id).map((candidate, index) => ({ ...candidate, order: index }));
     await this.saveSources([sourcePath]);
+  }
+  async renameProject(oldName, newName) {
+    const changedSources = /* @__PURE__ */ new Set();
+    this.tasks = this.tasks.map((task) => {
+      if (normalizeTaskProject(task.project) !== oldName) return task;
+      const sourcePath = task.sourcePath || this.monthlyPathForDate(task.created || todayIso());
+      changedSources.add(sourcePath);
+      return { ...task, project: newName, sourcePath };
+    });
+    await this.saveSources([...changedSources]);
+  }
+  async deleteProject(name) {
+    const changedSources = /* @__PURE__ */ new Set();
+    this.tasks = this.tasks.map((task) => {
+      if (normalizeTaskProject(task.project) !== name) return task;
+      const sourcePath = task.sourcePath || this.monthlyPathForDate(task.created || todayIso());
+      changedSources.add(sourcePath);
+      return { ...task, project: void 0, sourcePath };
+    });
+    await this.saveSources([...changedSources]);
   }
   async rescheduleOverdueToToday() {
     const today = todayIso();
@@ -2382,13 +2403,36 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
     titleInput.addEventListener("input", () => {
       this.draft.title = titleInput.value;
     });
+    const descRendered = main.createDiv({ cls: "belki-detail-description-rendered" });
+    const refreshRendered = () => {
+      descRendered.empty();
+      if (this.draft.description) {
+        renderLinkedText(this.draft.description, descRendered);
+        descRendered.removeClass("is-empty");
+      } else {
+        descRendered.addClass("is-empty");
+      }
+    };
+    refreshRendered();
     const descriptionInput = main.createEl("textarea", {
       cls: "belki-detail-description",
       attr: { placeholder: "Description" }
     });
     descriptionInput.value = this.draft.description || "";
+    descriptionInput.style.display = "none";
+    descRendered.addEventListener("click", (e) => {
+      if (e.target.tagName === "A") return;
+      descRendered.style.display = "none";
+      descriptionInput.style.display = "";
+      descriptionInput.focus();
+    });
     descriptionInput.addEventListener("input", () => {
       this.draft.description = descriptionInput.value;
+    });
+    descriptionInput.addEventListener("blur", () => {
+      refreshRendered();
+      descriptionInput.style.display = "none";
+      descRendered.style.display = "";
     });
     this.renderAttachments(main);
     this.renderSidePanel(side);
@@ -2907,6 +2951,30 @@ function isImagePath(path) {
 
 // src/views/TaskBoardView.ts
 var VIEW_TYPE_BELKI = "belki-task-board";
+var LINK_RE = /(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s<>"')\]]+)|(www\.[a-zA-Z0-9][^\s<>"')\]]*)/g;
+function renderLinkedText(text, el) {
+  LINK_RE.lastIndex = 0;
+  let last = 0;
+  let match;
+  while ((match = LINK_RE.exec(text)) !== null) {
+    if (match.index > last) el.appendText(text.slice(last, match.index));
+    if (match[1]) {
+      const a = el.createEl("a", { text: match[2], href: match[3], cls: "external-link" });
+      a.setAttribute("rel", "noopener noreferrer");
+      last = match.index + match[1].length;
+    } else {
+      const full = match[0];
+      const url = full.replace(/[.,;:!?)\]]+$/, "");
+      const trailing = full.slice(url.length);
+      const href = url.startsWith("www.") ? `https://${url}` : url;
+      const a = el.createEl("a", { text: url, href, cls: "external-link" });
+      a.setAttribute("rel", "noopener noreferrer");
+      if (trailing) el.appendText(trailing);
+      last = match.index + full.length;
+    }
+  }
+  if (last < text.length) el.appendText(text.slice(last));
+}
 var SORT_OPTIONS = [
   { mode: "smart", label: "Smart" },
   { mode: "due", label: "Due date" },
@@ -2932,9 +3000,16 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     this.activeLabel = null;
     this.draggedTaskId = null;
     this.sortPopoverOpen = false;
+    this.projectActionsOpen = null;
     this.sidebarScrollLeft = 0;
     this.handleRootKeyDown = (event) => {
       if (event.key !== "Escape") {
+        return;
+      }
+      if (this.projectActionsOpen !== null) {
+        this.stopEscape(event);
+        this.projectActionsOpen = null;
+        this.render();
         return;
       }
       const openPopover = this.containerEl.querySelector(
@@ -3005,6 +3080,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     this.searchQuery = "";
     this.composerOpen = false;
     this.sortPopoverOpen = false;
+    this.projectActionsOpen = null;
     this.render();
   }
   render() {
@@ -3083,12 +3159,14 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     this.renderNavButton(nav, "Projects", "projects", void 0, "projects");
     const projectsSection = sidebar.createDiv({ cls: "belki-sidebar-section" });
     projectsSection.createDiv({ cls: "belki-sidebar-heading", text: "Projects" });
+    const archivedSet = new Set(this.settings.archivedProjects);
+    const activeTasks = active.filter((task) => !archivedSet.has(normalizeTaskProject(task.project) || ""));
     for (const project of this.store.getProjects()) {
       const cleanProject = normalizeTaskProject(project);
-      if (!cleanProject) {
+      if (!cleanProject || archivedSet.has(cleanProject)) {
         continue;
       }
-      const count = active.filter((task) => normalizeTaskProject(task.project) === cleanProject).length;
+      const count = activeTasks.filter((task) => normalizeTaskProject(task.project) === cleanProject).length;
       const button = projectsSection.createEl("button", {
         cls: "belki-project-button"
       });
@@ -3108,6 +3186,21 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
       button.addEventListener("click", () => {
         this.mode = "projects";
         this.selectedProject = cleanProject;
+        this.composerOpen = false;
+        this.render();
+      });
+    }
+    if (this.settings.archivedProjects.length > 0) {
+      const archiveButton = projectsSection.createEl("button", {
+        cls: "belki-project-button belki-archived-button"
+      });
+      archiveButton.toggleClass("is-active", this.mode === "archived");
+      archiveButton.createSpan({ cls: "belki-project-dot" });
+      archiveButton.createEl("span", { cls: "belki-nav-label", text: "Archived" });
+      archiveButton.createEl("span", { cls: "belki-count", text: String(this.settings.archivedProjects.length) });
+      archiveButton.addEventListener("click", () => {
+        this.mode = "archived";
+        this.selectedProject = null;
         this.composerOpen = false;
         this.render();
       });
@@ -3166,7 +3259,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     if (this.composerOpen) {
       const composer = new AddTaskComposer();
       composer.render(addArea, {
-        projects: this.store.getProjects(),
+        projects: this.getActiveProjects(),
         labels: this.getAllLabels(),
         labelColors: this.settings.labelColors,
         projectColors: this.settings.projectColors,
@@ -3287,11 +3380,12 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
       return;
     }
     if (this.mode === "projects") {
+      const archivedSet = new Set(this.settings.archivedProjects);
       const projects = this.selectedProject ? [this.selectedProject] : uniqueRealProjects([
         this.settings.defaultProject,
         ...this.store.getProjects(),
         ...Object.keys(this.settings.projectColors)
-      ]);
+      ]).filter((p) => !archivedSet.has(p));
       if (projects.length === 0) {
         this.renderEmptySection(parent, "No projects yet.");
         return;
@@ -3300,10 +3394,16 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
         const projectTasks = this.sortTasks(
           active.filter((task) => normalizeTaskProject(task.project) === project)
         );
-        const section2 = this.createSection(parent, project, projectTasks.length);
+        const section2 = this.createSection(parent, project, projectTasks.length, (header) => {
+          this.renderProjectActionsButton(header, project);
+        });
         this.enableProjectDrop(section2, project);
         this.renderTaskList(section2, projectTasks);
       }
+      return;
+    }
+    if (this.mode === "archived") {
+      this.renderArchivedProjectsView(parent, allTasks);
       return;
     }
     if (this.mode === "filters") {
@@ -3393,6 +3493,102 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     header.createSpan({ cls: "belki-section-count", text: String(count) });
     renderHeaderAction == null ? void 0 : renderHeaderAction(header);
     return section;
+  }
+  getActiveProjects() {
+    const archivedSet = new Set(this.settings.archivedProjects);
+    return uniqueRealProjects([
+      this.settings.defaultProject,
+      ...this.store.getProjects(),
+      ...Object.keys(this.settings.projectColors)
+    ]).filter((p) => !archivedSet.has(p));
+  }
+  renderProjectActionsButton(header, project) {
+    const wrapper = header.createDiv({ cls: "belki-project-actions-wrap" });
+    const button = wrapper.createEl("button", {
+      cls: "belki-project-actions-button",
+      attr: { type: "button", "aria-label": "Project actions" }
+    });
+    button.createSpan({ text: "\u2026" });
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.projectActionsOpen = this.projectActionsOpen === project ? null : project;
+      this.render();
+    });
+    if (this.projectActionsOpen !== project) return;
+    const menu = wrapper.createDiv({ cls: "belki-project-menu is-open-down" });
+    const renameItem = menu.createEl("button", { cls: "belki-project-option", text: "Rename project", attr: { type: "button" } });
+    renameItem.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.projectActionsOpen = null;
+      new RenameProjectModal(this.app, project, this.getActiveProjects(), async (newName) => {
+        await this.store.renameProject(project, newName);
+        if (this.selectedProject === project) this.selectedProject = newName;
+        const colorOverride = this.settings.projectColors[project];
+        if (colorOverride) {
+          this.settings.projectColors[newName] = colorOverride;
+          delete this.settings.projectColors[project];
+        }
+        await this.saveSettings();
+        this.render();
+      }).open();
+    });
+    const archiveItem = menu.createEl("button", { cls: "belki-project-option", text: "Archive project", attr: { type: "button" } });
+    archiveItem.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.projectActionsOpen = null;
+      this.settings.archivedProjects = [...this.settings.archivedProjects, project];
+      if (this.selectedProject === project) {
+        this.selectedProject = null;
+        this.mode = "projects";
+      }
+      void this.saveSettings().then(() => this.render());
+    });
+    const deleteItem = menu.createEl("button", { cls: "belki-project-option is-destructive", text: "Delete project", attr: { type: "button" } });
+    deleteItem.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.projectActionsOpen = null;
+      const taskCount = this.store.getTasks().filter(
+        (task) => normalizeTaskProject(task.project) === project
+      ).length;
+      new DeleteProjectModal(this.app, project, taskCount, async () => {
+        await this.store.deleteProject(project);
+        delete this.settings.projectColors[project];
+        if (this.selectedProject === project) {
+          this.selectedProject = null;
+          this.mode = "projects";
+        }
+        await this.saveSettings();
+        this.render();
+      }).open();
+    });
+  }
+  renderArchivedProjectsView(parent, allTasks) {
+    const archivedProjects = this.settings.archivedProjects;
+    if (archivedProjects.length === 0) {
+      this.renderEmptySection(parent, "No archived projects.");
+      return;
+    }
+    for (const project of archivedProjects) {
+      const projectTasks = allTasks.filter(
+        (task) => normalizeTaskProject(task.project) === project
+      );
+      const section = this.createSection(parent, project, projectTasks.length, (header) => {
+        const badge = header.createSpan({ cls: "belki-archived-badge", text: "Archived" });
+        badge.setCssStyles({ marginLeft: "auto" });
+        const restoreBtn = header.createEl("button", {
+          cls: "belki-button belki-restore-button",
+          text: "Restore",
+          attr: { type: "button" }
+        });
+        restoreBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          this.settings.archivedProjects = this.settings.archivedProjects.filter((p) => p !== project);
+          void this.saveSettings().then(() => this.render());
+        });
+      });
+      this.renderTaskList(section, this.sortTasks(projectTasks));
+    }
   }
   renderOverdueRangeSelect(parent) {
     const select = parent.createEl("select", {
@@ -3650,7 +3846,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     const content = row.createDiv({ cls: "belki-task-content" });
     content.createDiv({ cls: "belki-task-title", text: task.title });
     if (task.description) {
-      content.createDiv({ cls: "belki-task-description", text: task.description });
+      renderLinkedText(task.description, content.createDiv({ cls: "belki-task-description" }));
     }
     const meta = content.createDiv({ cls: "belki-task-meta" });
     if (task.due) {
@@ -3716,7 +3912,10 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     }).open();
   }
   getVisibleTasks(tasks) {
-    const active = tasks.filter((task) => !task.completed);
+    const archivedSet = new Set(this.settings.archivedProjects);
+    const active = tasks.filter(
+      (task) => !task.completed && !archivedSet.has(normalizeTaskProject(task.project) || "")
+    );
     if (this.mode === "inbox") {
       return this.getInboxTasks(active);
     }
@@ -3727,12 +3926,15 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
       return this.getUpcomingTasks(active);
     }
     if (this.mode === "completed") {
-      return this.sortTasks(tasks.filter((task) => task.completed));
+      return this.sortTasks(tasks.filter((task) => task.completed && !archivedSet.has(normalizeTaskProject(task.project) || "")));
     }
     if (this.mode === "projects") {
       return this.sortTasks(
         this.selectedProject ? active.filter((task) => normalizeTaskProject(task.project) === this.selectedProject) : active.filter((task) => Boolean(normalizeTaskProject(task.project)))
       );
+    }
+    if (this.mode === "archived") {
+      return [];
     }
     if (this.mode === "filters") {
       if (this.activeFilter) {
@@ -3827,6 +4029,9 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     }
     if (this.mode === "completed") {
       return "Completed";
+    }
+    if (this.mode === "archived") {
+      return "Archived projects";
     }
     if (this.mode === "filters") {
       if (this.activeFilter) {
@@ -3990,7 +4195,7 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
         result.toggleClass("is-selected", index === selectedIndex);
         result.createDiv({ cls: "belki-search-title", text: task.title });
         if (task.description) {
-          result.createDiv({ cls: "belki-search-description", text: task.description });
+          renderLinkedText(task.description, result.createDiv({ cls: "belki-search-description" }));
         }
         const meta = result.createDiv({ cls: "belki-search-meta" });
         meta.createSpan({ text: projectDisplayName(task.project) });
@@ -4080,6 +4285,89 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
+  }
+};
+var RenameProjectModal = class extends import_obsidian7.Modal {
+  constructor(app, currentName, existingProjects, onSubmit) {
+    super(app);
+    this.currentName = currentName;
+    this.existingProjects = existingProjects;
+    this.onSubmit = onSubmit;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("belki-project-rename-modal");
+    contentEl.createEl("h2", { text: "Rename project" });
+    const input = contentEl.createEl("input", {
+      cls: "belki-label-prompt-input",
+      attr: { type: "text", value: this.currentName }
+    });
+    input.select();
+    let errorEl = null;
+    const showError = (msg) => {
+      if (!errorEl) {
+        errorEl = contentEl.createDiv({ cls: "belki-modal-error" });
+        actions.before(errorEl);
+      }
+      errorEl.setText(msg);
+    };
+    const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
+    actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } }).addEventListener("click", () => this.close());
+    const submitButton = actions.createEl("button", {
+      cls: "belki-button belki-button-primary",
+      text: "Rename",
+      attr: { type: "button" }
+    });
+    const submit = () => {
+      const newName = input.value.trim();
+      if (!newName) {
+        showError("Project name cannot be empty.");
+        return;
+      }
+      if (newName === this.currentName) {
+        this.close();
+        return;
+      }
+      if (this.existingProjects.some((p) => p.toLowerCase() === newName.toLowerCase())) {
+        showError("A project with that name already exists.");
+        return;
+      }
+      void this.onSubmit(newName).then(() => this.close());
+    };
+    submitButton.addEventListener("click", submit);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        submit();
+      }
+    });
+    input.focus();
+  }
+};
+var DeleteProjectModal = class extends import_obsidian7.Modal {
+  constructor(app, projectName, taskCount, onConfirm) {
+    super(app);
+    this.projectName = projectName;
+    this.taskCount = taskCount;
+    this.onConfirm = onConfirm;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("belki-project-delete-modal");
+    contentEl.createEl("h2", { text: `Delete "${this.projectName}"?` });
+    const desc = this.taskCount > 0 ? `This will delete the project only. ${this.taskCount} task${this.taskCount === 1 ? "" : "s"} will be moved to Inbox. Tasks will not be deleted.` : "This will delete the project. It has no tasks.";
+    contentEl.createEl("p", { text: desc, cls: "belki-modal-desc" });
+    const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
+    actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } }).addEventListener("click", () => this.close());
+    actions.createEl("button", {
+      cls: "belki-button belki-button-destructive",
+      text: "Delete project",
+      attr: { type: "button" }
+    }).addEventListener("click", () => {
+      void this.onConfirm().then(() => this.close());
+    });
   }
 };
 var LabelPromptModal = class extends import_obsidian7.Modal {

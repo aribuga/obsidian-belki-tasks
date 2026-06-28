@@ -223,6 +223,28 @@ export class TaskStore {
     await this.saveSources([sourcePath]);
   }
 
+  async renameProject(oldName: string, newName: string): Promise<void> {
+    const changedSources = new Set<string>();
+    this.tasks = this.tasks.map((task) => {
+      if (normalizeTaskProject(task.project) !== oldName) return task;
+      const sourcePath = task.sourcePath || this.monthlyPathForDate(task.created || todayIso());
+      changedSources.add(sourcePath);
+      return { ...task, project: newName, sourcePath };
+    });
+    await this.saveSources([...changedSources]);
+  }
+
+  async deleteProject(name: string): Promise<void> {
+    const changedSources = new Set<string>();
+    this.tasks = this.tasks.map((task) => {
+      if (normalizeTaskProject(task.project) !== name) return task;
+      const sourcePath = task.sourcePath || this.monthlyPathForDate(task.created || todayIso());
+      changedSources.add(sourcePath);
+      return { ...task, project: undefined, sourcePath };
+    });
+    await this.saveSources([...changedSources]);
+  }
+
   async rescheduleOverdueToToday(): Promise<void> {
     const today = todayIso();
     const changedSources = new Set<string>();

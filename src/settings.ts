@@ -27,6 +27,7 @@ export interface BelkiSettings {
   taskTitleFont: BelkiFontOption;
   taskDescriptionFont: BelkiFontOption;
   labelFont: BelkiFontOption;
+  archivedProjects: string[];
 }
 
 export interface BelkiIconSettings {
@@ -55,6 +56,7 @@ export const DEFAULT_SETTINGS: BelkiSettings = {
   projectColors: {},
   labelColors: {},
   labelRegistry: [],
+  archivedProjects: [],
   sortMode: "smart",
   defaultOverdueRange: "last7",
   uiFont: "system",

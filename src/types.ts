@@ -80,7 +80,8 @@ export type BoardViewMode =
   | "projects"
   | "completed"
   | "search"
-  | "filters";
+  | "filters"
+  | "archived";
 
 export const PRIORITIES: Priority[] = ["none", "P1", "P2", "P3", "P4"];
 export const SORT_MODES: BelkiSortMode[] = [
