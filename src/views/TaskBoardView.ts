@@ -29,19 +29,41 @@ import {
 
 export const VIEW_TYPE_BELKI = "belki-task-board";
 
-const LINK_RE = /(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s<>"')\]]+)|(www\.[a-zA-Z0-9][^\s<>"')\]]*)/g;
+// Groups: 1=wikilink full, 2=note path, 3=heading, 4=alias | 5=md link full, 6=md text, 7=md url | 8=https url | 9=www url
+const LINK_RE = /(\[\[([^\]|#\n]+?)(?:#([^\]|\n]+?))?(?:\|([^\]\n]+?))?\]\])|(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s<>"')\]]+)|(www\.[a-zA-Z0-9][^\s<>"')\]]*)/g;
 
-export function renderLinkedText(text: string, el: HTMLElement): void {
+export function renderLinkedText(text: string, el: HTMLElement, app?: App): void {
   LINK_RE.lastIndex = 0;
   let last = 0;
   let match: RegExpExecArray | null;
   while ((match = LINK_RE.exec(text)) !== null) {
     if (match.index > last) el.appendText(text.slice(last, match.index));
     if (match[1]) {
-      const a = el.createEl("a", { text: match[2], href: match[3], cls: "external-link" });
-      a.setAttribute("rel", "noopener noreferrer");
+      // Wikilink [[Note#Heading|Alias]]
+      const notePath = match[2];
+      const heading = match[3];
+      const alias = match[4];
+      const displayText = alias || notePath.split("/").pop() || notePath;
+      const linkTarget = heading ? `${notePath}#${heading}` : notePath;
+      if (app) {
+        const a = el.createEl("a", { text: displayText, cls: "internal-link" });
+        a.setAttribute("data-href", linkTarget);
+        a.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          void app.workspace.openLinkText(linkTarget, "", false);
+        });
+      } else {
+        el.appendText(displayText);
+      }
       last = match.index + match[1].length;
+    } else if (match[5]) {
+      // Markdown link [text](url)
+      const a = el.createEl("a", { text: match[6], href: match[7], cls: "external-link" });
+      a.setAttribute("rel", "noopener noreferrer");
+      last = match.index + match[5].length;
     } else {
+      // Raw https:// or www. URL
       const full = match[0];
       const url = full.replace(/[.,;:!?)\]]+$/, "");
       const trailing = full.slice(url.length);
@@ -1099,10 +1121,10 @@ export class TaskBoardView extends ItemView {
     });
 
     const content = row.createDiv({ cls: "belki-task-content" });
-    content.createDiv({ cls: "belki-task-title", text: task.title });
+    renderLinkedText(task.title, content.createDiv({ cls: "belki-task-title" }), this.app);
 
     if (task.description) {
-      renderLinkedText(task.description, content.createDiv({ cls: "belki-task-description" }));
+      renderLinkedText(task.description, content.createDiv({ cls: "belki-task-description" }), this.app);
     }
 
     const meta = content.createDiv({ cls: "belki-task-meta" });
@@ -1533,7 +1555,7 @@ export class TaskBoardView extends ItemView {
         result.toggleClass("is-selected", index === selectedIndex);
         result.createDiv({ cls: "belki-search-title", text: task.title });
         if (task.description) {
-          renderLinkedText(task.description, result.createDiv({ cls: "belki-search-description" }));
+          renderLinkedText(task.description, result.createDiv({ cls: "belki-search-description" }), this.app);
         }
         const meta = result.createDiv({ cls: "belki-search-meta" });
         meta.createSpan({ text: projectDisplayName(task.project) });

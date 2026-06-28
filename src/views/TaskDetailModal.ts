@@ -103,7 +103,7 @@ export class TaskDetailModal extends Modal {
     const refreshRendered = (): void => {
       descRendered.empty();
       if (this.draft.description) {
-        renderLinkedText(this.draft.description, descRendered);
+        renderLinkedText(this.draft.description, descRendered, this.app);
         descRendered.removeClass("is-empty");
       } else {
         descRendered.addClass("is-empty");
