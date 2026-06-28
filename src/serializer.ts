@@ -1,6 +1,7 @@
 import { BelkiTask, ParsedTaskDocument } from "./types";
 import { dedupeLabels } from "./labels";
 import { normalizeTaskProject } from "./projects";
+import { serializeRepeat } from "./repeatUtils";
 
 const KNOWN_PROPERTIES = new Set([
   "id",
@@ -13,7 +14,8 @@ const KNOWN_PROPERTIES = new Set([
   "description",
   "labels",
   "tags",
-  "attachments"
+  "attachments",
+  "repeat"
 ]);
 
 export function serializeTasks(tasks: BelkiTask[]): string {
@@ -84,6 +86,10 @@ function serializeTaskLines(task: BelkiTask): string[] {
 
   if (task.deadline) {
     lines.push(`  deadline:: ${singleLine(task.deadline)}`);
+  }
+
+  if (task.repeat) {
+    lines.push(`  repeat:: ${serializeRepeat(task.repeat)}`);
   }
 
   const project = normalizeTaskProject(task.project);

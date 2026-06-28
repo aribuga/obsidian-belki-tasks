@@ -21,6 +21,15 @@ export type BelkiFontOption =
   | "geistMono"
   | "dmSans";
 
+export type RepeatFrequency = "daily" | "weekly" | "weekdays" | "monthly" | "yearly";
+
+export interface RepeatRule {
+  frequency: RepeatFrequency;
+  weekday?: number;
+  dayOfMonth?: number;
+  month?: number;
+}
+
 export interface BelkiTask {
   id: string;
   title: string;
@@ -34,6 +43,7 @@ export interface BelkiTask {
   description?: string;
   labels: string[];
   attachments: string[];
+  repeat?: RepeatRule;
   extraProperties: TaskProperty[];
   order: number;
   sourcePath?: string;
@@ -69,6 +79,7 @@ export interface CreateTaskInput {
   labels?: string[];
   attachments?: string[];
   pendingAttachments?: File[];
+  repeat?: RepeatRule;
 }
 
 export type TaskPatch = Partial<Omit<BelkiTask, "id" | "order">>;

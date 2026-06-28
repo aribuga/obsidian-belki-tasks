@@ -1103,10 +1103,14 @@ export class TaskBoardView extends ItemView {
 
     const meta = content.createDiv({ cls: "belki-task-meta" });
     if (task.due) {
-      meta.createSpan({
+      const dateSpan = meta.createSpan({
         cls: `belki-task-date${isBeforeToday(task.due) ? " is-overdue" : ""}`,
         text: formatDueChip(task.due)
       });
+      if (task.repeat) {
+        const ri = dateSpan.createSpan({ cls: "belki-task-repeat-icon" });
+        setIcon(ri, "repeat");
+      }
     }
     if (task.deadline) {
       meta.createSpan({

@@ -1,6 +1,7 @@
 import { BelkiTask, ParsedTaskDocument, Priority, PRIORITIES, TaskProperty } from "./types";
 import { dedupeLabels } from "./labels";
 import { normalizeTaskProject } from "./projects";
+import { parseRepeat } from "./repeatUtils";
 
 const TASK_LINE_PATTERN = /^- \[( |x|X)\] (.*)$/;
 const PROPERTY_PATTERN = /^\s{2,}([A-Za-z][A-Za-z0-9_-]*)::\s*(.*)$/;
@@ -15,7 +16,8 @@ const KNOWN_PROPERTIES = new Set([
   "description",
   "labels",
   "tags",
-  "attachments"
+  "attachments",
+  "repeat"
 ]);
 
 export function parseTasks(markdown: string): BelkiTask[] {
@@ -71,6 +73,7 @@ export function parseTaskDocument(markdown: string): ParsedTaskDocument {
       description: properties.description || undefined,
       labels: parseLabels(properties.labels || properties.tags),
       attachments: parseAttachments(properties.attachments),
+      repeat: parseRepeat(properties.repeat),
       extraProperties,
       order
     });

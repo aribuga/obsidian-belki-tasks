@@ -1,10 +1,11 @@
 import { Platform, setIcon } from "obsidian";
-import { CreateTaskInput, PRIORITIES, Priority } from "../types";
+import { CreateTaskInput, PRIORITIES, Priority, RepeatRule } from "../types";
 import { getLabelColor, getProjectColor } from "../colors";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
 import { getPriorityColor, getPriorityLabel } from "../priority";
 import { normalizeTaskProject, uniqueRealProjects } from "../projects";
 import { addDaysIso, formatDueDateChip, nextWeekdayIso, todayIso } from "../dateUtils";
+import { getRepeatLabel, getRepeatPresets, repeatRulesEqual } from "../repeatUtils";
 
 interface ComposerOptions {
   projects: string[];
@@ -26,6 +27,7 @@ export class AddTaskComposer {
   render(parent: HTMLElement, options: ComposerOptions): void {
     const form = parent.createEl("form", { cls: "belki-composer" });
     let selectedDue = options.defaultDue || "";
+    let selectedRepeat: RepeatRule | undefined;
     let selectedDeadline = "";
     let selectedLabels: string[] = [];
     let pendingAttachments: File[] = [];
@@ -47,6 +49,7 @@ export class AddTaskComposer {
 
     const chipRow = form.createDiv({ cls: "belki-composer-chip-row" });
     const dueDateWrap = chipRow.createDiv({ cls: "belki-date-picker-wrap" });
+    const repeatChipWrap = chipRow.createDiv({ cls: "belki-repeat-chip-wrap" });
 
     const priorityWrap = chipRow.createDiv({ cls: "belki-chip-select-wrap" });
     createIcon(priorityWrap, "flag");
@@ -530,7 +533,8 @@ export class AddTaskComposer {
             project: this.readProject(),
             priority: prioritySelect.value as Priority,
             labels: dedupeLabels(selectedLabels),
-            pendingAttachments
+            pendingAttachments,
+            repeat: selectedRepeat
           });
         } finally {
           addButton.removeAttribute("disabled");
@@ -558,8 +562,10 @@ export class AddTaskComposer {
         clearBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           selectedDue = "";
+          selectedRepeat = undefined;
           closeDueDatePopover();
           renderDueDateButton();
+          renderRepeatChip();
         });
       }
 
@@ -571,6 +577,7 @@ export class AddTaskComposer {
         closeDueDatePopover();
         clearOutsideListener();
         renderDueDateButton();
+        renderRepeatChip();
       };
 
       const addPreset = (label: string, value: string) => {
@@ -600,6 +607,41 @@ export class AddTaskComposer {
         if (customInput.value) selectDate(customInput.value);
       });
 
+      datePopover.createDiv({ cls: "belki-date-divider" });
+      const repeatHeader = datePopover.createDiv({ cls: "belki-repeat-header" });
+      const repeatIcon = repeatHeader.createSpan({ cls: "belki-chip-icon" });
+      setIcon(repeatIcon, "repeat");
+      repeatHeader.createSpan({ text: "Repeat" });
+
+      if (!selectedDue) {
+        datePopover.createEl("span", { cls: "belki-repeat-hint", text: "Select a date first." });
+      } else {
+        const presets = getRepeatPresets(selectedDue);
+        for (const preset of presets) {
+          const btn = datePopover.createEl("button", {
+            cls: "belki-date-preset",
+            attr: { type: "button" }
+          });
+          const ri = btn.createSpan({ cls: "belki-chip-icon" });
+          setIcon(ri, "repeat");
+          btn.createSpan({ text: preset.label });
+          btn.toggleClass("is-active", repeatRulesEqual(preset.rule, selectedRepeat));
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            selectedRepeat = repeatRulesEqual(preset.rule, selectedRepeat) ? undefined : preset.rule;
+            closeDueDatePopover();
+            clearOutsideListener();
+            renderDueDateButton();
+            renderRepeatChip();
+          });
+        }
+        datePopover.createEl("button", {
+          cls: "belki-date-preset is-disabled",
+          text: "Custom...",
+          attr: { type: "button", disabled: "true" }
+        });
+      }
+
       dueDateButton.addEventListener("click", () => {
         const shouldOpen = datePopover.hasClass("is-hidden");
         closeComposerPopovers();
@@ -610,7 +652,40 @@ export class AddTaskComposer {
       });
     };
 
+    const renderRepeatChip = () => {
+      repeatChipWrap.empty();
+      if (!selectedRepeat) return;
+      const chip = repeatChipWrap.createEl("button", {
+        cls: "belki-chip-button belki-repeat-chip is-active is-selected",
+        attr: { type: "button" }
+      });
+      const ri = chip.createSpan({ cls: "belki-chip-icon" });
+      setIcon(ri, "repeat");
+      chip.createSpan({ cls: "belki-chip-label", text: getRepeatLabel(selectedRepeat) });
+      chip.addEventListener("click", () => {
+        const shouldOpen = dueDateWrap.querySelector(".belki-date-popover:not(.is-hidden)") === null;
+        closeComposerPopovers();
+        if (shouldOpen) {
+          const popover = dueDateWrap.querySelector(".belki-date-popover") as HTMLElement | null;
+          popover?.removeClass("is-hidden");
+          if (popover) watchLocalPopover(dueDateWrap, popover, { preferredSide: mobilePanelSide });
+        }
+      });
+      const clearRepeat = repeatChipWrap.createEl("button", {
+        cls: "belki-date-chip-clear",
+        text: "×",
+        attr: { type: "button", "aria-label": "Clear repeat" }
+      });
+      clearRepeat.addEventListener("click", (e) => {
+        e.stopPropagation();
+        selectedRepeat = undefined;
+        renderRepeatChip();
+        renderDueDateButton();
+      });
+    };
+
     renderDueDateButton();
+    renderRepeatChip();
   }
 
   focus(): void {

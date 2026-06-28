@@ -1147,6 +1147,68 @@ button.belki-add-inline {
   display: none;
 }
 
+.belki-repeat-chip-wrap {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+}
+
+.belki-repeat-chip {
+  max-width: 180px;
+}
+
+.belki-date-divider {
+  border-top: 1px solid var(--belki-border);
+  margin: 2px 0;
+}
+
+.belki-repeat-header {
+  align-items: center;
+  color: var(--belki-muted);
+  display: flex;
+  font-size: 11px;
+  font-weight: 600;
+  gap: 4px;
+  letter-spacing: 0.04em;
+  padding: 2px 0;
+  text-transform: uppercase;
+}
+
+.belki-repeat-header .belki-chip-icon {
+  height: 12px;
+  width: 12px;
+}
+
+.belki-repeat-hint {
+  color: var(--belki-muted);
+  font-size: 12px;
+  padding: 2px 0;
+}
+
+.belki-date-preset.is-disabled {
+  color: var(--belki-muted);
+  cursor: default;
+  opacity: 0.5;
+}
+
+.belki-detail-repeat-row {
+  margin-top: 6px;
+}
+
+.belki-task-repeat-icon {
+  display: inline-flex;
+  height: 11px;
+  margin-left: 3px;
+  opacity: 0.7;
+  vertical-align: middle;
+  width: 11px;
+}
+
+.belki-task-repeat-icon svg {
+  height: 11px;
+  width: 11px;
+}
+
 .belki-detail-date-btn {
   align-items: center;
   background: transparent;

@@ -497,6 +497,125 @@ function isToday(value) {
 function isAfterToday(value) {
   return isIsoDate(value) && value > todayIso();
 }
+function nextWeekdayIso(targetDay) {
+  const today = /* @__PURE__ */ new Date();
+  const current = today.getDay();
+  let daysUntil = targetDay - current;
+  if (daysUntil <= 0) daysUntil += 7;
+  const date = /* @__PURE__ */ new Date();
+  date.setDate(date.getDate() + daysUntil);
+  return toIsoDate(date);
+}
+function formatDueDateChip(value) {
+  if (!isIsoDate(value)) return "Date";
+  if (value === todayIso()) return "Today";
+  if (value === addDaysIso(1)) return "Tomorrow";
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  const thisYear = (/* @__PURE__ */ new Date()).getFullYear();
+  return new Intl.DateTimeFormat(void 0, {
+    month: "short",
+    day: "numeric",
+    ...year !== thisYear ? { year: "numeric" } : {}
+  }).format(date);
+}
+
+// src/repeatUtils.ts
+var WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+var MONTH_NAMES = [
+  "",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December"
+];
+function ordinal(n) {
+  const v = n % 100;
+  const s = ["th", "st", "nd", "rd"];
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+function parseRepeat(value) {
+  if (!value) return void 0;
+  const parts = value.split("|");
+  const freq = parts[0];
+  switch (freq) {
+    case "daily":
+      return { frequency: "daily" };
+    case "weekdays":
+      return { frequency: "weekdays" };
+    case "weekly": {
+      const weekday = parseInt(parts[1]);
+      return { frequency: "weekly", weekday: isNaN(weekday) ? 1 : weekday };
+    }
+    case "monthly": {
+      const day = parseInt(parts[1]);
+      return { frequency: "monthly", dayOfMonth: isNaN(day) ? 1 : day };
+    }
+    case "yearly": {
+      const month = parseInt(parts[1]);
+      const day = parseInt(parts[2]);
+      return { frequency: "yearly", month: isNaN(month) ? 1 : month, dayOfMonth: isNaN(day) ? 1 : day };
+    }
+    default:
+      return void 0;
+  }
+}
+function serializeRepeat(rule) {
+  var _a, _b, _c, _d;
+  switch (rule.frequency) {
+    case "daily":
+      return "daily";
+    case "weekdays":
+      return "weekdays";
+    case "weekly":
+      return `weekly|${(_a = rule.weekday) != null ? _a : 1}`;
+    case "monthly":
+      return `monthly|${(_b = rule.dayOfMonth) != null ? _b : 1}`;
+    case "yearly":
+      return `yearly|${(_c = rule.month) != null ? _c : 1}|${(_d = rule.dayOfMonth) != null ? _d : 1}`;
+  }
+}
+function getRepeatLabel(rule) {
+  var _a, _b, _c, _d;
+  switch (rule.frequency) {
+    case "daily":
+      return "Every day";
+    case "weekdays":
+      return "Every weekday";
+    case "weekly":
+      return `Every ${WEEKDAY_NAMES[(_a = rule.weekday) != null ? _a : 1]}`;
+    case "monthly":
+      return `Monthly on the ${ordinal((_b = rule.dayOfMonth) != null ? _b : 1)}`;
+    case "yearly":
+      return `Yearly on ${MONTH_NAMES[(_c = rule.month) != null ? _c : 1]} ${(_d = rule.dayOfMonth) != null ? _d : 1}`;
+  }
+}
+function getRepeatPresets(due) {
+  if (!isIsoDate(due)) return [];
+  const [, month, day] = due.split("-").map(Number);
+  const date = new Date(parseInt(due.slice(0, 4)), month - 1, day);
+  const weekday = date.getDay();
+  return [
+    { label: "Every day", rule: { frequency: "daily" } },
+    { label: `Every ${WEEKDAY_NAMES[weekday]}`, rule: { frequency: "weekly", weekday } },
+    { label: "Every weekday (Mon \u2013 Fri)", rule: { frequency: "weekdays" } },
+    { label: `Monthly on the ${ordinal(day)}`, rule: { frequency: "monthly", dayOfMonth: day } },
+    { label: `Yearly on ${MONTH_NAMES[month]} ${day}`, rule: { frequency: "yearly", month, dayOfMonth: day } }
+  ];
+}
+function repeatRulesEqual(a, b) {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return serializeRepeat(a) === serializeRepeat(b);
+}
 
 // src/parser.ts
 var TASK_LINE_PATTERN = /^- \[( |x|X)\] (.*)$/;
@@ -512,7 +631,8 @@ var KNOWN_PROPERTIES = /* @__PURE__ */ new Set([
   "description",
   "labels",
   "tags",
-  "attachments"
+  "attachments",
+  "repeat"
 ]);
 function parseTaskDocument(markdown) {
   const lines = markdown === "" ? [] : markdown.split(/\r?\n/);
@@ -556,6 +676,7 @@ function parseTaskDocument(markdown) {
       description: properties.description || void 0,
       labels: parseLabels(properties.labels || properties.tags),
       attachments: parseAttachments(properties.attachments),
+      repeat: parseRepeat(properties.repeat),
       extraProperties,
       order
     });
@@ -624,14 +745,15 @@ var KNOWN_PROPERTIES2 = /* @__PURE__ */ new Set([
   "description",
   "labels",
   "tags",
-  "attachments"
+  "attachments",
+  "repeat"
 ]);
-function serializeTaskDocument(document, tasks) {
+function serializeTaskDocument(document2, tasks) {
   const orderedTasks = [...tasks].sort((a, b) => a.order - b.order);
   const tasksById = new Map(orderedTasks.map((task) => [task.id, task]));
   const serializedTaskIds = /* @__PURE__ */ new Set();
   const outputLines = [];
-  for (const block of document.blocks) {
+  for (const block of document2.blocks) {
     if (block.type === "raw") {
       outputLines.push(...block.lines);
       continue;
@@ -668,6 +790,9 @@ function serializeTaskLines(task) {
   }
   if (task.deadline) {
     lines.push(`  deadline:: ${singleLine(task.deadline)}`);
+  }
+  if (task.repeat) {
+    lines.push(`  repeat:: ${serializeRepeat(task.repeat)}`);
   }
   const project = normalizeTaskProject(task.project);
   if (project) {
@@ -1156,9 +1281,9 @@ var TaskStore = class {
     }
     for (const file of files.sort((a, b) => a.path.localeCompare(b.path))) {
       const content = await this.app.vault.read(file);
-      const document = parseTaskDocument(content);
-      nextDocuments.set(file.path, document);
-      for (const task of document.tasks) {
+      const document2 = parseTaskDocument(content);
+      nextDocuments.set(file.path, document2);
+      for (const task of document2.tasks) {
         nextTasks.push({
           ...task,
           created: task.created || todayIso(),
@@ -1207,6 +1332,7 @@ var TaskStore = class {
       description: normalizeOptional(input.description),
       labels: normalizeLabels(input.labels || []),
       attachments: normalizeAttachments(attachments),
+      repeat: input.repeat,
       extraProperties: [],
       order: this.nextOrder(),
       sourcePath
@@ -1385,9 +1511,9 @@ var TaskStore = class {
   async writeSources(sourcePaths) {
     for (const sourcePath of dedupeStrings(sourcePaths.filter(Boolean))) {
       await this.ensureSourceDocument(sourcePath);
-      const document = this.documents.get(sourcePath) || { blocks: [], tasks: [] };
+      const document2 = this.documents.get(sourcePath) || { blocks: [], tasks: [] };
       const tasks = this.tasks.filter((task) => task.sourcePath === sourcePath).map((task) => normalizeTaskForSave(task, sourcePath));
-      const content = serializeTaskDocument(document, tasks);
+      const content = serializeTaskDocument(document2, tasks);
       const file = await this.ensureFile(sourcePath, "");
       if (!file) {
         continue;
@@ -1696,6 +1822,7 @@ var AddTaskComposer = class {
   render(parent, options) {
     const form = parent.createEl("form", { cls: "belki-composer" });
     let selectedDue = options.defaultDue || "";
+    let selectedRepeat;
     let selectedDeadline = "";
     let selectedLabels = [];
     let pendingAttachments = [];
@@ -1713,56 +1840,8 @@ var AddTaskComposer = class {
       }
     });
     const chipRow = form.createDiv({ cls: "belki-composer-chip-row" });
-    const dueButtons = [];
-    let customDateButton;
-    const customDateInput = chipRow.createEl("input", {
-      cls: "belki-custom-date-input is-hidden",
-      attr: {
-        type: "date",
-        value: selectedDue
-      }
-    });
-    const updateDueButtons = () => {
-      for (const button of dueButtons) {
-        const selected = button.dataset.due === selectedDue;
-        button.toggleClass("is-active", selected);
-        button.toggleClass("is-selected", selected);
-        button.setAttr("aria-pressed", String(selected));
-      }
-      const customSelected = Boolean(
-        selectedDue && !dueButtons.some((button) => button.dataset.due === selectedDue)
-      );
-      customDateButton == null ? void 0 : customDateButton.toggleClass("is-active", customSelected);
-      customDateButton == null ? void 0 : customDateButton.toggleClass("is-selected", customSelected);
-      customDateButton == null ? void 0 : customDateButton.setAttr("aria-pressed", String(customSelected));
-    };
-    const setDue = (value) => {
-      selectedDue = value;
-      customDateInput.value = value;
-      customDateInput.addClass("is-hidden");
-      updateDueButtons();
-    };
-    const addDueButton = (label, value, icon) => {
-      const button = createChipButton(chipRow, label, icon);
-      button.addClass("belki-date-chip");
-      button.dataset.due = value;
-      button.addEventListener("click", () => setDue(value));
-      dueButtons.push(button);
-      return button;
-    };
-    addDueButton("Today", todayIso2(), "calendar");
-    addDueButton("Tomorrow", addDaysIso2(1), "calendar-plus");
-    addDueButton("No Date", "", "calendar-x");
-    customDateButton = createChipButton(chipRow, "Custom date", "calendar-clock");
-    customDateButton.addClass("belki-date-chip");
-    customDateButton.addEventListener("click", () => {
-      customDateInput.removeClass("is-hidden");
-      customDateInput.focus();
-    });
-    customDateInput.addEventListener("change", () => {
-      selectedDue = customDateInput.value;
-      updateDueButtons();
-    });
+    const dueDateWrap = chipRow.createDiv({ cls: "belki-date-picker-wrap" });
+    const repeatChipWrap = chipRow.createDiv({ cls: "belki-repeat-chip-wrap" });
     const priorityWrap = chipRow.createDiv({ cls: "belki-chip-select-wrap" });
     createIcon(priorityWrap, "flag");
     const priorityIndicator = priorityWrap.createSpan({ cls: "belki-priority-indicator" });
@@ -1866,6 +1945,7 @@ var AddTaskComposer = class {
     });
     let detachOutsideListener = () => void 0;
     let closeProjectMenu = () => void 0;
+    let closeDueDatePopover = () => void 0;
     const clearOutsideListener = () => {
       detachOutsideListener();
       detachOutsideListener = () => void 0;
@@ -1881,6 +1961,7 @@ var AddTaskComposer = class {
       closeMenu();
       closePanels();
       closeProjectMenu();
+      closeDueDatePopover();
       clearOutsideListener();
     };
     const watchLocalPopover = (wrapper, popover, options2 = {}) => {
@@ -2126,7 +2207,7 @@ var AddTaskComposer = class {
         borderColor: color.light
       });
     };
-    const hasOpenComposerPopover = () => !menu.hasClass("is-hidden") || !labelsPanel.hasClass("is-hidden") || !deadlinePanel.hasClass("is-hidden") || !projectMenu.hasClass("is-hidden");
+    const hasOpenComposerPopover = () => !menu.hasClass("is-hidden") || !labelsPanel.hasClass("is-hidden") || !deadlinePanel.hasClass("is-hidden") || !projectMenu.hasClass("is-hidden") || Boolean(dueDateWrap.querySelector(".belki-date-popover:not(.is-hidden)"));
     projectPicker.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -2179,14 +2260,147 @@ var AddTaskComposer = class {
             project: this.readProject(),
             priority: prioritySelect.value,
             labels: dedupeLabels(selectedLabels),
-            pendingAttachments
+            pendingAttachments,
+            repeat: selectedRepeat
           });
         } finally {
           addButton.removeAttribute("disabled");
         }
       })();
     });
-    updateDueButtons();
+    const renderDueDateButton = () => {
+      dueDateWrap.empty();
+      const hasDate = Boolean(selectedDue);
+      const dueDateButton = dueDateWrap.createEl("button", {
+        cls: `belki-chip-button belki-date-chip${hasDate ? " is-active is-selected" : ""}`,
+        attr: { type: "button", "aria-label": "Set due date" }
+      });
+      const iconSpan = dueDateButton.createSpan({ cls: "belki-chip-icon" });
+      (0, import_obsidian4.setIcon)(iconSpan, "calendar");
+      dueDateButton.createSpan({ cls: "belki-chip-label", text: formatDueDateChip(selectedDue) });
+      if (hasDate) {
+        const clearBtn = dueDateWrap.createEl("button", {
+          cls: "belki-date-chip-clear",
+          text: "\xD7",
+          attr: { type: "button", "aria-label": "Clear due date" }
+        });
+        clearBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectedDue = "";
+          selectedRepeat = void 0;
+          closeDueDatePopover();
+          renderDueDateButton();
+          renderRepeatChip();
+        });
+      }
+      const datePopover = dueDateWrap.createDiv({ cls: "belki-composer-popover belki-date-popover is-hidden" });
+      closeDueDatePopover = () => datePopover.addClass("is-hidden");
+      const selectDate = (value) => {
+        selectedDue = value;
+        closeDueDatePopover();
+        clearOutsideListener();
+        renderDueDateButton();
+        renderRepeatChip();
+      };
+      const addPreset = (label, value) => {
+        const btn = datePopover.createEl("button", {
+          cls: "belki-date-preset",
+          text: label,
+          attr: { type: "button" }
+        });
+        btn.toggleClass("is-active", value === selectedDue);
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectDate(value);
+        });
+      };
+      addPreset("Today", todayIso());
+      addPreset("Tomorrow", addDaysIso(1));
+      addPreset("Next week", addDaysIso(7));
+      addPreset("Next weekend", nextWeekdayIso(6));
+      const customInput = datePopover.createEl("input", {
+        cls: "belki-date-custom-input",
+        attr: { type: "date" }
+      });
+      if (selectedDue) customInput.value = selectedDue;
+      customInput.addEventListener("change", () => {
+        if (customInput.value) selectDate(customInput.value);
+      });
+      datePopover.createDiv({ cls: "belki-date-divider" });
+      const repeatHeader = datePopover.createDiv({ cls: "belki-repeat-header" });
+      const repeatIcon = repeatHeader.createSpan({ cls: "belki-chip-icon" });
+      (0, import_obsidian4.setIcon)(repeatIcon, "repeat");
+      repeatHeader.createSpan({ text: "Repeat" });
+      if (!selectedDue) {
+        datePopover.createEl("span", { cls: "belki-repeat-hint", text: "Select a date first." });
+      } else {
+        const presets = getRepeatPresets(selectedDue);
+        for (const preset of presets) {
+          const btn = datePopover.createEl("button", {
+            cls: "belki-date-preset",
+            attr: { type: "button" }
+          });
+          const ri = btn.createSpan({ cls: "belki-chip-icon" });
+          (0, import_obsidian4.setIcon)(ri, "repeat");
+          btn.createSpan({ text: preset.label });
+          btn.toggleClass("is-active", repeatRulesEqual(preset.rule, selectedRepeat));
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            selectedRepeat = repeatRulesEqual(preset.rule, selectedRepeat) ? void 0 : preset.rule;
+            closeDueDatePopover();
+            clearOutsideListener();
+            renderDueDateButton();
+            renderRepeatChip();
+          });
+        }
+        datePopover.createEl("button", {
+          cls: "belki-date-preset is-disabled",
+          text: "Custom...",
+          attr: { type: "button", disabled: "true" }
+        });
+      }
+      dueDateButton.addEventListener("click", () => {
+        const shouldOpen = datePopover.hasClass("is-hidden");
+        closeComposerPopovers();
+        if (shouldOpen) {
+          datePopover.removeClass("is-hidden");
+          watchLocalPopover(dueDateWrap, datePopover, { preferredSide: mobilePanelSide });
+        }
+      });
+    };
+    const renderRepeatChip = () => {
+      repeatChipWrap.empty();
+      if (!selectedRepeat) return;
+      const chip = repeatChipWrap.createEl("button", {
+        cls: "belki-chip-button belki-repeat-chip is-active is-selected",
+        attr: { type: "button" }
+      });
+      const ri = chip.createSpan({ cls: "belki-chip-icon" });
+      (0, import_obsidian4.setIcon)(ri, "repeat");
+      chip.createSpan({ cls: "belki-chip-label", text: getRepeatLabel(selectedRepeat) });
+      chip.addEventListener("click", () => {
+        const shouldOpen = dueDateWrap.querySelector(".belki-date-popover:not(.is-hidden)") === null;
+        closeComposerPopovers();
+        if (shouldOpen) {
+          const popover = dueDateWrap.querySelector(".belki-date-popover");
+          popover == null ? void 0 : popover.removeClass("is-hidden");
+          if (popover) watchLocalPopover(dueDateWrap, popover, { preferredSide: mobilePanelSide });
+        }
+      });
+      const clearRepeat = repeatChipWrap.createEl("button", {
+        cls: "belki-date-chip-clear",
+        text: "\xD7",
+        attr: { type: "button", "aria-label": "Clear repeat" }
+      });
+      clearRepeat.addEventListener("click", (e) => {
+        e.stopPropagation();
+        selectedRepeat = void 0;
+        renderRepeatChip();
+        renderDueDateButton();
+      });
+    };
+    renderDueDateButton();
+    renderRepeatChip();
   }
   focus() {
     var _a;
@@ -2265,17 +2479,6 @@ function alignLocalPopover(wrapper, popover, options = {}) {
 }
 function isImageFile(file) {
   return file.type.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
-}
-function todayIso2() {
-  return addDaysIso2(0);
-}
-function addDaysIso2(offset) {
-  const date = /* @__PURE__ */ new Date();
-  date.setDate(date.getDate() + offset);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 // src/views/TaskDetailModal.ts
@@ -2467,7 +2670,7 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
   renderSidePanel(parent) {
     parent.createEl("h3", { text: "Task details" });
     this.renderProject(parent);
-    this.renderDate(parent, "Date", "due");
+    this.renderDueDatePicker(parent);
     this.renderDate(parent, "Deadline", "deadline");
     this.renderPriority(parent);
     this.renderLabels(parent);
@@ -2774,6 +2977,139 @@ var TaskDetailModal = class extends import_obsidian6.Modal {
     });
     renderOptions();
     updateProjectStyle();
+  }
+  renderDueDatePicker(parent) {
+    const field = this.createField(parent, "Date");
+    const wrap = field.createDiv({ cls: "belki-date-picker-wrap belki-date-picker-inline" });
+    let detachOutside;
+    const closePopover = () => {
+      var _a;
+      (_a = wrap.querySelector(".belki-date-popover-inline")) == null ? void 0 : _a.addClass("is-hidden");
+      detachOutside == null ? void 0 : detachOutside();
+      detachOutside = void 0;
+    };
+    const renderPicker = () => {
+      wrap.empty();
+      const hasDate = Boolean(this.draft.due);
+      const btnRow = wrap.createDiv({ cls: "belki-date-btn-row" });
+      const btn = btnRow.createEl("button", {
+        cls: `belki-detail-date-btn${hasDate ? " is-active" : ""}`,
+        attr: { type: "button" }
+      });
+      const iconSpan = btn.createSpan({ cls: "belki-chip-icon" });
+      (0, import_obsidian6.setIcon)(iconSpan, "calendar");
+      btn.createSpan({ text: formatDueDateChip(this.draft.due) });
+      if (hasDate) {
+        const clearBtn = btnRow.createEl("button", {
+          cls: "belki-date-chip-clear",
+          attr: { type: "button", "aria-label": "Clear date" }
+        });
+        clearBtn.setText("\xD7");
+        clearBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.draft.due = void 0;
+          this.draft.repeat = void 0;
+          closePopover();
+          renderPicker();
+        });
+      }
+      const popover = wrap.createDiv({ cls: "belki-date-popover belki-date-popover-inline is-hidden" });
+      const selectDate = (value) => {
+        this.draft.due = value || void 0;
+        closePopover();
+        renderPicker();
+      };
+      const addPreset = (label, value) => {
+        const presetBtn = popover.createEl("button", {
+          cls: "belki-date-preset",
+          text: label,
+          attr: { type: "button" }
+        });
+        presetBtn.toggleClass("is-active", value === this.draft.due);
+        presetBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectDate(value);
+        });
+      };
+      addPreset("Today", todayIso());
+      addPreset("Tomorrow", addDaysIso(1));
+      addPreset("Next week", addDaysIso(7));
+      addPreset("Next weekend", nextWeekdayIso(6));
+      const customInput = popover.createEl("input", {
+        cls: "belki-date-custom-input",
+        attr: { type: "date" }
+      });
+      if (this.draft.due) customInput.value = this.draft.due;
+      customInput.addEventListener("change", () => {
+        if (customInput.value) selectDate(customInput.value);
+      });
+      popover.createDiv({ cls: "belki-date-divider" });
+      const repeatHeader = popover.createDiv({ cls: "belki-repeat-header" });
+      const repeatIcon = repeatHeader.createSpan({ cls: "belki-chip-icon" });
+      (0, import_obsidian6.setIcon)(repeatIcon, "repeat");
+      repeatHeader.createSpan({ text: "Repeat" });
+      if (!this.draft.due) {
+        popover.createEl("span", { cls: "belki-repeat-hint", text: "Select a date first." });
+      } else {
+        const presets = getRepeatPresets(this.draft.due);
+        for (const preset of presets) {
+          const presetBtn = popover.createEl("button", {
+            cls: "belki-date-preset",
+            attr: { type: "button" }
+          });
+          const ri = presetBtn.createSpan({ cls: "belki-chip-icon" });
+          (0, import_obsidian6.setIcon)(ri, "repeat");
+          presetBtn.createSpan({ text: preset.label });
+          presetBtn.toggleClass("is-active", repeatRulesEqual(preset.rule, this.draft.repeat));
+          presetBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.draft.repeat = repeatRulesEqual(preset.rule, this.draft.repeat) ? void 0 : preset.rule;
+            closePopover();
+            renderPicker();
+          });
+        }
+        popover.createEl("button", {
+          cls: "belki-date-preset is-disabled",
+          text: "Custom...",
+          attr: { type: "button", disabled: "true" }
+        });
+      }
+      btn.addEventListener("click", () => {
+        const isHidden = popover.hasClass("is-hidden");
+        closePopover();
+        if (isHidden) {
+          popover.removeClass("is-hidden");
+          const onOutside = (e) => {
+            if (!wrap.contains(e.target)) {
+              closePopover();
+            }
+          };
+          document.addEventListener("click", onOutside, { capture: true });
+          detachOutside = () => document.removeEventListener("click", onOutside, { capture: true });
+        }
+      });
+      if (this.draft.repeat) {
+        const repeatRow = wrap.createDiv({ cls: "belki-date-btn-row belki-detail-repeat-row" });
+        const repeatChip = repeatRow.createEl("button", {
+          cls: "belki-detail-date-btn is-active belki-repeat-active-btn",
+          attr: { type: "button" }
+        });
+        const ri = repeatChip.createSpan({ cls: "belki-chip-icon" });
+        (0, import_obsidian6.setIcon)(ri, "repeat");
+        repeatChip.createSpan({ text: getRepeatLabel(this.draft.repeat) });
+        const clearRepeat = repeatRow.createEl("button", {
+          cls: "belki-date-chip-clear",
+          text: "\xD7",
+          attr: { type: "button", "aria-label": "Clear repeat" }
+        });
+        clearRepeat.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.draft.repeat = void 0;
+          renderPicker();
+        });
+      }
+    };
+    renderPicker();
   }
   renderDate(parent, label, key) {
     const field = this.createField(parent, label);
@@ -3850,10 +4186,14 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
     }
     const meta = content.createDiv({ cls: "belki-task-meta" });
     if (task.due) {
-      meta.createSpan({
+      const dateSpan = meta.createSpan({
         cls: `belki-task-date${isBeforeToday(task.due) ? " is-overdue" : ""}`,
         text: formatDueChip(task.due)
       });
+      if (task.repeat) {
+        const ri = dateSpan.createSpan({ cls: "belki-task-repeat-icon" });
+        (0, import_obsidian7.setIcon)(ri, "repeat");
+      }
     }
     if (task.deadline) {
       meta.createSpan({
@@ -3987,12 +4327,12 @@ var TaskBoardView = class extends import_obsidian7.ItemView {
       return task.due === yesterdayIso();
     }
     if (this.settings.defaultOverdueRange === "last7") {
-      return task.due >= addDaysIso3(-7);
+      return task.due >= addDaysIso2(-7);
     }
     if (this.settings.defaultOverdueRange === "last30") {
-      return task.due >= addDaysIso3(-30);
+      return task.due >= addDaysIso2(-30);
     }
-    return task.due < addDaysIso3(-30);
+    return task.due < addDaysIso2(-30);
   }
   getUpcomingTasks(tasks) {
     return tasks.filter((task) => isAfterToday(task.due)).sort((a, b) => {
@@ -4486,10 +4826,10 @@ function formatDueChip(value) {
   if (value === today) {
     return "Today";
   }
-  if (value === addDaysIso3(-1)) {
+  if (value === addDaysIso2(-1)) {
     return "Yesterday";
   }
-  if (value === addDaysIso3(1)) {
+  if (value === addDaysIso2(1)) {
     return "Tomorrow";
   }
   return formatShortDate(value);
@@ -4500,7 +4840,7 @@ function formatGroupHeader(value) {
   if (value === todayIso()) {
     return `${day} - Today - ${weekday}`;
   }
-  if (value === addDaysIso3(1)) {
+  if (value === addDaysIso2(1)) {
     return `${day} - Tomorrow - ${weekday}`;
   }
   return `${day} - ${weekday}`;
@@ -4531,7 +4871,7 @@ function parseIsoDate(value) {
   }
   return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 }
-function addDaysIso3(offset) {
+function addDaysIso2(offset) {
   const date = /* @__PURE__ */ new Date();
   date.setDate(date.getDate() + offset);
   const year = date.getFullYear();

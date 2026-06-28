@@ -1,6 +1,7 @@
 import { App, Modal, Platform, TFile, setIcon } from "obsidian";
 import { getLabelColor, getProjectColor } from "../colors";
 import { addDaysIso, formatDueDateChip, nextWeekdayIso, todayIso } from "../dateUtils";
+import { getRepeatLabel, getRepeatPresets, repeatRulesEqual } from "../repeatUtils";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
 import { applyBelkiFontSettings, BelkiSettings } from "../settings";
 import { TaskStore } from "../taskStore";
@@ -564,6 +565,7 @@ export class TaskDetailModal extends Modal {
         clearBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           this.draft.due = undefined;
+          this.draft.repeat = undefined;
           closePopover();
           renderPicker();
         });
@@ -604,6 +606,39 @@ export class TaskDetailModal extends Modal {
         if (customInput.value) selectDate(customInput.value);
       });
 
+      popover.createDiv({ cls: "belki-date-divider" });
+      const repeatHeader = popover.createDiv({ cls: "belki-repeat-header" });
+      const repeatIcon = repeatHeader.createSpan({ cls: "belki-chip-icon" });
+      setIcon(repeatIcon, "repeat");
+      repeatHeader.createSpan({ text: "Repeat" });
+
+      if (!this.draft.due) {
+        popover.createEl("span", { cls: "belki-repeat-hint", text: "Select a date first." });
+      } else {
+        const presets = getRepeatPresets(this.draft.due);
+        for (const preset of presets) {
+          const presetBtn = popover.createEl("button", {
+            cls: "belki-date-preset",
+            attr: { type: "button" }
+          });
+          const ri = presetBtn.createSpan({ cls: "belki-chip-icon" });
+          setIcon(ri, "repeat");
+          presetBtn.createSpan({ text: preset.label });
+          presetBtn.toggleClass("is-active", repeatRulesEqual(preset.rule, this.draft.repeat));
+          presetBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.draft.repeat = repeatRulesEqual(preset.rule, this.draft.repeat) ? undefined : preset.rule;
+            closePopover();
+            renderPicker();
+          });
+        }
+        popover.createEl("button", {
+          cls: "belki-date-preset is-disabled",
+          text: "Custom...",
+          attr: { type: "button", disabled: "true" }
+        });
+      }
+
       btn.addEventListener("click", () => {
         const isHidden = popover.hasClass("is-hidden");
         closePopover();
@@ -618,6 +653,27 @@ export class TaskDetailModal extends Modal {
           detachOutside = () => document.removeEventListener("click", onOutside, { capture: true });
         }
       });
+
+      if (this.draft.repeat) {
+        const repeatRow = wrap.createDiv({ cls: "belki-date-btn-row belki-detail-repeat-row" });
+        const repeatChip = repeatRow.createEl("button", {
+          cls: "belki-detail-date-btn is-active belki-repeat-active-btn",
+          attr: { type: "button" }
+        });
+        const ri = repeatChip.createSpan({ cls: "belki-chip-icon" });
+        setIcon(ri, "repeat");
+        repeatChip.createSpan({ text: getRepeatLabel(this.draft.repeat) });
+        const clearRepeat = repeatRow.createEl("button", {
+          cls: "belki-date-chip-clear",
+          text: "×",
+          attr: { type: "button", "aria-label": "Clear repeat" }
+        });
+        clearRepeat.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.draft.repeat = undefined;
+          renderPicker();
+        });
+      }
     };
 
     renderPicker();
