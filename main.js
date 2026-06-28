@@ -3649,6 +3649,8 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     this.sortPopoverOpen = false;
     this.projectActionsOpen = null;
     this.sidebarScrollLeft = 0;
+    this.pendingScrollSnapshot = null;
+    this.renderScheduled = false;
     this.handleRootKeyDown = (event) => {
       if (event.key !== "Escape") {
         return;
@@ -3707,7 +3709,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     return "check-circle-2";
   }
   async onOpen() {
-    this.unsubscribe = this.store.subscribe(() => this.render());
+    this.unsubscribe = this.store.subscribe(() => this.renderPreservingMainScroll());
     this.render();
   }
   async onClose() {
@@ -3757,18 +3759,25 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
       left: main.scrollLeft
     };
   }
-  renderPreservingMainScroll(snapshot = this.getMainScrollSnapshot()) {
-    this.render();
-    if (!snapshot) {
-      return;
+  renderPreservingMainScroll() {
+    if (!this.pendingScrollSnapshot) {
+      this.pendingScrollSnapshot = this.getMainScrollSnapshot();
     }
+    if (this.renderScheduled) return;
+    this.renderScheduled = true;
     window.requestAnimationFrame(() => {
-      const main = this.containerEl.querySelector(".belki-main");
-      if (!main) {
-        return;
-      }
-      main.scrollTop = snapshot.top;
-      main.scrollLeft = snapshot.left;
+      this.renderScheduled = false;
+      const snapshot = this.pendingScrollSnapshot;
+      this.pendingScrollSnapshot = null;
+      this.render();
+      if (!snapshot) return;
+      window.requestAnimationFrame(() => {
+        const main = this.containerEl.querySelector(".belki-main");
+        if (main) {
+          main.scrollTop = snapshot.top;
+          main.scrollLeft = snapshot.left;
+        }
+      });
     });
   }
   restoreSidebarScroll(scrollLeft) {
@@ -4254,11 +4263,10 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     select.value = this.settings.defaultOverdueRange;
     select.addEventListener("click", (event) => event.stopPropagation());
     select.addEventListener("change", () => {
-      const scrollSnapshot = this.getMainScrollSnapshot();
       this.settings.defaultOverdueRange = normalizeOverdueRange(select.value);
       void (async () => {
         await this.saveSettings();
-        this.renderPreservingMainScroll(scrollSnapshot);
+        this.renderPreservingMainScroll();
       })();
     });
   }
@@ -4566,7 +4574,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
       labels: this.getAllLabels(),
       settings: this.settings,
       store: this.store,
-      onChange: () => this.render()
+      onChange: () => this.renderPreservingMainScroll()
     }).open();
   }
   getVisibleTasks(tasks) {

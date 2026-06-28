@@ -79,6 +79,8 @@ export class TaskBoardView extends ItemView {
   private sortPopoverOpen = false;
   private projectActionsOpen: string | null = null;
   private sidebarScrollLeft = 0;
+  private pendingScrollSnapshot: { top: number; left: number } | null = null;
+  private renderScheduled = false;
   private handleRootKeyDown = (event: KeyboardEvent): void => {
     if (event.key !== "Escape") {
       return;
@@ -156,7 +158,7 @@ export class TaskBoardView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    this.unsubscribe = this.store.subscribe(() => this.render());
+    this.unsubscribe = this.store.subscribe(() => this.renderPreservingMainScroll());
     this.render();
   }
 
@@ -216,23 +218,25 @@ export class TaskBoardView extends ItemView {
     };
   }
 
-  private renderPreservingMainScroll(
-    snapshot = this.getMainScrollSnapshot()
-  ): void {
-    this.render();
-
-    if (!snapshot) {
-      return;
+  private renderPreservingMainScroll(): void {
+    if (!this.pendingScrollSnapshot) {
+      this.pendingScrollSnapshot = this.getMainScrollSnapshot();
     }
-
+    if (this.renderScheduled) return;
+    this.renderScheduled = true;
     window.requestAnimationFrame(() => {
-      const main = this.containerEl.querySelector<HTMLElement>(".belki-main");
-      if (!main) {
-        return;
-      }
-
-      main.scrollTop = snapshot.top;
-      main.scrollLeft = snapshot.left;
+      this.renderScheduled = false;
+      const snapshot = this.pendingScrollSnapshot;
+      this.pendingScrollSnapshot = null;
+      this.render();
+      if (!snapshot) return;
+      window.requestAnimationFrame(() => {
+        const main = this.containerEl.querySelector<HTMLElement>(".belki-main");
+        if (main) {
+          main.scrollTop = snapshot.top;
+          main.scrollLeft = snapshot.left;
+        }
+      });
     });
   }
 
@@ -812,11 +816,10 @@ export class TaskBoardView extends ItemView {
     select.value = this.settings.defaultOverdueRange;
     select.addEventListener("click", (event) => event.stopPropagation());
     select.addEventListener("change", () => {
-      const scrollSnapshot = this.getMainScrollSnapshot();
       this.settings.defaultOverdueRange = normalizeOverdueRange(select.value);
       void (async () => {
         await this.saveSettings();
-        this.renderPreservingMainScroll(scrollSnapshot);
+        this.renderPreservingMainScroll();
       })();
     });
   }
@@ -1179,7 +1182,7 @@ export class TaskBoardView extends ItemView {
       labels: this.getAllLabels(),
       settings: this.settings,
       store: this.store,
-      onChange: () => this.render()
+      onChange: () => this.renderPreservingMainScroll()
     }).open();
   }
 
