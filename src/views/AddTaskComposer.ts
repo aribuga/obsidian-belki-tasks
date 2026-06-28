@@ -7,6 +7,7 @@ import { normalizeTaskProject, uniqueRealProjects } from "../projects";
 import { addDaysIso, formatDueDateChip, nextWeekdayIso, todayIso } from "../dateUtils";
 import { getRepeatLabel, getRepeatPresets, repeatRulesEqual } from "../repeatUtils";
 import { CustomRepeatModal } from "./CustomRepeatModal";
+import { attachWikilinkAutocomplete } from "./wikilinkAutocomplete";
 
 interface ComposerOptions {
   app: App;
@@ -48,6 +49,8 @@ export class AddTaskComposer {
         placeholder: "Description"
       }
     });
+
+    attachWikilinkAutocomplete(descriptionInput, options.app);
 
     const chipRow = form.createDiv({ cls: "belki-composer-chip-row" });
     const dueDateWrap = chipRow.createDiv({ cls: "belki-date-picker-wrap" });

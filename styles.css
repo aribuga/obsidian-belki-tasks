@@ -3317,3 +3317,39 @@ button.belki-search-result.is-selected {
 .is-hidden {
   display: none;
 }
+
+/* Wikilink autocomplete dropdown */
+.belki-wikilink-dropdown {
+  position: fixed;
+  z-index: 9999;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.belki-wikilink-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: var(--font-ui-small);
+}
+
+.belki-wikilink-item:hover,
+.belki-wikilink-item.is-active {
+  background: var(--background-modifier-hover);
+}
+
+.belki-wikilink-item-name {
+  color: var(--text-normal);
+}
+
+.belki-wikilink-item-folder {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}

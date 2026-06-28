@@ -11,6 +11,7 @@ import { ImagePreviewModal } from "./ImagePreviewModal";
 import { getPriorityColor, getPriorityLabel } from "../priority";
 import { normalizeTaskProject, uniqueRealProjects } from "../projects";
 import { renderLinkedText } from "./TaskBoardView";
+import { attachWikilinkAutocomplete } from "./wikilinkAutocomplete";
 
 interface TaskDetailModalOptions {
   task: BelkiTask;
@@ -128,6 +129,8 @@ export class TaskDetailModal extends Modal {
     descriptionInput.addEventListener("input", () => {
       this.draft.description = descriptionInput.value;
     });
+
+    attachWikilinkAutocomplete(descriptionInput, this.app);
 
     descriptionInput.addEventListener("blur", () => {
       refreshRendered();
