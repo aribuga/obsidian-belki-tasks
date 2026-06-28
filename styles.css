@@ -18,7 +18,6 @@
   --belki-font-task-title: var(--belki-font-ui);
   --belki-font-task-description: var(--belki-font-ui);
   --belki-font-label: var(--belki-font-ui);
-  --belki-mobile-safe-top: 24px;
   --belki-mobile-safe-top: max(24px, env(safe-area-inset-top, 0px));
   color: var(--belki-text);
   font-family: var(--belki-font-ui);
