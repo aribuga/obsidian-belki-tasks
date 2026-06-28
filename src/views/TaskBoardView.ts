@@ -115,6 +115,15 @@ export class TaskBoardView extends ItemView {
       return;
     }
 
+    const openProjectInput = this.containerEl.querySelector<HTMLElement>(
+      ".belki-custom-project-wrap:not(.is-hidden)"
+    );
+    if (openProjectInput) {
+      this.stopEscape(event);
+      openProjectInput.addClass("is-hidden");
+      return;
+    }
+
     const openPopover = this.containerEl.querySelector<HTMLElement>(
       ".belki-composer-popover:not(.is-hidden), .belki-project-menu:not(.is-hidden)"
     );

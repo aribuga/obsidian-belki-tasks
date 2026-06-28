@@ -367,7 +367,7 @@ export class AddTaskComposer {
     });
     const projectDot = projectPicker.createSpan({ cls: "belki-project-dot belki-composer-project-dot" });
     const projectLabel = projectPicker.createSpan({ cls: "belki-project-trigger-label" });
-    const projectMenu = projectArea.createDiv({
+    const projectMenu = document.body.createDiv({
       cls: "belki-project-menu is-hidden",
       attr: {
         role: "listbox"
@@ -379,12 +379,50 @@ export class AddTaskComposer {
       ? defaultProject
       : "";
 
-    this.customProjectInput = projectArea.createEl("input", {
-      cls: "belki-chip-input belki-custom-project is-hidden",
+    const customProjectWrap = projectArea.createDiv({ cls: "belki-custom-project-wrap is-hidden" });
+    this.customProjectInput = customProjectWrap.createEl("input", {
+      cls: "belki-chip-input belki-custom-project",
       attr: {
         type: "text",
         placeholder: "Project name"
       }
+    });
+    const confirmProjectBtn = customProjectWrap.createEl("button", {
+      cls: "belki-custom-project-confirm",
+      attr: { type: "button", "aria-label": "Confirm project" }
+    });
+    setIcon(confirmProjectBtn, "check");
+
+    const cancelProjectBtn = customProjectWrap.createEl("button", {
+      cls: "belki-custom-project-cancel",
+      attr: { type: "button", "aria-label": "Cancel" }
+    });
+    setIcon(cancelProjectBtn, "x");
+
+    let previousProjectValue = "";
+
+    const confirmProject = () => {
+      const name = this.customProjectInput?.value.trim() || "";
+      if (!name) return;
+      this.selectedProjectValue = name;
+      updateProjectDot();
+      renderProjectMenu();
+      customProjectWrap.addClass("is-hidden");
+    };
+
+    const cancelProject = () => {
+      this.selectedProjectValue = previousProjectValue;
+      this.customProjectInput!.value = "";
+      customProjectWrap.addClass("is-hidden");
+      updateProjectDot();
+      renderProjectMenu();
+    };
+
+    confirmProjectBtn.addEventListener("click", confirmProject);
+    cancelProjectBtn.addEventListener("click", cancelProject);
+    this.customProjectInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); confirmProject(); }
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cancelProject(); }
     });
 
     closeProjectMenu = () => {
@@ -395,17 +433,22 @@ export class AddTaskComposer {
     const openProjectMenu = () => {
       projectMenu.removeClass("is-hidden");
       projectPicker.setAttr("aria-expanded", "true");
-      watchLocalPopover(projectArea, projectMenu, { preferredSide: "above" });
+      watchLocalPopover(projectArea, projectMenu, { preferredSide: "above", useFixed: true });
     };
 
     const selectProject = (value: string) => {
-      this.selectedProjectValue = value;
-      this.customProjectInput?.toggleClass("is-hidden", value !== "__new__");
       if (value === "__new__") {
+        previousProjectValue = this.selectedProjectValue;
+      }
+      this.selectedProjectValue = value;
+      if (value === "__new__") {
+        customProjectWrap.removeClass("is-hidden");
+        this.customProjectInput!.value = "";
         closeProjectMenu();
         clearOutsideListener();
         this.customProjectInput?.focus();
       } else {
+        customProjectWrap.addClass("is-hidden");
         closeProjectMenu();
         clearOutsideListener();
       }
@@ -464,7 +507,8 @@ export class AddTaskComposer {
     };
 
     const updateProjectDot = () => {
-      const project = this.readProject();
+      const displayValue = this.selectedProjectValue === "__new__" ? previousProjectValue : this.selectedProjectValue;
+      const project = normalizeTaskProject(displayValue) || "";
       projectLabel.setText(project || "Inbox");
       if (!project) {
         projectDot.setCssStyles({ backgroundColor: "var(--belki-faint)" });
@@ -529,7 +573,9 @@ export class AddTaskComposer {
       }
     });
 
-    cancelButton.addEventListener("click", options.onCancel);
+    const cleanup = () => projectMenu.remove();
+    cancelButton.addEventListener("click", () => { cleanup(); options.onCancel(); });
+    form.addEventListener("submit", () => cleanup());
     form.addEventListener("submit", (event) => {
       event.preventDefault();
 
@@ -717,10 +763,6 @@ export class AddTaskComposer {
   }
 
   private readProject(): string | undefined {
-    if (this.selectedProjectValue === "__new__") {
-      return normalizeTaskProject(this.customProjectInput?.value);
-    }
-
     return normalizeTaskProject(this.selectedProjectValue);
   }
 }
@@ -779,6 +821,7 @@ function createIcon(
 
 interface LocalPopoverOptions {
   preferredSide?: "above" | "below";
+  useFixed?: boolean;
 }
 
 function alignLocalPopover(
@@ -786,7 +829,6 @@ function alignLocalPopover(
   popover: HTMLElement,
   options: LocalPopoverOptions = {}
 ): void {
-  const ownerWindow = wrapper.ownerDocument.defaultView || window;
   const margin = 12;
   const preferredSide = options.preferredSide || "below";
 
@@ -795,9 +837,40 @@ function alignLocalPopover(
   popover.removeClass("is-open-down");
 
   const wrapperRect = wrapper.getBoundingClientRect();
+
+  if (options.useFixed) {
+    // Fixed positioning — use viewport coordinates so containers with
+    // overflow:hidden or transforms cannot clip the popover.
+    popover.style.removeProperty("top");
+    popover.style.removeProperty("bottom");
+    popover.style.removeProperty("left");
+    popover.style.removeProperty("right");
+
+    const popoverWidth = popover.offsetWidth || 240;
+    const popoverHeight = popover.offsetHeight || 220;
+
+    let left = wrapperRect.left;
+    if (left + popoverWidth > window.innerWidth - margin) {
+      left = wrapperRect.right - popoverWidth;
+    }
+    popover.style.left = `${Math.max(margin, left)}px`;
+
+    const fitsBelow = wrapperRect.bottom + popoverHeight + margin <= window.innerHeight;
+    const fitsAbove = wrapperRect.top - popoverHeight - margin >= 0;
+    if ((preferredSide === "above" && fitsAbove) || (preferredSide === "above" && !fitsBelow)) {
+      popover.style.bottom = `${window.innerHeight - wrapperRect.top + 8}px`;
+      popover.addClass("is-open-up");
+    } else {
+      popover.style.top = `${wrapperRect.bottom + 8}px`;
+      popover.addClass("is-open-down");
+    }
+    return;
+  }
+
   const popoverRect = popover.getBoundingClientRect();
   const popoverWidth = popoverRect.width || 240;
   const popoverHeight = popoverRect.height || 220;
+  const ownerWindow = wrapper.ownerDocument.defaultView || window;
 
   if (
     wrapperRect.left + popoverWidth > ownerWindow.innerWidth - margin &&

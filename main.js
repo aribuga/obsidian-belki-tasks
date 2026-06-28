@@ -2651,7 +2651,7 @@ var AddTaskComposer = class {
     });
     const projectDot = projectPicker.createSpan({ cls: "belki-project-dot belki-composer-project-dot" });
     const projectLabel = projectPicker.createSpan({ cls: "belki-project-trigger-label" });
-    const projectMenu = projectArea.createDiv({
+    const projectMenu = document.body.createDiv({
       cls: "belki-project-menu is-hidden",
       attr: {
         role: "listbox"
@@ -2660,11 +2660,52 @@ var AddTaskComposer = class {
     const projects = uniqueRealProjects([options.defaultProject, ...options.projects]);
     const defaultProject = normalizeTaskProject(options.defaultProject) || "";
     this.selectedProjectValue = projects.includes(defaultProject) ? defaultProject : "";
-    this.customProjectInput = projectArea.createEl("input", {
-      cls: "belki-chip-input belki-custom-project is-hidden",
+    const customProjectWrap = projectArea.createDiv({ cls: "belki-custom-project-wrap is-hidden" });
+    this.customProjectInput = customProjectWrap.createEl("input", {
+      cls: "belki-chip-input belki-custom-project",
       attr: {
         type: "text",
         placeholder: "Project name"
+      }
+    });
+    const confirmProjectBtn = customProjectWrap.createEl("button", {
+      cls: "belki-custom-project-confirm",
+      attr: { type: "button", "aria-label": "Confirm project" }
+    });
+    (0, import_obsidian5.setIcon)(confirmProjectBtn, "check");
+    const cancelProjectBtn = customProjectWrap.createEl("button", {
+      cls: "belki-custom-project-cancel",
+      attr: { type: "button", "aria-label": "Cancel" }
+    });
+    (0, import_obsidian5.setIcon)(cancelProjectBtn, "x");
+    let previousProjectValue = "";
+    const confirmProject = () => {
+      var _a;
+      const name = ((_a = this.customProjectInput) == null ? void 0 : _a.value.trim()) || "";
+      if (!name) return;
+      this.selectedProjectValue = name;
+      updateProjectDot();
+      renderProjectMenu();
+      customProjectWrap.addClass("is-hidden");
+    };
+    const cancelProject = () => {
+      this.selectedProjectValue = previousProjectValue;
+      this.customProjectInput.value = "";
+      customProjectWrap.addClass("is-hidden");
+      updateProjectDot();
+      renderProjectMenu();
+    };
+    confirmProjectBtn.addEventListener("click", confirmProject);
+    cancelProjectBtn.addEventListener("click", cancelProject);
+    this.customProjectInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        confirmProject();
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        cancelProject();
       }
     });
     closeProjectMenu = () => {
@@ -2674,17 +2715,22 @@ var AddTaskComposer = class {
     const openProjectMenu = () => {
       projectMenu.removeClass("is-hidden");
       projectPicker.setAttr("aria-expanded", "true");
-      watchLocalPopover(projectArea, projectMenu, { preferredSide: "above" });
+      watchLocalPopover(projectArea, projectMenu, { preferredSide: "above", useFixed: true });
     };
     const selectProject = (value) => {
-      var _a, _b;
-      this.selectedProjectValue = value;
-      (_a = this.customProjectInput) == null ? void 0 : _a.toggleClass("is-hidden", value !== "__new__");
+      var _a;
       if (value === "__new__") {
+        previousProjectValue = this.selectedProjectValue;
+      }
+      this.selectedProjectValue = value;
+      if (value === "__new__") {
+        customProjectWrap.removeClass("is-hidden");
+        this.customProjectInput.value = "";
         closeProjectMenu();
         clearOutsideListener();
-        (_b = this.customProjectInput) == null ? void 0 : _b.focus();
+        (_a = this.customProjectInput) == null ? void 0 : _a.focus();
       } else {
+        customProjectWrap.addClass("is-hidden");
         closeProjectMenu();
         clearOutsideListener();
       }
@@ -2731,7 +2777,8 @@ var AddTaskComposer = class {
       renderProjectOption(projectMenu, "New project...", "__new__");
     };
     const updateProjectDot = () => {
-      const project = this.readProject();
+      const displayValue = this.selectedProjectValue === "__new__" ? previousProjectValue : this.selectedProjectValue;
+      const project = normalizeTaskProject(displayValue) || "";
       projectLabel.setText(project || "Inbox");
       if (!project) {
         projectDot.setCssStyles({ backgroundColor: "var(--belki-faint)" });
@@ -2786,7 +2833,12 @@ var AddTaskComposer = class {
         type: "submit"
       }
     });
-    cancelButton.addEventListener("click", options.onCancel);
+    const cleanup = () => projectMenu.remove();
+    cancelButton.addEventListener("click", () => {
+      cleanup();
+      options.onCancel();
+    });
+    form.addEventListener("submit", () => cleanup());
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       addButton.setAttr("disabled", "true");
@@ -2961,10 +3013,6 @@ var AddTaskComposer = class {
     (_a = this.titleInput) == null ? void 0 : _a.focus();
   }
   readProject() {
-    var _a;
-    if (this.selectedProjectValue === "__new__") {
-      return normalizeTaskProject((_a = this.customProjectInput) == null ? void 0 : _a.value);
-    }
     return normalizeTaskProject(this.selectedProjectValue);
   }
 };
@@ -3002,16 +3050,39 @@ function createIcon(parent, iconName, className = "belki-chip-icon") {
   return icon;
 }
 function alignLocalPopover(wrapper, popover, options = {}) {
-  const ownerWindow = wrapper.ownerDocument.defaultView || window;
   const margin = 12;
   const preferredSide = options.preferredSide || "below";
   popover.removeClass("is-align-right");
   popover.removeClass("is-open-up");
   popover.removeClass("is-open-down");
   const wrapperRect = wrapper.getBoundingClientRect();
+  if (options.useFixed) {
+    popover.style.removeProperty("top");
+    popover.style.removeProperty("bottom");
+    popover.style.removeProperty("left");
+    popover.style.removeProperty("right");
+    const popoverWidth2 = popover.offsetWidth || 240;
+    const popoverHeight2 = popover.offsetHeight || 220;
+    let left = wrapperRect.left;
+    if (left + popoverWidth2 > window.innerWidth - margin) {
+      left = wrapperRect.right - popoverWidth2;
+    }
+    popover.style.left = `${Math.max(margin, left)}px`;
+    const fitsBelow2 = wrapperRect.bottom + popoverHeight2 + margin <= window.innerHeight;
+    const fitsAbove2 = wrapperRect.top - popoverHeight2 - margin >= 0;
+    if (preferredSide === "above" && fitsAbove2 || preferredSide === "above" && !fitsBelow2) {
+      popover.style.bottom = `${window.innerHeight - wrapperRect.top + 8}px`;
+      popover.addClass("is-open-up");
+    } else {
+      popover.style.top = `${wrapperRect.bottom + 8}px`;
+      popover.addClass("is-open-down");
+    }
+    return;
+  }
   const popoverRect = popover.getBoundingClientRect();
   const popoverWidth = popoverRect.width || 240;
   const popoverHeight = popoverRect.height || 220;
+  const ownerWindow = wrapper.ownerDocument.defaultView || window;
   if (wrapperRect.left + popoverWidth > ownerWindow.innerWidth - margin && wrapperRect.right - popoverWidth >= margin) {
     popover.addClass("is-align-right");
   }
@@ -3977,6 +4048,14 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
         this.stopEscape(event);
         this.projectActionsOpen = null;
         this.render();
+        return;
+      }
+      const openProjectInput = this.containerEl.querySelector(
+        ".belki-custom-project-wrap:not(.is-hidden)"
+      );
+      if (openProjectInput) {
+        this.stopEscape(event);
+        openProjectInput.addClass("is-hidden");
         return;
       }
       const openPopover = this.containerEl.querySelector(
