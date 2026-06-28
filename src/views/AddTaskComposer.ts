@@ -1,4 +1,4 @@
-import { App, Platform, setIcon } from "obsidian";
+import { App, Notice, Platform, setIcon } from "obsidian";
 import { CreateTaskInput, PRIORITIES, Priority, RepeatRule } from "../types";
 import { getLabelColor, getProjectColor } from "../colors";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
@@ -563,6 +563,7 @@ export class AddTaskComposer {
         });
         clearBtn.addEventListener("click", (e) => {
           e.stopPropagation();
+          if (selectedRepeat) new Notice("Date and repeat rule removed.");
           selectedDue = "";
           selectedRepeat = undefined;
           closeDueDatePopover();
@@ -615,44 +616,43 @@ export class AddTaskComposer {
       setIcon(repeatIcon, "repeat");
       repeatHeader.createSpan({ text: "Repeat" });
 
-      if (!selectedDue) {
-        datePopover.createEl("span", { cls: "belki-repeat-hint", text: "Select a date first." });
-      } else {
-        const presets = getRepeatPresets(selectedDue);
-        for (const preset of presets) {
-          const btn = datePopover.createEl("button", {
-            cls: "belki-date-preset",
-            attr: { type: "button" }
-          });
-          const ri = btn.createSpan({ cls: "belki-chip-icon" });
-          setIcon(ri, "repeat");
-          btn.createSpan({ text: preset.label });
-          btn.toggleClass("is-active", repeatRulesEqual(preset.rule, selectedRepeat));
-          btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            selectedRepeat = repeatRulesEqual(preset.rule, selectedRepeat) ? undefined : preset.rule;
-            closeDueDatePopover();
-            clearOutsideListener();
-            renderDueDateButton();
-            renderRepeatChip();
-          });
-        }
-        const customRepeatBtn = datePopover.createEl("button", {
+      const presetDue = selectedDue || todayIso();
+      const presets = getRepeatPresets(presetDue);
+      for (const preset of presets) {
+        const btn = datePopover.createEl("button", {
           cls: "belki-date-preset",
-          text: "Custom...",
           attr: { type: "button" }
         });
-        customRepeatBtn.addEventListener("click", (e) => {
+        const ri = btn.createSpan({ cls: "belki-chip-icon" });
+        setIcon(ri, "repeat");
+        btn.createSpan({ text: preset.label });
+        btn.toggleClass("is-active", repeatRulesEqual(preset.rule, selectedRepeat));
+        btn.addEventListener("click", (e) => {
           e.stopPropagation();
+          if (!selectedDue) selectedDue = todayIso();
+          selectedRepeat = repeatRulesEqual(preset.rule, selectedRepeat) ? undefined : preset.rule;
           closeDueDatePopover();
           clearOutsideListener();
-          new CustomRepeatModal(options.app, selectedRepeat, (rule) => {
-            selectedRepeat = rule;
-            renderDueDateButton();
-            renderRepeatChip();
-          }).open();
+          renderDueDateButton();
+          renderRepeatChip();
         });
       }
+      const customRepeatBtn = datePopover.createEl("button", {
+        cls: "belki-date-preset",
+        text: "Custom...",
+        attr: { type: "button" }
+      });
+      customRepeatBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!selectedDue) selectedDue = todayIso();
+        closeDueDatePopover();
+        clearOutsideListener();
+        new CustomRepeatModal(options.app, selectedRepeat, (rule) => {
+          selectedRepeat = rule;
+          renderDueDateButton();
+          renderRepeatChip();
+        }).open();
+      });
 
       dueDateButton.addEventListener("click", () => {
         const shouldOpen = datePopover.hasClass("is-hidden");

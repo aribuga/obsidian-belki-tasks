@@ -10,6 +10,16 @@ const FREQ_LABELS: Record<RepeatFrequency, string> = {
   yearly: "Year"
 };
 
+const DISPLAY_DAYS = [
+  { label: "Mon", value: 1 },
+  { label: "Tue", value: 2 },
+  { label: "Wed", value: 3 },
+  { label: "Thu", value: 4 },
+  { label: "Fri", value: 5 },
+  { label: "Sat", value: 6 },
+  { label: "Sun", value: 0 },
+];
+
 export class CustomRepeatModal extends Modal {
   private draft: RepeatRule;
   private onSave: (rule: RepeatRule) => void;
@@ -45,6 +55,7 @@ export class CustomRepeatModal extends Modal {
     });
     this.renderRadio(modeWrap, "Completed date", this.draft.mode === "completedDate", () => {
       this.draft.mode = "completedDate";
+      this.draft.weekday = undefined;
       this.render();
     });
 
@@ -75,8 +86,29 @@ export class CustomRepeatModal extends Modal {
     freqSelect.value = this.draft.frequency;
     freqSelect.addEventListener("change", () => {
       this.draft.frequency = freqSelect.value as RepeatFrequency;
+      if (this.draft.frequency !== "weekly") {
+        this.draft.weekday = undefined;
+      }
       this.render();
     });
+
+    // On (weekday selector) — only for weekly + scheduledDate
+    if (this.draft.frequency === "weekly" && this.draft.mode === "scheduledDate") {
+      this.renderSection(contentEl, "On");
+      const dayRow = contentEl.createDiv({ cls: "belki-repeat-day-row" });
+      for (const { label, value } of DISPLAY_DAYS) {
+        const btn = dayRow.createEl("button", {
+          cls: "belki-repeat-day-btn",
+          text: label,
+          attr: { type: "button" }
+        });
+        btn.toggleClass("is-active", this.draft.weekday === value);
+        btn.addEventListener("click", () => {
+          this.draft.weekday = this.draft.weekday === value ? undefined : value;
+          this.render();
+        });
+      }
+    }
 
     // Ends
     this.renderSection(contentEl, "Ends");

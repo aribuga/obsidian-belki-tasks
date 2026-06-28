@@ -1855,6 +1855,38 @@ button.belki-add-inline {
   padding: 8px 12px;
 }
 
+.belki-repeat-day-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.belki-repeat-day-btn {
+  appearance: none;
+  background: var(--belki-surface);
+  border: 1px solid var(--belki-border);
+  border-radius: 6px;
+  color: var(--belki-text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  min-width: 36px;
+  padding: 5px 6px;
+  text-align: center;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.belki-repeat-day-btn:hover {
+  background: var(--belki-hover);
+}
+
+.belki-repeat-day-btn.is-active {
+  background: var(--belki-accent);
+  border-color: var(--belki-accent);
+  color: var(--belki-on-accent);
+}
+
 .belki-repeat-modal-actions {
   display: flex;
   gap: 8px;

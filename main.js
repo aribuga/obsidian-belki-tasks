@@ -646,6 +646,11 @@ function nextOccurrence(rule, fromDate) {
       break;
     case "weekly":
       date.setDate(date.getDate() + 7 * interval);
+      if (rule.weekday !== void 0 && date.getDay() !== rule.weekday) {
+        let diff = rule.weekday - date.getDay();
+        if (diff < 0) diff += 7;
+        date.setDate(date.getDate() + diff);
+      }
       break;
     case "weekdays":
       date.setDate(date.getDate() + 1);
@@ -1927,6 +1932,15 @@ var FREQ_LABELS = {
   monthly: "Month",
   yearly: "Year"
 };
+var DISPLAY_DAYS = [
+  { label: "Mon", value: 1 },
+  { label: "Tue", value: 2 },
+  { label: "Wed", value: 3 },
+  { label: "Thu", value: 4 },
+  { label: "Fri", value: 5 },
+  { label: "Sat", value: 6 },
+  { label: "Sun", value: 0 }
+];
 var CustomRepeatModal = class extends import_obsidian4.Modal {
   constructor(app, current, onSave) {
     super(app);
@@ -1952,6 +1966,7 @@ var CustomRepeatModal = class extends import_obsidian4.Modal {
     });
     this.renderRadio(modeWrap, "Completed date", this.draft.mode === "completedDate", () => {
       this.draft.mode = "completedDate";
+      this.draft.weekday = void 0;
       this.render();
     });
     this.renderSection(contentEl, "Every");
@@ -1979,8 +1994,27 @@ var CustomRepeatModal = class extends import_obsidian4.Modal {
     freqSelect.value = this.draft.frequency;
     freqSelect.addEventListener("change", () => {
       this.draft.frequency = freqSelect.value;
+      if (this.draft.frequency !== "weekly") {
+        this.draft.weekday = void 0;
+      }
       this.render();
     });
+    if (this.draft.frequency === "weekly" && this.draft.mode === "scheduledDate") {
+      this.renderSection(contentEl, "On");
+      const dayRow = contentEl.createDiv({ cls: "belki-repeat-day-row" });
+      for (const { label, value } of DISPLAY_DAYS) {
+        const btn = dayRow.createEl("button", {
+          cls: "belki-repeat-day-btn",
+          text: label,
+          attr: { type: "button" }
+        });
+        btn.toggleClass("is-active", this.draft.weekday === value);
+        btn.addEventListener("click", () => {
+          this.draft.weekday = this.draft.weekday === value ? void 0 : value;
+          this.render();
+        });
+      }
+    }
     this.renderSection(contentEl, "Ends");
     const endsWrap = contentEl.createDiv({ cls: "belki-repeat-radio-group" });
     this.renderRadio(endsWrap, "Never", this.draft.ends === "never", () => {
@@ -2521,6 +2555,7 @@ var AddTaskComposer = class {
         });
         clearBtn.addEventListener("click", (e) => {
           e.stopPropagation();
+          if (selectedRepeat) new import_obsidian5.Notice("Date and repeat rule removed.");
           selectedDue = "";
           selectedRepeat = void 0;
           closeDueDatePopover();
@@ -2566,44 +2601,43 @@ var AddTaskComposer = class {
       const repeatIcon = repeatHeader.createSpan({ cls: "belki-chip-icon" });
       (0, import_obsidian5.setIcon)(repeatIcon, "repeat");
       repeatHeader.createSpan({ text: "Repeat" });
-      if (!selectedDue) {
-        datePopover.createEl("span", { cls: "belki-repeat-hint", text: "Select a date first." });
-      } else {
-        const presets = getRepeatPresets(selectedDue);
-        for (const preset of presets) {
-          const btn = datePopover.createEl("button", {
-            cls: "belki-date-preset",
-            attr: { type: "button" }
-          });
-          const ri = btn.createSpan({ cls: "belki-chip-icon" });
-          (0, import_obsidian5.setIcon)(ri, "repeat");
-          btn.createSpan({ text: preset.label });
-          btn.toggleClass("is-active", repeatRulesEqual(preset.rule, selectedRepeat));
-          btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            selectedRepeat = repeatRulesEqual(preset.rule, selectedRepeat) ? void 0 : preset.rule;
-            closeDueDatePopover();
-            clearOutsideListener();
-            renderDueDateButton();
-            renderRepeatChip();
-          });
-        }
-        const customRepeatBtn = datePopover.createEl("button", {
+      const presetDue = selectedDue || todayIso();
+      const presets = getRepeatPresets(presetDue);
+      for (const preset of presets) {
+        const btn = datePopover.createEl("button", {
           cls: "belki-date-preset",
-          text: "Custom...",
           attr: { type: "button" }
         });
-        customRepeatBtn.addEventListener("click", (e) => {
+        const ri = btn.createSpan({ cls: "belki-chip-icon" });
+        (0, import_obsidian5.setIcon)(ri, "repeat");
+        btn.createSpan({ text: preset.label });
+        btn.toggleClass("is-active", repeatRulesEqual(preset.rule, selectedRepeat));
+        btn.addEventListener("click", (e) => {
           e.stopPropagation();
+          if (!selectedDue) selectedDue = todayIso();
+          selectedRepeat = repeatRulesEqual(preset.rule, selectedRepeat) ? void 0 : preset.rule;
           closeDueDatePopover();
           clearOutsideListener();
-          new CustomRepeatModal(options.app, selectedRepeat, (rule) => {
-            selectedRepeat = rule;
-            renderDueDateButton();
-            renderRepeatChip();
-          }).open();
+          renderDueDateButton();
+          renderRepeatChip();
         });
       }
+      const customRepeatBtn = datePopover.createEl("button", {
+        cls: "belki-date-preset",
+        text: "Custom...",
+        attr: { type: "button" }
+      });
+      customRepeatBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!selectedDue) selectedDue = todayIso();
+        closeDueDatePopover();
+        clearOutsideListener();
+        new CustomRepeatModal(options.app, selectedRepeat, (rule) => {
+          selectedRepeat = rule;
+          renderDueDateButton();
+          renderRepeatChip();
+        }).open();
+      });
       dueDateButton.addEventListener("click", () => {
         const shouldOpen = datePopover.hasClass("is-hidden");
         closeComposerPopovers();
@@ -3270,6 +3304,7 @@ var TaskDetailModal = class extends import_obsidian7.Modal {
         clearBtn.setText("\xD7");
         clearBtn.addEventListener("click", (e) => {
           e.stopPropagation();
+          if (this.draft.repeat) new import_obsidian7.Notice("Date and repeat rule removed.");
           this.draft.due = void 0;
           this.draft.repeat = void 0;
           closePopover();
@@ -3311,40 +3346,39 @@ var TaskDetailModal = class extends import_obsidian7.Modal {
       const repeatIcon = repeatHeader.createSpan({ cls: "belki-chip-icon" });
       (0, import_obsidian7.setIcon)(repeatIcon, "repeat");
       repeatHeader.createSpan({ text: "Repeat" });
-      if (!this.draft.due) {
-        popover.createEl("span", { cls: "belki-repeat-hint", text: "Select a date first." });
-      } else {
-        const presets = getRepeatPresets(this.draft.due);
-        for (const preset of presets) {
-          const presetBtn = popover.createEl("button", {
-            cls: "belki-date-preset",
-            attr: { type: "button" }
-          });
-          const ri = presetBtn.createSpan({ cls: "belki-chip-icon" });
-          (0, import_obsidian7.setIcon)(ri, "repeat");
-          presetBtn.createSpan({ text: preset.label });
-          presetBtn.toggleClass("is-active", repeatRulesEqual(preset.rule, this.draft.repeat));
-          presetBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            this.draft.repeat = repeatRulesEqual(preset.rule, this.draft.repeat) ? void 0 : preset.rule;
-            closePopover();
-            renderPicker();
-          });
-        }
-        const customRepeatBtn = popover.createEl("button", {
+      const presetDue = this.draft.due || todayIso();
+      const presets = getRepeatPresets(presetDue);
+      for (const preset of presets) {
+        const presetBtn = popover.createEl("button", {
           cls: "belki-date-preset",
-          text: "Custom...",
           attr: { type: "button" }
         });
-        customRepeatBtn.addEventListener("click", (e) => {
+        const ri = presetBtn.createSpan({ cls: "belki-chip-icon" });
+        (0, import_obsidian7.setIcon)(ri, "repeat");
+        presetBtn.createSpan({ text: preset.label });
+        presetBtn.toggleClass("is-active", repeatRulesEqual(preset.rule, this.draft.repeat));
+        presetBtn.addEventListener("click", (e) => {
           e.stopPropagation();
+          if (!this.draft.due) this.draft.due = todayIso();
+          this.draft.repeat = repeatRulesEqual(preset.rule, this.draft.repeat) ? void 0 : preset.rule;
           closePopover();
-          new CustomRepeatModal(this.app, this.draft.repeat, (rule) => {
-            this.draft.repeat = rule;
-            renderPicker();
-          }).open();
+          renderPicker();
         });
       }
+      const customRepeatBtn = popover.createEl("button", {
+        cls: "belki-date-preset",
+        text: "Custom...",
+        attr: { type: "button" }
+      });
+      customRepeatBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!this.draft.due) this.draft.due = todayIso();
+        closePopover();
+        new CustomRepeatModal(this.app, this.draft.repeat, (rule) => {
+          this.draft.repeat = rule;
+          renderPicker();
+        }).open();
+      });
       btn.addEventListener("click", () => {
         const isHidden = popover.hasClass("is-hidden");
         closePopover();
@@ -3543,7 +3577,9 @@ var TaskDetailModal = class extends import_obsidian7.Modal {
       project: this.draft.project,
       priority: this.draft.priority,
       labels: dedupeLabels(this.draft.labels),
-      attachments: [...this.draft.attachments]
+      attachments: [...this.draft.attachments],
+      repeat: this.draft.repeat,
+      completedOccurrences: this.draft.completedOccurrences
     });
     this.options.onChange();
     this.close();

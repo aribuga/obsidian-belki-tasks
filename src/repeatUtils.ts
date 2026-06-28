@@ -121,6 +121,12 @@ export function nextOccurrence(rule: RepeatRule, fromDate: string): string {
       break;
     case "weekly":
       date.setDate(date.getDate() + 7 * interval);
+      if (rule.weekday !== undefined && date.getDay() !== rule.weekday) {
+        // Snap forward to correct weekday if due date drifted
+        let diff = rule.weekday - date.getDay();
+        if (diff < 0) diff += 7;
+        date.setDate(date.getDate() + diff);
+      }
       break;
     case "weekdays":
       date.setDate(date.getDate() + 1);
