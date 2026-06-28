@@ -2207,6 +2207,148 @@ function attachWikilinkAutocomplete(textarea, app) {
   });
 }
 
+// src/views/quickAddAutocomplete.ts
+function parseQuickAddTokens(raw) {
+  const labelRe = /^#([^\d\s#][^\s]*)$/;
+  const projectRe = /^\/\/(\S+)$/;
+  const parts = raw.trim().split(/\s+/).filter(Boolean);
+  const titleParts = [];
+  const labels = [];
+  let project = null;
+  for (const part of parts) {
+    const lm = part.match(labelRe);
+    const pm = part.match(projectRe);
+    if (lm) {
+      labels.push(lm[1]);
+    } else if (pm) {
+      project = pm[1];
+    } else {
+      titleParts.push(part);
+    }
+  }
+  return { title: titleParts.join(" "), labels, project };
+}
+function getActiveToken(input) {
+  var _a;
+  const pos = (_a = input.selectionStart) != null ? _a : 0;
+  const text = input.value;
+  let start = pos;
+  while (start > 0 && !/\s/.test(text[start - 1])) start--;
+  let end = pos;
+  while (end < text.length && !/\s/.test(text[end])) end++;
+  const word = text.slice(start, end);
+  if (word === "#" || /^#[^\d\s#]/.test(word)) {
+    return { type: "label", query: word.slice(1), start, end };
+  }
+  if (word === "//" || /^\/\//.test(word)) {
+    return { type: "project", query: word.slice(2), start, end };
+  }
+  return null;
+}
+function completeToken(input, token, value) {
+  const prefix = token.type === "label" ? "#" : "//";
+  const text = input.value;
+  const completed = prefix + value;
+  input.value = text.slice(0, token.start) + completed + text.slice(token.end);
+  const newPos = token.start + completed.length;
+  input.setSelectionRange(newPos, newPos);
+  input.dispatchEvent(new Event("input"));
+}
+function attachQuickAddAutocomplete(input, getLabels, getProjects) {
+  let dropdown = null;
+  let activeIndex = 0;
+  let currentMatches = [];
+  let currentToken = null;
+  let renderItems = null;
+  const closeDropdown = () => {
+    dropdown == null ? void 0 : dropdown.remove();
+    dropdown = null;
+    currentMatches = [];
+    currentToken = null;
+    activeIndex = 0;
+    renderItems = null;
+  };
+  const insertMatch = (value) => {
+    if (!currentToken) return;
+    completeToken(input, currentToken, value);
+    closeDropdown();
+    input.focus();
+  };
+  const showDropdown = (token, matches) => {
+    closeDropdown();
+    if (matches.length === 0) return;
+    currentToken = token;
+    currentMatches = matches;
+    activeIndex = 0;
+    const rect = input.getBoundingClientRect();
+    dropdown = document.createElement("div");
+    dropdown.className = "belki-wikilink-dropdown";
+    dropdown.style.left = `${rect.left}px`;
+    dropdown.style.top = `${rect.bottom + 2}px`;
+    dropdown.style.width = `${Math.max(rect.width, 200)}px`;
+    renderItems = () => {
+      if (!dropdown) return;
+      dropdown.innerHTML = "";
+      matches.forEach((m, i) => {
+        const item = document.createElement("div");
+        item.className = "belki-wikilink-item" + (i === activeIndex ? " is-active" : "");
+        const prefix = token.type === "label" ? "#" : "//";
+        item.textContent = prefix + m;
+        item.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          insertMatch(m);
+        });
+        dropdown.appendChild(item);
+        if (i === activeIndex) item.scrollIntoView({ block: "nearest" });
+      });
+    };
+    renderItems();
+    document.body.appendChild(dropdown);
+  };
+  input.addEventListener("input", () => {
+    const token = getActiveToken(input);
+    if (!token) {
+      closeDropdown();
+      return;
+    }
+    const q = token.query.toLowerCase();
+    let source;
+    if (token.type === "label") {
+      source = getLabels();
+    } else {
+      source = getProjects();
+    }
+    const matches = source.filter((s) => !q || s.toLowerCase().includes(q)).sort((a, b) => {
+      const aStart = a.toLowerCase().startsWith(q);
+      const bStart = b.toLowerCase().startsWith(q);
+      if (aStart !== bStart) return aStart ? -1 : 1;
+      return a.localeCompare(b);
+    }).slice(0, 10);
+    showDropdown(token, matches);
+  });
+  input.addEventListener("keydown", (e) => {
+    if (!dropdown || currentMatches.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      activeIndex = Math.min(activeIndex + 1, currentMatches.length - 1);
+      renderItems == null ? void 0 : renderItems();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      activeIndex = Math.max(activeIndex - 1, 0);
+      renderItems == null ? void 0 : renderItems();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (currentMatches[activeIndex] !== void 0) insertMatch(currentMatches[activeIndex]);
+    } else if (e.key === "Escape") {
+      e.stopPropagation();
+      closeDropdown();
+    }
+  });
+  input.addEventListener("blur", () => {
+    setTimeout(() => closeDropdown(), 150);
+  });
+}
+
 // src/views/AddTaskComposer.ts
 var AddTaskComposer = class {
   constructor() {
@@ -2233,6 +2375,11 @@ var AddTaskComposer = class {
       }
     });
     attachWikilinkAutocomplete(descriptionInput, options.app);
+    attachQuickAddAutocomplete(
+      this.titleInput,
+      () => options.labels,
+      () => options.projects
+    );
     const chipRow = form.createDiv({ cls: "belki-composer-chip-row" });
     const dueDateWrap = chipRow.createDiv({ cls: "belki-date-picker-wrap" });
     const repeatChipWrap = chipRow.createDiv({ cls: "belki-repeat-chip-wrap" });
@@ -2646,14 +2793,17 @@ var AddTaskComposer = class {
       void (async () => {
         var _a;
         try {
+          const rawTitle = ((_a = this.titleInput) == null ? void 0 : _a.value) || "";
+          const parsed = parseQuickAddTokens(rawTitle);
+          const explicitProject = this.readProject();
           await options.onSubmit({
-            title: ((_a = this.titleInput) == null ? void 0 : _a.value) || "",
+            title: parsed.title || rawTitle,
             description: descriptionInput.value,
             due: selectedDue,
             deadline: selectedDeadline,
-            project: this.readProject(),
+            project: explicitProject || parsed.project || "",
             priority: prioritySelect.value,
-            labels: dedupeLabels(selectedLabels),
+            labels: dedupeLabels([...selectedLabels, ...parsed.labels]),
             pendingAttachments,
             repeat: selectedRepeat
           });
@@ -2950,6 +3100,7 @@ var TaskDetailModal = class extends import_obsidian7.Modal {
   constructor(app, options) {
     super(app);
     this.options = options;
+    this.sideEl = null;
     this.handleEscape = (event) => {
       if (event.key !== "Escape") {
         return;
@@ -2986,6 +3137,7 @@ var TaskDetailModal = class extends import_obsidian7.Modal {
     const shell = contentEl.createDiv({ cls: "belki-detail-shell" });
     const main = shell.createDiv({ cls: "belki-detail-main" });
     const side = shell.createDiv({ cls: "belki-detail-side" });
+    this.sideEl = side;
     const closeButton = shell.createEl("button", {
       cls: "belki-detail-close",
       text: "\xD7",
@@ -3009,6 +3161,28 @@ var TaskDetailModal = class extends import_obsidian7.Modal {
     });
     titleInput.addEventListener("input", () => {
       this.draft.title = titleInput.value;
+    });
+    attachQuickAddAutocomplete(
+      titleInput,
+      () => this.options.labels,
+      () => this.options.projects
+    );
+    titleInput.addEventListener("blur", () => {
+      const parsed = parseQuickAddTokens(titleInput.value);
+      if (parsed.labels.length > 0 || parsed.project) {
+        this.draft.title = parsed.title || titleInput.value;
+        titleInput.value = this.draft.title;
+        if (parsed.labels.length > 0) {
+          this.draft.labels = dedupeLabels([...this.draft.labels, ...parsed.labels]);
+        }
+        if (parsed.project && !this.draft.project) {
+          this.draft.project = parsed.project;
+        }
+        if (this.sideEl) {
+          this.sideEl.empty();
+          this.renderSidePanel(this.sideEl);
+        }
+      }
     });
     const descRendered = main.createDiv({ cls: "belki-detail-description-rendered" });
     const refreshRendered = () => {

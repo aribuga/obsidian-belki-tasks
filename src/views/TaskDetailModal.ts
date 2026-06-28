@@ -12,6 +12,7 @@ import { getPriorityColor, getPriorityLabel } from "../priority";
 import { normalizeTaskProject, uniqueRealProjects } from "../projects";
 import { renderLinkedText } from "./TaskBoardView";
 import { attachWikilinkAutocomplete } from "./wikilinkAutocomplete";
+import { attachQuickAddAutocomplete, parseQuickAddTokens } from "./quickAddAutocomplete";
 
 interface TaskDetailModalOptions {
   task: BelkiTask;
@@ -24,6 +25,7 @@ interface TaskDetailModalOptions {
 
 export class TaskDetailModal extends Modal {
   private draft: BelkiTask;
+  private sideEl: HTMLElement | null = null;
   private handleEscape = (event: KeyboardEvent): void => {
     if (event.key !== "Escape") {
       return;
@@ -72,6 +74,7 @@ export class TaskDetailModal extends Modal {
     const shell = contentEl.createDiv({ cls: "belki-detail-shell" });
     const main = shell.createDiv({ cls: "belki-detail-main" });
     const side = shell.createDiv({ cls: "belki-detail-side" });
+    this.sideEl = side;
 
     const closeButton = shell.createEl("button", {
       cls: "belki-detail-close",
@@ -98,6 +101,30 @@ export class TaskDetailModal extends Modal {
     });
     titleInput.addEventListener("input", () => {
       this.draft.title = titleInput.value;
+    });
+
+    attachQuickAddAutocomplete(
+      titleInput,
+      () => this.options.labels,
+      () => this.options.projects
+    );
+
+    titleInput.addEventListener("blur", () => {
+      const parsed = parseQuickAddTokens(titleInput.value);
+      if (parsed.labels.length > 0 || parsed.project) {
+        this.draft.title = parsed.title || titleInput.value;
+        titleInput.value = this.draft.title;
+        if (parsed.labels.length > 0) {
+          this.draft.labels = dedupeLabels([...this.draft.labels, ...parsed.labels]);
+        }
+        if (parsed.project && !this.draft.project) {
+          this.draft.project = parsed.project;
+        }
+        if (this.sideEl) {
+          this.sideEl.empty();
+          this.renderSidePanel(this.sideEl);
+        }
+      }
     });
 
     const descRendered = main.createDiv({ cls: "belki-detail-description-rendered" });

@@ -8,6 +8,7 @@ import { addDaysIso, formatDueDateChip, nextWeekdayIso, todayIso } from "../date
 import { getRepeatLabel, getRepeatPresets, repeatRulesEqual } from "../repeatUtils";
 import { CustomRepeatModal } from "./CustomRepeatModal";
 import { attachWikilinkAutocomplete } from "./wikilinkAutocomplete";
+import { attachQuickAddAutocomplete, parseQuickAddTokens } from "./quickAddAutocomplete";
 
 interface ComposerOptions {
   app: App;
@@ -51,6 +52,11 @@ export class AddTaskComposer {
     });
 
     attachWikilinkAutocomplete(descriptionInput, options.app);
+    attachQuickAddAutocomplete(
+      this.titleInput,
+      () => options.labels,
+      () => options.projects
+    );
 
     const chipRow = form.createDiv({ cls: "belki-composer-chip-row" });
     const dueDateWrap = chipRow.createDiv({ cls: "belki-date-picker-wrap" });
@@ -530,14 +536,17 @@ export class AddTaskComposer {
       addButton.setAttr("disabled", "true");
       void (async () => {
         try {
+          const rawTitle = this.titleInput?.value || "";
+          const parsed = parseQuickAddTokens(rawTitle);
+          const explicitProject = this.readProject();
           await options.onSubmit({
-            title: this.titleInput?.value || "",
+            title: parsed.title || rawTitle,
             description: descriptionInput.value,
             due: selectedDue,
             deadline: selectedDeadline,
-            project: this.readProject(),
+            project: explicitProject || parsed.project || "",
             priority: prioritySelect.value as Priority,
-            labels: dedupeLabels(selectedLabels),
+            labels: dedupeLabels([...selectedLabels, ...parsed.labels]),
             pendingAttachments,
             repeat: selectedRepeat
           });
