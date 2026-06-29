@@ -432,6 +432,7 @@ export class AddTaskComposer {
 
     const openProjectMenu = () => {
       document.body.appendChild(projectMenu);
+      projectMenu.removeClass("is-hidden");
       projectPicker.setAttr("aria-expanded", "true");
       watchLocalPopover(projectArea, projectMenu, { preferredSide: "above", useFixed: true });
     };
