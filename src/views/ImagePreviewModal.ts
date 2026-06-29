@@ -1,6 +1,7 @@
 import { App, Modal, TFile } from "obsidian";
 
 export class ImagePreviewModal extends Modal {
+  private openedBody: Element | null = null;
   private handleEscape = (event: KeyboardEvent): void => {
     if (event.key !== "Escape") {
       return;
@@ -21,7 +22,8 @@ export class ImagePreviewModal extends Modal {
   }
 
   onOpen(): void {
-    activeDocument.body.classList.add("belki-image-preview-open");
+    this.openedBody = activeDocument.body;
+    this.openedBody.classList.add("belki-image-preview-open");
     this.containerEl.addClass("belki-image-lightbox-backdrop");
     this.modalEl.addClass("belki-image-lightbox-modal");
     this.modalEl.addEventListener("keydown", this.handleEscape, true);
@@ -62,7 +64,8 @@ export class ImagePreviewModal extends Modal {
   }
 
   onClose(): void {
-    activeDocument.body.classList.remove("belki-image-preview-open");
+    this.openedBody?.classList.remove("belki-image-preview-open");
+    this.openedBody = null;
     this.modalEl.removeEventListener("keydown", this.handleEscape, true);
   }
 }

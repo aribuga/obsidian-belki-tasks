@@ -580,14 +580,19 @@ export class AddTaskComposer {
     form.addEventListener("submit", (event) => {
       event.preventDefault();
 
+      const rawTitle = this.titleInput?.value || "";
+      const parsed = parseQuickAddTokens(rawTitle);
+      if (!parsed.title.trim()) {
+        this.titleInput?.focus();
+        return;
+      }
+
       addButton.setAttr("disabled", "true");
       void (async () => {
         try {
-          const rawTitle = this.titleInput?.value || "";
-          const parsed = parseQuickAddTokens(rawTitle);
           const explicitProject = this.readProject();
           await options.onSubmit({
-            title: parsed.title || rawTitle,
+            title: parsed.title,
             description: descriptionInput.value,
             due: selectedDue,
             deadline: selectedDeadline,
