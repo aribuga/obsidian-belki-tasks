@@ -52,7 +52,7 @@ export class AddTaskComposer {
     });
 
     const closeWikilinkDropdown = attachWikilinkAutocomplete(descriptionInput, options.app);
-    attachQuickAddAutocomplete(
+    const closeQuickAddDropdown = attachQuickAddAutocomplete(
       this.titleInput,
       () => options.labels,
       () => options.projects
@@ -574,7 +574,7 @@ export class AddTaskComposer {
       }
     });
 
-    const cleanup = () => { projectMenu.remove(); closeWikilinkDropdown(); };
+    const cleanup = () => { projectMenu.remove(); closeWikilinkDropdown(); closeQuickAddDropdown(); };
     cancelButton.addEventListener("click", () => { cleanup(); options.onCancel(); });
     form.addEventListener("submit", () => cleanup());
     form.addEventListener("submit", (event) => {

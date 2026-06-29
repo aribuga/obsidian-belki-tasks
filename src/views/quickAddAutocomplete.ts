@@ -74,12 +74,13 @@ export function attachQuickAddAutocomplete(
   input: HTMLInputElement,
   getLabels: () => string[],
   getProjects: () => string[]
-): void {
+): () => void {
   let dropdown: HTMLDivElement | null = null;
   let activeIndex = 0;
   let currentMatches: string[] = [];
   let currentToken: TokenInfo | null = null;
   let renderItems: (() => void) | null = null;
+  let escapeHandler: ((e: KeyboardEvent) => void) | null = null;
 
   const closeDropdown = () => {
     dropdown?.remove();
@@ -88,6 +89,10 @@ export function attachQuickAddAutocomplete(
     currentToken = null;
     activeIndex = 0;
     renderItems = null;
+    if (escapeHandler) {
+      window.removeEventListener("keydown", escapeHandler, true);
+      escapeHandler = null;
+    }
   };
 
   const insertMatch = (value: string) => {
@@ -129,6 +134,16 @@ export function attachQuickAddAutocomplete(
     };
     renderItems();
     document.body.appendChild(dropdown);
+
+    escapeHandler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        closeDropdown();
+      }
+    };
+    window.addEventListener("keydown", escapeHandler, true);
   };
 
   input.addEventListener("input", () => {
@@ -178,4 +193,6 @@ export function attachQuickAddAutocomplete(
   input.addEventListener("blur", () => {
     setTimeout(() => closeDropdown(), 150);
   });
+
+  return closeDropdown;
 }
