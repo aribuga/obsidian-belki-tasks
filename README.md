@@ -137,7 +137,10 @@ See [Markdown storage](docs/markdown-storage.md) for full details.
 
 ### Community plugins
 
-> **Note:** belki is pending review for the Obsidian Community Plugin directory. Until it is listed, use manual installation below.
+1. Open Obsidian Settings → Community plugins.
+2. Click **Browse** and search for `belki`.
+3. Install and enable the plugin.
+4. Run the command `belki: Open`.
 
 ### Manual installation
 

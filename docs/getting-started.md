@@ -2,7 +2,11 @@
 
 ## Install belki
 
-> belki is pending review for the Obsidian Community Plugin directory. Use manual installation for now.
+**From Community plugins:**
+
+1. Open Obsidian Settings → Community plugins.
+2. Click **Browse** and search for `belki`.
+3. Install and enable the plugin.
 
 **Manual installation:**
 
