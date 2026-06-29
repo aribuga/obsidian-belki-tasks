@@ -1221,6 +1221,15 @@ export class TaskBoardView extends ItemView {
         text: `📎 ${task.attachments.length}`
       });
     }
+    const allTasks = this.store.getTasks();
+    const subTasks = allTasks.filter((t) => t.parentId === task.id);
+    if (subTasks.length > 0) {
+      const done = subTasks.filter((t) => t.completed).length;
+      const counterEl = meta.createSpan({ cls: "belki-task-subtask-counter" });
+      setIcon(counterEl.createSpan({ cls: "belki-chip-icon" }), "list-checks");
+      counterEl.createSpan({ text: `${done}/${subTasks.length}` });
+    }
+
     if (!task.completed && task.completedOccurrences && task.completedOccurrences.length > 0) {
       const last = task.completedOccurrences[task.completedOccurrences.length - 1];
       const lastSpan = meta.createSpan({ cls: "belki-task-last-completed" });
