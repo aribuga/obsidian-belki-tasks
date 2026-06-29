@@ -208,10 +208,3 @@ Bug reports and feature requests are welcome at [github.com/aribuga/obsidian-bel
 
 MIT. See [LICENSE](LICENSE).
 
----
-
-## Maintenance note
-
-The GitHub social preview image is stored at `assets/brand/belki-social-preview.png`. To update the social preview shown on GitHub, upload this file manually at:
-
-> GitHub repo → Settings → Social preview
