@@ -176,12 +176,12 @@ export class TaskDetailModal extends Modal {
       attr: { placeholder: "Description" }
     });
     descriptionInput.value = this.draft.description || "";
-    descriptionInput.style.display = "none";
+    descriptionInput.addClass("is-hidden");
 
     descRendered.addEventListener("click", (e) => {
       if ((e.target as HTMLElement).tagName === "A") return;
-      descRendered.style.display = "none";
-      descriptionInput.style.display = "";
+      descRendered.addClass("is-hidden");
+      descriptionInput.removeClass("is-hidden");
       descriptionInput.focus();
     });
 
@@ -193,8 +193,8 @@ export class TaskDetailModal extends Modal {
 
     descriptionInput.addEventListener("blur", () => {
       refreshRendered();
-      descriptionInput.style.display = "none";
-      descRendered.style.display = "";
+      descriptionInput.addClass("is-hidden");
+      descRendered.removeClass("is-hidden");
     });
 
     this.renderSubTasks(main);

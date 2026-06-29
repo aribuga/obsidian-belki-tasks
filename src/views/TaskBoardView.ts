@@ -887,7 +887,7 @@ export class TaskBoardView extends ItemView {
     // Appended to body so Obsidian panel transforms don't trap it
     const menu = document.body.createDiv({ cls: "belki-project-menu" });
     this.projectMenuEl = menu;
-    menu.style.visibility = "hidden";
+    menu.setCssStyles({ visibility: "hidden" });
 
     const renameItem = menu.createEl("button", { cls: "belki-project-option", text: "Rename project", attr: { type: "button" } });
     renameItem.addEventListener("click", (event) => {
@@ -949,19 +949,23 @@ export class TaskBoardView extends ItemView {
       if (left + menuW > window.innerWidth - margin) {
         left = btnRect.right - menuW;
       }
-      menu.style.left = `${Math.max(margin, left)}px`;
-
       const fitsBelow = btnRect.bottom + menuH + margin <= window.innerHeight;
       const fitsAbove = btnRect.top - menuH - margin >= 0;
       if (!fitsBelow && fitsAbove) {
-        menu.style.bottom = `${window.innerHeight - btnRect.top + 4}px`;
+        menu.setCssStyles({
+          left: `${Math.max(margin, left)}px`,
+          bottom: `${window.innerHeight - btnRect.top + 4}px`,
+          visibility: ""
+        });
         menu.addClass("is-open-up");
       } else {
-        menu.style.top = `${btnRect.bottom + 4}px`;
+        menu.setCssStyles({
+          left: `${Math.max(margin, left)}px`,
+          top: `${btnRect.bottom + 4}px`,
+          visibility: ""
+        });
         menu.addClass("is-open-down");
       }
-
-      menu.style.visibility = "";
     });
   }
 

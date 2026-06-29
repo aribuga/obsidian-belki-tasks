@@ -3377,11 +3377,11 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
       attr: { placeholder: "Description" }
     });
     descriptionInput.value = this.draft.description || "";
-    descriptionInput.style.display = "none";
+    descriptionInput.addClass("is-hidden");
     descRendered.addEventListener("click", (e) => {
       if (e.target.tagName === "A") return;
-      descRendered.style.display = "none";
-      descriptionInput.style.display = "";
+      descRendered.addClass("is-hidden");
+      descriptionInput.removeClass("is-hidden");
       descriptionInput.focus();
     });
     descriptionInput.addEventListener("input", () => {
@@ -3390,8 +3390,8 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     this.closeWikilinkDropdown = attachWikilinkAutocomplete(descriptionInput, this.app);
     descriptionInput.addEventListener("blur", () => {
       refreshRendered();
-      descriptionInput.style.display = "none";
-      descRendered.style.display = "";
+      descriptionInput.addClass("is-hidden");
+      descRendered.removeClass("is-hidden");
     });
     this.renderSubTasks(main);
     this.renderAttachments(main);
@@ -5197,7 +5197,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     if (this.projectActionsOpen !== project) return;
     const menu = document.body.createDiv({ cls: "belki-project-menu" });
     this.projectMenuEl = menu;
-    menu.style.visibility = "hidden";
+    menu.setCssStyles({ visibility: "hidden" });
     const renameItem = menu.createEl("button", { cls: "belki-project-option", text: "Rename project", attr: { type: "button" } });
     renameItem.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -5253,17 +5253,23 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
       if (left + menuW > window.innerWidth - margin) {
         left = btnRect.right - menuW;
       }
-      menu.style.left = `${Math.max(margin, left)}px`;
       const fitsBelow = btnRect.bottom + menuH + margin <= window.innerHeight;
       const fitsAbove = btnRect.top - menuH - margin >= 0;
       if (!fitsBelow && fitsAbove) {
-        menu.style.bottom = `${window.innerHeight - btnRect.top + 4}px`;
+        menu.setCssStyles({
+          left: `${Math.max(margin, left)}px`,
+          bottom: `${window.innerHeight - btnRect.top + 4}px`,
+          visibility: ""
+        });
         menu.addClass("is-open-up");
       } else {
-        menu.style.top = `${btnRect.bottom + 4}px`;
+        menu.setCssStyles({
+          left: `${Math.max(margin, left)}px`,
+          top: `${btnRect.bottom + 4}px`,
+          visibility: ""
+        });
         menu.addClass("is-open-down");
       }
-      menu.style.visibility = "";
     });
   }
   renderArchivedProjectsView(parent, allTasks) {
