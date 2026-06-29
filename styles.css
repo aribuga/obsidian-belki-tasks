@@ -1204,6 +1204,19 @@ button.belki-add-inline {
   color: var(--belki-text);
 }
 
+.belki-deadline-clear {
+  align-items: center;
+  border-radius: 50%;
+  color: var(--belki-muted);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 14px;
+  height: 18px;
+  justify-content: center;
+  line-height: 1;
+  width: 18px;
+}
+
 .belki-date-popover {
   background: var(--belki-chip-bg);
   border: 1px solid var(--belki-border);

@@ -144,7 +144,6 @@ export class AddTaskComposer {
     const labelsWrap = chipRow.createDiv({ cls: "belki-composer-labels-wrap" });
     const labelsButton = createChipButton(labelsWrap, "Labels", "tag");
     const deadlineWrap = chipRow.createDiv({ cls: "belki-composer-deadline-wrap" });
-    const deadlineButton = createChipButton(deadlineWrap, "Deadline", "diamond");
 
     const labelsPanel = labelsWrap.createDiv({ cls: "belki-composer-popover is-hidden" });
     const selectedLabelsEl = labelsPanel.createDiv({ cls: "belki-selected-labels" });
@@ -157,23 +156,12 @@ export class AddTaskComposer {
     });
     const labelSuggestions = labelsPanel.createDiv({ cls: "belki-label-suggestions" });
 
-    const deadlinePanel = deadlineWrap.createDiv({ cls: "belki-composer-popover is-hidden" });
-    deadlinePanel.createDiv({ cls: "belki-popover-title", text: "Deadline" });
-    const deadlineInput = deadlinePanel.createEl("input", {
-      cls: "belki-deadline-input",
-      attr: {
-        type: "date"
-      }
-    });
-    deadlineInput.addEventListener("change", () => {
-      selectedDeadline = deadlineInput.value;
-    });
-
     const labelChipsRow = form.createDiv({ cls: "belki-composer-label-chips is-hidden" });
 
     let detachOutsideListener = () => undefined;
     let closeProjectMenu = () => undefined;
     let closeDueDatePopover: () => void = () => undefined;
+    let closeDeadlinePanel: () => void = () => undefined;
 
     const clearOutsideListener = () => {
       detachOutsideListener();
@@ -182,7 +170,7 @@ export class AddTaskComposer {
 
     const closePanels = () => {
       labelsPanel.addClass("is-hidden");
-      deadlinePanel.addClass("is-hidden");
+      closeDeadlinePanel();
     };
 
     const closeComposerPopovers = () => {
@@ -242,15 +230,57 @@ export class AddTaskComposer {
         keepLabelInputVisible();
       }
     });
-    deadlineButton.addEventListener("click", () => {
-      const shouldOpen = deadlinePanel.hasClass("is-hidden");
-      closeComposerPopovers();
-      if (shouldOpen) {
-        deadlinePanel.removeClass("is-hidden");
-        watchLocalPopover(deadlineWrap, deadlinePanel, { preferredSide: mobilePanelSide });
-        deadlineInput.focus();
+    const renderDeadlineButton = () => {
+      deadlineWrap.empty();
+      const hasDeadline = Boolean(selectedDeadline);
+      const btn = deadlineWrap.createEl("button", {
+        cls: `belki-chip-button${hasDeadline ? " belki-date-chip is-active is-selected" : ""}`,
+        attr: { type: "button", "aria-label": "Set deadline" }
+      });
+      createIcon(btn, "diamond");
+      btn.createSpan({
+        cls: "belki-chip-label",
+        text: hasDeadline ? formatDueDateChip(selectedDeadline) : "Deadline"
+      });
+
+      if (hasDeadline) {
+        const clearSpan = btn.createSpan({ cls: "belki-deadline-clear", text: "×" });
+        clearSpan.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectedDeadline = "";
+          closeDeadlinePanel();
+          renderDeadlineButton();
+        });
       }
-    });
+
+      const panel = deadlineWrap.createDiv({ cls: "belki-composer-popover is-hidden" });
+      panel.createDiv({ cls: "belki-popover-title", text: "Deadline" });
+      const input = panel.createEl("input", {
+        cls: "belki-deadline-input",
+        attr: { type: "date" }
+      });
+      if (selectedDeadline) input.value = selectedDeadline;
+      closeDeadlinePanel = () => panel.addClass("is-hidden");
+
+      input.addEventListener("change", () => {
+        if (input.value) {
+          selectedDeadline = input.value;
+          closeComposerPopovers();
+          renderDeadlineButton();
+        }
+      });
+
+      btn.addEventListener("click", () => {
+        const shouldOpen = panel.hasClass("is-hidden");
+        closeComposerPopovers();
+        if (shouldOpen) {
+          panel.removeClass("is-hidden");
+          watchLocalPopover(deadlineWrap, panel, { preferredSide: mobilePanelSide });
+          input.focus();
+        }
+      });
+    };
+    renderDeadlineButton();
 
     const addLabel = (value: string) => {
       const label = normalizeLabelName(value);
