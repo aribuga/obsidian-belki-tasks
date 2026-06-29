@@ -563,7 +563,7 @@ export class AddTaskComposer {
 
     const hasOpenComposerPopover = () =>
       !labelsPanel.hasClass("is-hidden") ||
-      !deadlinePanel.hasClass("is-hidden") ||
+      Boolean(deadlineWrap.querySelector(".belki-composer-popover:not(.is-hidden)")) ||
       projectMenu.isConnected ||
       Boolean(dueDateWrap.querySelector(".belki-date-popover:not(.is-hidden)"));
 
