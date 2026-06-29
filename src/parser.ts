@@ -26,7 +26,7 @@ export function parseTasks(markdown: string): BelkiTask[] {
   return parseTaskDocument(markdown).tasks;
 }
 
-export function parseTaskDocument(markdown: string): ParsedTaskDocument {
+export function parseTaskDocument(markdown: string, sourcePath?: string): ParsedTaskDocument {
   const lines = markdown === "" ? [] : markdown.split(/\r?\n/);
   const blocks: ParsedTaskDocument["blocks"] = [];
   const tasks: BelkiTask[] = [];
@@ -60,7 +60,7 @@ export function parseTaskDocument(markdown: string): ParsedTaskDocument {
     const { properties, extraProperties } = parseProperties(propertyLines);
     const completed = match[1].toLowerCase() === "x";
     const order = tasks.length;
-    const id = properties.id || fallbackId(order);
+    const id = properties.id || fallbackId(order, sourcePath);
 
     tasks.push({
       id,
@@ -162,6 +162,8 @@ function cleanValue(value: string): string {
   return value.trim();
 }
 
-function fallbackId(order: number): string {
-  return `task-imported-${order + 1}`;
+function fallbackId(order: number, sourcePath?: string): string {
+  return sourcePath
+    ? `task-imported-${sourcePath}-${order + 1}`
+    : `task-imported-${order + 1}`;
 }

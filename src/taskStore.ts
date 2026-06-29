@@ -100,7 +100,7 @@ export class TaskStore {
 
     for (const file of files.sort((a, b) => a.path.localeCompare(b.path))) {
       const content = await this.app.vault.read(file);
-      const document = parseTaskDocument(content);
+      const document = parseTaskDocument(content, file.path);
       nextDocuments.set(file.path, document);
 
       for (const task of document.tasks) {
@@ -340,7 +340,7 @@ export class TaskStore {
     }
 
     const content = await this.app.vault.read(legacyFile);
-    const legacyDocument = parseTaskDocument(content);
+    const legacyDocument = parseTaskDocument(content, legacyFile.path);
     if (legacyDocument.tasks.length === 0) {
       return 0;
     }
@@ -428,7 +428,7 @@ export class TaskStore {
       } finally {
         this.writingPaths.delete(normalizePath(sourcePath));
       }
-      this.documents.set(sourcePath, parseTaskDocument(content));
+      this.documents.set(sourcePath, parseTaskDocument(content, sourcePath));
     }
   }
 
@@ -491,7 +491,7 @@ export class TaskStore {
       return false;
     }
     const content = await this.app.vault.read(file);
-    this.documents.set(sourcePath, parseTaskDocument(content));
+    this.documents.set(sourcePath, parseTaskDocument(content, sourcePath));
     return true;
   }
 
