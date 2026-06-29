@@ -714,7 +714,7 @@ var KNOWN_PROPERTIES = /* @__PURE__ */ new Set([
   "completedoccurrences",
   "parentid"
 ]);
-function parseTaskDocument(markdown) {
+function parseTaskDocument(markdown, sourcePath) {
   const lines = markdown === "" ? [] : markdown.split(/\r?\n/);
   const blocks = [];
   const tasks = [];
@@ -742,7 +742,7 @@ function parseTaskDocument(markdown) {
     const { properties, extraProperties } = parseProperties(propertyLines);
     const completed = match[1].toLowerCase() === "x";
     const order = tasks.length;
-    const id = properties.id || fallbackId(order);
+    const id = properties.id || fallbackId(order, sourcePath);
     tasks.push({
       id,
       title: cleanValue(match[2]) || "Untitled task",
@@ -816,8 +816,8 @@ function parseCompletedOccurrences(value) {
 function cleanValue(value) {
   return value.trim();
 }
-function fallbackId(order) {
-  return `task-imported-${order + 1}`;
+function fallbackId(order, sourcePath) {
+  return sourcePath ? `task-imported-${sourcePath}-${order + 1}` : `task-imported-${order + 1}`;
 }
 
 // src/serializer.ts
@@ -1318,6 +1318,7 @@ var TaskStore = class {
     this.tasks = [];
     this.listeners = /* @__PURE__ */ new Set();
     this.warnedStorageIssues = /* @__PURE__ */ new Set();
+    this.writingPaths = /* @__PURE__ */ new Set();
   }
   get filePath() {
     return (0, import_obsidian3.normalizePath)(this.settings.tasksFilePath);
@@ -1333,6 +1334,9 @@ var TaskStore = class {
   }
   get attachmentsDir() {
     return (0, import_obsidian3.normalizePath)(`${this.rootDir}/Attachments`);
+  }
+  isCurrentlyWriting(path) {
+    return this.writingPaths.has((0, import_obsidian3.normalizePath)(path));
   }
   isTaskStorageFile(path) {
     const normalizedPath = (0, import_obsidian3.normalizePath)(path);
@@ -1375,7 +1379,7 @@ var TaskStore = class {
     }
     for (const file of files.sort((a, b) => a.path.localeCompare(b.path))) {
       const content = await this.app.vault.read(file);
-      const document2 = parseTaskDocument(content);
+      const document2 = parseTaskDocument(content, file.path);
       nextDocuments.set(file.path, document2);
       for (const task of document2.tasks) {
         nextTasks.push({
@@ -1568,7 +1572,7 @@ var TaskStore = class {
       return 0;
     }
     const content = await this.app.vault.read(legacyFile);
-    const legacyDocument = parseTaskDocument(content);
+    const legacyDocument = parseTaskDocument(content, legacyFile.path);
     if (legacyDocument.tasks.length === 0) {
       return 0;
     }
@@ -1634,8 +1638,13 @@ var TaskStore = class {
       if (!file) {
         continue;
       }
-      await this.app.vault.modify(file, content);
-      this.documents.set(sourcePath, parseTaskDocument(content));
+      this.writingPaths.add((0, import_obsidian3.normalizePath)(sourcePath));
+      try {
+        await this.app.vault.modify(file, content);
+      } finally {
+        this.writingPaths.delete((0, import_obsidian3.normalizePath)(sourcePath));
+      }
+      this.documents.set(sourcePath, parseTaskDocument(content, sourcePath));
     }
   }
   async ensureTaskStructure() {
@@ -1686,7 +1695,7 @@ var TaskStore = class {
       return false;
     }
     const content = await this.app.vault.read(file);
-    this.documents.set(sourcePath, parseTaskDocument(content));
+    this.documents.set(sourcePath, parseTaskDocument(content, sourcePath));
     return true;
   }
   async ensureFile(path, content) {
@@ -2096,12 +2105,17 @@ function attachWikilinkAutocomplete(textarea, app) {
   let activeIndex = 0;
   let currentMatches = [];
   let renderItems = null;
+  let escapeHandler = null;
   const closeDropdown = () => {
     dropdown == null ? void 0 : dropdown.remove();
     dropdown = null;
     currentMatches = [];
     activeIndex = 0;
     renderItems = null;
+    if (escapeHandler) {
+      window.removeEventListener("keydown", escapeHandler, true);
+      escapeHandler = null;
+    }
   };
   const getWikilinkQuery = () => {
     var _a;
@@ -2170,6 +2184,15 @@ function attachWikilinkAutocomplete(textarea, app) {
     };
     renderItems();
     document.body.appendChild(dropdown);
+    escapeHandler = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        closeDropdown();
+      }
+    };
+    window.addEventListener("keydown", escapeHandler, true);
   };
   textarea.addEventListener("input", () => {
     const info = getWikilinkQuery();
@@ -2212,6 +2235,7 @@ function attachWikilinkAutocomplete(textarea, app) {
   textarea.addEventListener("blur", () => {
     setTimeout(() => closeDropdown(), 150);
   });
+  return closeDropdown;
 }
 
 // src/views/quickAddAutocomplete.ts
@@ -2267,6 +2291,7 @@ function attachQuickAddAutocomplete(input, getLabels, getProjects) {
   let currentMatches = [];
   let currentToken = null;
   let renderItems = null;
+  let escapeHandler = null;
   const closeDropdown = () => {
     dropdown == null ? void 0 : dropdown.remove();
     dropdown = null;
@@ -2274,6 +2299,10 @@ function attachQuickAddAutocomplete(input, getLabels, getProjects) {
     currentToken = null;
     activeIndex = 0;
     renderItems = null;
+    if (escapeHandler) {
+      window.removeEventListener("keydown", escapeHandler, true);
+      escapeHandler = null;
+    }
   };
   const insertMatch = (value) => {
     if (!currentToken) return;
@@ -2311,6 +2340,15 @@ function attachQuickAddAutocomplete(input, getLabels, getProjects) {
     };
     renderItems();
     document.body.appendChild(dropdown);
+    escapeHandler = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        closeDropdown();
+      }
+    };
+    window.addEventListener("keydown", escapeHandler, true);
   };
   input.addEventListener("input", () => {
     const token = getActiveToken(input);
@@ -2354,6 +2392,7 @@ function attachQuickAddAutocomplete(input, getLabels, getProjects) {
   input.addEventListener("blur", () => {
     setTimeout(() => closeDropdown(), 150);
   });
+  return closeDropdown;
 }
 
 // src/views/AddTaskComposer.ts
@@ -2381,8 +2420,8 @@ var AddTaskComposer = class {
         placeholder: "Description"
       }
     });
-    attachWikilinkAutocomplete(descriptionInput, options.app);
-    attachQuickAddAutocomplete(
+    const closeWikilinkDropdown = attachWikilinkAutocomplete(descriptionInput, options.app);
+    const closeQuickAddDropdown = attachQuickAddAutocomplete(
       this.titleInput,
       () => options.labels,
       () => options.projects
@@ -2463,14 +2502,12 @@ var AddTaskComposer = class {
       attachmentInput.value = "";
       renderPendingAttachments();
     });
-    const moreWrap = chipRow.createDiv({ cls: "belki-composer-more" });
     const mobilePanelSide = import_obsidian5.Platform.isMobile ? "above" : "below";
-    const moreButton = createChipButton(moreWrap, "", "ellipsis", "More task options");
-    moreButton.addClass("belki-more-button");
-    const menu = moreWrap.createDiv({ cls: "belki-composer-menu is-hidden" });
-    const labelsButton = createMenuItem(menu, "Labels", "tag");
-    const deadlineButton = createMenuItem(menu, "Deadline", "diamond");
-    const labelsPanel = moreWrap.createDiv({ cls: "belki-composer-popover is-hidden" });
+    const labelsWrap = chipRow.createDiv({ cls: "belki-composer-labels-wrap" });
+    const labelsButton = createChipButton(labelsWrap, "Labels", "tag");
+    const deadlineWrap = chipRow.createDiv({ cls: "belki-composer-deadline-wrap" });
+    const deadlineButton = createChipButton(deadlineWrap, "Deadline", "diamond");
+    const labelsPanel = labelsWrap.createDiv({ cls: "belki-composer-popover is-hidden" });
     const selectedLabelsEl = labelsPanel.createDiv({ cls: "belki-selected-labels" });
     const labelInput = labelsPanel.createEl("input", {
       cls: "belki-label-input",
@@ -2480,7 +2517,7 @@ var AddTaskComposer = class {
       }
     });
     const labelSuggestions = labelsPanel.createDiv({ cls: "belki-label-suggestions" });
-    const deadlinePanel = moreWrap.createDiv({ cls: "belki-composer-popover is-hidden" });
+    const deadlinePanel = deadlineWrap.createDiv({ cls: "belki-composer-popover is-hidden" });
     deadlinePanel.createDiv({ cls: "belki-popover-title", text: "Deadline" });
     const deadlineInput = deadlinePanel.createEl("input", {
       cls: "belki-deadline-input",
@@ -2491,6 +2528,7 @@ var AddTaskComposer = class {
     deadlineInput.addEventListener("change", () => {
       selectedDeadline = deadlineInput.value;
     });
+    const labelChipsRow = form.createDiv({ cls: "belki-composer-label-chips is-hidden" });
     let detachOutsideListener = () => void 0;
     let closeProjectMenu = () => void 0;
     let closeDueDatePopover = () => void 0;
@@ -2502,11 +2540,7 @@ var AddTaskComposer = class {
       labelsPanel.addClass("is-hidden");
       deadlinePanel.addClass("is-hidden");
     };
-    const closeMenu = () => {
-      menu.addClass("is-hidden");
-    };
     const closeComposerPopovers = () => {
-      closeMenu();
       closePanels();
       closeProjectMenu();
       closeDueDatePopover();
@@ -2540,20 +2574,12 @@ var AddTaskComposer = class {
       ownerWindow.setTimeout(scrollIntoView, 320);
       ownerWindow.setTimeout(scrollIntoView, 650);
     };
-    moreButton.addEventListener("click", () => {
-      const shouldOpen = menu.hasClass("is-hidden");
-      closeComposerPopovers();
-      if (shouldOpen) {
-        menu.removeClass("is-hidden");
-        watchLocalPopover(moreWrap, menu, { preferredSide: "below" });
-      }
-    });
     labelsButton.addEventListener("click", () => {
       const shouldOpen = labelsPanel.hasClass("is-hidden");
       closeComposerPopovers();
       if (shouldOpen) {
         labelsPanel.removeClass("is-hidden");
-        watchLocalPopover(moreWrap, labelsPanel, { preferredSide: mobilePanelSide });
+        watchLocalPopover(labelsWrap, labelsPanel, { preferredSide: mobilePanelSide });
         labelInput.focus();
         keepLabelInputVisible();
       }
@@ -2563,7 +2589,7 @@ var AddTaskComposer = class {
       closeComposerPopovers();
       if (shouldOpen) {
         deadlinePanel.removeClass("is-hidden");
-        watchLocalPopover(moreWrap, deadlinePanel, { preferredSide: mobilePanelSide });
+        watchLocalPopover(deadlineWrap, deadlinePanel, { preferredSide: mobilePanelSide });
         deadlineInput.focus();
       }
     });
@@ -2581,21 +2607,34 @@ var AddTaskComposer = class {
     };
     const renderLabels = () => {
       selectedLabelsEl.empty();
+      labelChipsRow.empty();
+      labelChipsRow.toggleClass("is-hidden", selectedLabels.length === 0);
       for (const label of selectedLabels) {
+        const color = getLabelColor(label, options.labelColors);
+        const removeLabel = () => {
+          selectedLabels = selectedLabels.filter((c) => c !== label);
+          renderLabels();
+        };
         const chip = selectedLabelsEl.createEl("button", {
           cls: "belki-selected-label",
           text: displayLabel(label),
           attr: { type: "button" }
         });
-        const color = getLabelColor(label, options.labelColors);
-        chip.setCssStyles({
-          backgroundColor: color.light,
-          borderColor: color.light
+        chip.setCssStyles({ backgroundColor: color.light, borderColor: color.light });
+        chip.addEventListener("click", removeLabel);
+        const externalChip = labelChipsRow.createEl("span", {
+          cls: "belki-label-chip",
+          attr: { "aria-label": `Remove label ${displayLabel(label)}` }
         });
-        chip.addEventListener("click", () => {
-          selectedLabels = selectedLabels.filter((candidate) => candidate !== label);
-          renderLabels();
+        externalChip.setCssProps({ "--belki-label-chip-color": color.regular, "--belki-label-chip-bg": color.light });
+        createIcon(externalChip, "tag");
+        externalChip.createSpan({ cls: "belki-label-chip-name", text: displayLabel(label) });
+        const removeBtn = externalChip.createEl("button", {
+          cls: "belki-label-chip-remove",
+          attr: { type: "button", "aria-label": `Remove ${displayLabel(label)}` }
         });
+        createIcon(removeBtn, "x");
+        removeBtn.addEventListener("click", removeLabel);
       }
       labelSuggestions.empty();
       const query = normalizeLabelName(labelInput.value);
@@ -2658,8 +2697,8 @@ var AddTaskComposer = class {
     });
     const projectDot = projectPicker.createSpan({ cls: "belki-project-dot belki-composer-project-dot" });
     const projectLabel = projectPicker.createSpan({ cls: "belki-project-trigger-label" });
-    const projectMenu = document.body.createDiv({
-      cls: "belki-project-menu is-hidden",
+    const projectMenu = createEl("div", {
+      cls: "belki-project-menu",
       attr: {
         role: "listbox"
       }
@@ -2716,11 +2755,12 @@ var AddTaskComposer = class {
       }
     });
     closeProjectMenu = () => {
-      projectMenu.addClass("is-hidden");
+      projectMenu.remove();
       projectPicker.setAttr("aria-expanded", "false");
+      projectPicker.focus({ preventScroll: true });
     };
     const openProjectMenu = () => {
-      projectMenu.removeClass("is-hidden");
+      document.body.appendChild(projectMenu);
       projectPicker.setAttr("aria-expanded", "true");
       watchLocalPopover(projectArea, projectMenu, { preferredSide: "above", useFixed: true });
     };
@@ -2802,11 +2842,11 @@ var AddTaskComposer = class {
         borderColor: color.light
       });
     };
-    const hasOpenComposerPopover = () => !menu.hasClass("is-hidden") || !labelsPanel.hasClass("is-hidden") || !deadlinePanel.hasClass("is-hidden") || !projectMenu.hasClass("is-hidden") || Boolean(dueDateWrap.querySelector(".belki-date-popover:not(.is-hidden)"));
+    const hasOpenComposerPopover = () => !labelsPanel.hasClass("is-hidden") || !deadlinePanel.hasClass("is-hidden") || projectMenu.isConnected || Boolean(dueDateWrap.querySelector(".belki-date-popover:not(.is-hidden)"));
     projectPicker.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      const shouldOpen = projectMenu.hasClass("is-hidden");
+      const shouldOpen = !projectMenu.isConnected;
       closeComposerPopovers();
       if (shouldOpen) {
         openProjectMenu();
@@ -2840,23 +2880,31 @@ var AddTaskComposer = class {
         type: "submit"
       }
     });
-    const cleanup = () => projectMenu.remove();
+    const cleanup = () => {
+      projectMenu.remove();
+      closeWikilinkDropdown();
+      closeQuickAddDropdown();
+    };
     cancelButton.addEventListener("click", () => {
       cleanup();
       options.onCancel();
     });
     form.addEventListener("submit", () => cleanup());
     form.addEventListener("submit", (event) => {
+      var _a, _b;
       event.preventDefault();
+      const rawTitle = ((_a = this.titleInput) == null ? void 0 : _a.value) || "";
+      const parsed = parseQuickAddTokens(rawTitle);
+      if (!parsed.title.trim()) {
+        (_b = this.titleInput) == null ? void 0 : _b.focus();
+        return;
+      }
       addButton.setAttr("disabled", "true");
       void (async () => {
-        var _a;
         try {
-          const rawTitle = ((_a = this.titleInput) == null ? void 0 : _a.value) || "";
-          const parsed = parseQuickAddTokens(rawTitle);
           const explicitProject = this.readProject();
           await options.onSubmit({
-            title: parsed.title || rawTitle,
+            title: parsed.title,
             description: descriptionInput.value,
             due: selectedDue,
             deadline: selectedDeadline,
@@ -3014,6 +3062,7 @@ var AddTaskComposer = class {
     };
     renderDueDateButton();
     renderRepeatChip();
+    return cleanup;
   }
   focus() {
     var _a;
@@ -3040,15 +3089,6 @@ function createChipButton(parent, label, iconName, ariaLabel) {
   if (label) {
     button.createSpan({ cls: "belki-chip-label", text: label });
   }
-  return button;
-}
-function createMenuItem(parent, label, iconName) {
-  const button = parent.createEl("button", {
-    cls: "belki-menu-item",
-    attr: { type: "button" }
-  });
-  createIcon(button, iconName, "belki-menu-icon");
-  button.createSpan({ text: label });
   return button;
 }
 function createIcon(parent, iconName, className = "belki-chip-icon") {
@@ -3123,6 +3163,7 @@ var ImagePreviewModal = class extends import_obsidian6.Modal {
     super(app);
     this.file = file;
     this.label = label;
+    this.openedBody = null;
     this.handleEscape = (event) => {
       if (event.key !== "Escape") {
         return;
@@ -3134,7 +3175,8 @@ var ImagePreviewModal = class extends import_obsidian6.Modal {
     };
   }
   onOpen() {
-    activeDocument.body.classList.add("belki-image-preview-open");
+    this.openedBody = activeDocument.body;
+    this.openedBody.classList.add("belki-image-preview-open");
     this.containerEl.addClass("belki-image-lightbox-backdrop");
     this.modalEl.addClass("belki-image-lightbox-modal");
     this.modalEl.addEventListener("keydown", this.handleEscape, true);
@@ -3168,7 +3210,9 @@ var ImagePreviewModal = class extends import_obsidian6.Modal {
     }).addEventListener("click", () => this.close());
   }
   onClose() {
-    activeDocument.body.classList.remove("belki-image-preview-open");
+    var _a;
+    (_a = this.openedBody) == null ? void 0 : _a.classList.remove("belki-image-preview-open");
+    this.openedBody = null;
     this.modalEl.removeEventListener("keydown", this.handleEscape, true);
   }
 };
@@ -3179,6 +3223,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     super(app);
     this.options = options;
     this.sideEl = null;
+    this.closeWikilinkDropdown = null;
     this.handleEscape = (event) => {
       if (event.key !== "Escape") {
         return;
@@ -3314,7 +3359,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     descriptionInput.addEventListener("input", () => {
       this.draft.description = descriptionInput.value;
     });
-    attachWikilinkAutocomplete(descriptionInput, this.app);
+    this.closeWikilinkDropdown = attachWikilinkAutocomplete(descriptionInput, this.app);
     descriptionInput.addEventListener("blur", () => {
       refreshRendered();
       descriptionInput.style.display = "none";
@@ -3367,6 +3412,8 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     }
   }
   onClose() {
+    var _a;
+    (_a = this.closeWikilinkDropdown) == null ? void 0 : _a.call(this);
     this.modalEl.removeEventListener("keydown", this.handleEscape, true);
   }
   renderSidePanel(parent) {
@@ -3394,7 +3441,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     }
     this.renderProject(parent);
     this.renderDueDatePicker(parent);
-    this.renderDate(parent, "Deadline", "deadline");
+    this.renderDeadlinePicker(parent);
     this.renderPriority(parent);
     this.renderLabels(parent);
   }
@@ -3819,6 +3866,8 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
           expandPanel.empty();
           renderChips();
           input.focus();
+        }).catch((err) => {
+          console.error("[belki] Failed to create sub-task", err);
         });
       };
       addBtn.addEventListener("click", submit);
@@ -4007,14 +4056,8 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
       addPreset("Tomorrow", addDaysIso(1));
       addPreset("Next week", addDaysIso(7));
       addPreset("Next weekend", nextWeekdayIso(6));
-      const customInput = popover.createEl("input", {
-        cls: "belki-date-custom-input",
-        attr: { type: "date" }
-      });
-      if (this.draft.due) customInput.value = this.draft.due;
-      customInput.addEventListener("change", () => {
-        if (customInput.value) selectDate(customInput.value);
-      });
+      popover.createDiv({ cls: "belki-date-divider" });
+      renderCustomDatePicker(popover, this.draft.due, "calendar", selectDate);
       popover.createDiv({ cls: "belki-date-divider" });
       const repeatHeader = popover.createDiv({ cls: "belki-repeat-header" });
       const repeatIcon = repeatHeader.createSpan({ cls: "belki-chip-icon" });
@@ -4094,18 +4137,78 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     };
     renderPicker();
   }
-  renderDate(parent, label, key) {
-    const field = this.createField(parent, label);
-    const input = field.createEl("input", {
-      cls: "belki-detail-input",
-      attr: {
-        type: "date",
-        value: this.draft[key] || ""
+  renderDeadlinePicker(parent) {
+    const field = this.createField(parent, "Deadline");
+    const wrap = field.createDiv({ cls: "belki-date-picker-wrap belki-date-picker-inline" });
+    let detachOutside;
+    const closePopover = () => {
+      var _a;
+      (_a = wrap.querySelector(".belki-date-popover-inline")) == null ? void 0 : _a.addClass("is-hidden");
+      detachOutside == null ? void 0 : detachOutside();
+      detachOutside = void 0;
+    };
+    const renderPicker = () => {
+      wrap.empty();
+      const hasDate = Boolean(this.draft.deadline);
+      const btnRow = wrap.createDiv({ cls: "belki-date-btn-row" });
+      const btn = btnRow.createEl("button", {
+        cls: `belki-detail-date-btn${hasDate ? " is-active" : ""}`,
+        attr: { type: "button" }
+      });
+      const iconSpan = btn.createSpan({ cls: "belki-chip-icon" });
+      (0, import_obsidian7.setIcon)(iconSpan, "diamond");
+      btn.createSpan({ text: hasDate ? formatDueDateChip(this.draft.deadline) : "No deadline" });
+      if (hasDate) {
+        const clearBtn = btnRow.createEl("button", {
+          cls: "belki-date-chip-clear",
+          attr: { type: "button", "aria-label": "Clear deadline" }
+        });
+        clearBtn.setText("\xD7");
+        clearBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.draft.deadline = void 0;
+          closePopover();
+          renderPicker();
+        });
       }
-    });
-    input.addEventListener("change", () => {
-      this.draft[key] = input.value || void 0;
-    });
+      const popover = wrap.createDiv({ cls: "belki-date-popover belki-date-popover-inline is-hidden" });
+      const selectDate = (value) => {
+        this.draft.deadline = value || void 0;
+        closePopover();
+        renderPicker();
+      };
+      const addPreset = (label, value) => {
+        const presetBtn = popover.createEl("button", {
+          cls: "belki-date-preset",
+          text: label,
+          attr: { type: "button" }
+        });
+        presetBtn.toggleClass("is-active", value === this.draft.deadline);
+        presetBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectDate(value);
+        });
+      };
+      addPreset("Today", todayIso());
+      addPreset("Tomorrow", addDaysIso(1));
+      addPreset("Next week", addDaysIso(7));
+      addPreset("Next weekend", nextWeekdayIso(6));
+      renderCustomDatePicker(popover, this.draft.deadline, "diamond", selectDate);
+      btn.addEventListener("click", () => {
+        const isHidden = popover.hasClass("is-hidden");
+        closePopover();
+        if (!isHidden) return;
+        popover.removeClass("is-hidden");
+        const ownerDocument = wrap.ownerDocument;
+        const handleOutside = (e) => {
+          if (e.target instanceof Node && wrap.contains(e.target)) return;
+          closePopover();
+        };
+        ownerDocument.addEventListener("pointerdown", handleOutside, true);
+        detachOutside = () => ownerDocument.removeEventListener("pointerdown", handleOutside, true);
+      });
+    };
+    renderPicker();
   }
   renderPriority(parent) {
     const field = this.createField(parent, "Priority");
@@ -4263,6 +4366,78 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     this.close();
   }
 };
+function renderCustomDatePicker(parent, currentValue, _iconName, onSelect) {
+  const todayStr = todayIso();
+  const initDate = currentValue ? /* @__PURE__ */ new Date(currentValue + "T00:00:00") : /* @__PURE__ */ new Date();
+  let viewYear = initDate.getFullYear();
+  let viewMonth = initDate.getMonth();
+  const container = parent.createDiv({ cls: "belki-date-custom-wrap" });
+  const trigger = container.createEl("button", {
+    cls: "belki-date-preset belki-cal-trigger",
+    attr: { type: "button" }
+  });
+  trigger.createSpan({ text: currentValue ? formatDueDateChip(currentValue) : "Custom date\u2026" });
+  if (currentValue) trigger.addClass("is-active");
+  const calWrap = container.createDiv({ cls: "belki-cal-wrap is-hidden" });
+  function renderCal() {
+    calWrap.empty();
+    const header = calWrap.createDiv({ cls: "belki-cal-header" });
+    const prevBtn = header.createEl("button", { cls: "belki-cal-nav", attr: { type: "button" } });
+    prevBtn.setText("\u2039");
+    header.createSpan({
+      cls: "belki-cal-title",
+      text: new Date(viewYear, viewMonth, 1).toLocaleDateString(void 0, { month: "long", year: "numeric" })
+    });
+    const nextBtn = header.createEl("button", { cls: "belki-cal-nav", attr: { type: "button" } });
+    nextBtn.setText("\u203A");
+    prevBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (--viewMonth < 0) {
+        viewMonth = 11;
+        viewYear--;
+      }
+      renderCal();
+    });
+    nextBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (++viewMonth > 11) {
+        viewMonth = 0;
+        viewYear++;
+      }
+      renderCal();
+    });
+    const grid = calWrap.createDiv({ cls: "belki-cal-grid" });
+    for (const d of ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]) {
+      grid.createSpan({ cls: "belki-cal-day-hdr", text: d });
+    }
+    const firstDow = new Date(viewYear, viewMonth, 1).getDay();
+    const leadingEmpties = firstDow === 0 ? 6 : firstDow - 1;
+    for (let i = 0; i < leadingEmpties; i++) {
+      grid.createDiv({ cls: "belki-cal-day is-empty" });
+    }
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const cell = grid.createEl("button", {
+        cls: "belki-cal-day",
+        text: String(d),
+        attr: { type: "button" }
+      });
+      if (iso === todayStr) cell.addClass("is-today");
+      if (iso === currentValue) cell.addClass("is-selected");
+      cell.addEventListener("click", (e) => {
+        e.stopPropagation();
+        onSelect(iso);
+      });
+    }
+  }
+  trigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const opening = calWrap.hasClass("is-hidden");
+    calWrap.toggleClass("is-hidden", !opening);
+    if (opening) renderCal();
+  });
+}
 function attachmentName(path) {
   return path.split("/").pop() || path;
 }
@@ -4342,6 +4517,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     this.projectActionsOpen = null;
     this.sidebarScrollLeft = 0;
     this.pendingScrollSnapshot = null;
+    this.composerCleanup = null;
     this.renderScheduled = false;
     this.handleRootKeyDown = (event) => {
       if (event.key !== "Escape") {
@@ -4413,9 +4589,11 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     this.render();
   }
   async onClose() {
-    var _a;
+    var _a, _b;
+    (_a = this.composerCleanup) == null ? void 0 : _a.call(this);
+    this.composerCleanup = null;
     this.containerEl.removeEventListener("keydown", this.handleRootKeyDown, true);
-    (_a = this.unsubscribe) == null ? void 0 : _a.call(this);
+    (_b = this.unsubscribe) == null ? void 0 : _b.call(this);
   }
   refresh() {
     this.render();
@@ -4433,9 +4611,11 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     this.render();
   }
   render() {
-    var _a, _b;
+    var _a, _b, _c;
+    (_a = this.composerCleanup) == null ? void 0 : _a.call(this);
+    this.composerCleanup = null;
     const { containerEl } = this;
-    const sidebarScrollLeft = (_b = (_a = containerEl.querySelector(".belki-sidebar")) == null ? void 0 : _a.scrollLeft) != null ? _b : this.sidebarScrollLeft;
+    const sidebarScrollLeft = (_c = (_b = containerEl.querySelector(".belki-sidebar")) == null ? void 0 : _b.scrollLeft) != null ? _c : this.sidebarScrollLeft;
     containerEl.empty();
     containerEl.addClass("belki-root");
     containerEl.addClass("belki-view");
@@ -4614,7 +4794,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     const addArea = main.createDiv({ cls: "belki-add-area" });
     if (this.composerOpen) {
       const composer = new AddTaskComposer();
-      composer.render(addArea, {
+      this.composerCleanup = composer.render(addArea, {
         app: this.app,
         projects: this.getActiveProjects(),
         labels: this.getAllLabels(),
@@ -6065,6 +6245,10 @@ function searchableText(task) {
 
 // src/main.ts
 var BelkiPlugin = class extends import_obsidian9.Plugin {
+  constructor() {
+    super(...arguments);
+    this.reloadDebounceTimer = null;
+  }
   async onload() {
     await this.loadSettings();
     this.store = new TaskStore(this.app, this.settings);
@@ -6141,18 +6325,23 @@ var BelkiPlugin = class extends import_obsidian9.Plugin {
     this.registerEvent(
       this.app.vault.on("rename", (file, oldPath) => {
         if (this.store.isTaskStorageFile(oldPath) || this.store.isTaskStorageFile(file.path)) {
-          void this.reloadTasks();
+          this.scheduleReload();
         }
       })
     );
     this.registerEvent(
       this.app.vault.on("delete", (file) => {
         if (this.store.isTaskStorageFile(file.path)) {
-          void this.reloadTasks();
+          this.scheduleReload();
         }
       })
     );
     void this.initializeStore();
+  }
+  onunload() {
+    if (this.reloadDebounceTimer !== null) {
+      clearTimeout(this.reloadDebounceTimer);
+    }
   }
   async loadSettings() {
     const saved = toSettingsData(await this.loadData());
@@ -6234,10 +6423,19 @@ var BelkiPlugin = class extends import_obsidian9.Plugin {
     await leaf.setViewState({ type: VIEW_TYPE_BELKI, active: true });
     this.app.workspace.setActiveLeaf(leaf, { focus: true });
   }
-  async refreshIfTaskFile(file) {
-    if (this.store.isTaskStorageFile(file.path)) {
-      await this.reloadTasks();
+  scheduleReload() {
+    if (this.reloadDebounceTimer !== null) {
+      clearTimeout(this.reloadDebounceTimer);
     }
+    this.reloadDebounceTimer = setTimeout(() => {
+      this.reloadDebounceTimer = null;
+      void this.reloadTasks();
+    }, 300);
+  }
+  refreshIfTaskFile(file) {
+    if (!this.store.isTaskStorageFile(file.path)) return;
+    if (this.store.isCurrentlyWriting(file.path)) return;
+    this.scheduleReload();
   }
   async initializeStore() {
     try {

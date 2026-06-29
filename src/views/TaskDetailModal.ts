@@ -1316,41 +1316,86 @@ export class TaskDetailModal extends Modal {
 function renderCustomDatePicker(
   parent: HTMLElement,
   currentValue: string | undefined,
-  iconName: string,
+  _iconName: string,
   onSelect: (value: string) => void
 ): void {
-  const wrap = parent.createDiv({ cls: "belki-date-custom-wrap" });
+  const todayStr = todayIso();
+  const initDate = currentValue ? new Date(currentValue + "T00:00:00") : new Date();
+  let viewYear = initDate.getFullYear();
+  let viewMonth = initDate.getMonth(); // 0–11
 
-  const btn = wrap.createEl("button", {
-    cls: `belki-date-custom-trigger${currentValue ? "" : " is-placeholder"}`,
+  const container = parent.createDiv({ cls: "belki-date-custom-wrap" });
+
+  // Trigger row — same visual style as preset buttons
+  const trigger = container.createEl("button", {
+    cls: "belki-date-preset belki-cal-trigger",
     attr: { type: "button" }
   });
-  setIcon(btn, iconName);
-  const btnText = btn.createSpan({
-    text: currentValue ? formatDueDateChip(currentValue) : "Pick a date"
-  });
+  trigger.createSpan({ text: currentValue ? formatDueDateChip(currentValue) : "Custom date…" });
+  if (currentValue) trigger.addClass("is-active");
 
-  const input = wrap.createEl("input", {
-    cls: "belki-date-custom-input",
-    attr: { type: "date" }
-  });
-  if (currentValue) input.value = currentValue;
+  // Calendar panel — hidden until the trigger is tapped/clicked
+  const calWrap = container.createDiv({ cls: "belki-cal-wrap is-hidden" });
 
-  btn.addEventListener("click", (e) => {
+  function renderCal() {
+    calWrap.empty();
+
+    const header = calWrap.createDiv({ cls: "belki-cal-header" });
+    const prevBtn = header.createEl("button", { cls: "belki-cal-nav", attr: { type: "button" } });
+    prevBtn.setText("‹");
+    header.createSpan({
+      cls: "belki-cal-title",
+      text: new Date(viewYear, viewMonth, 1)
+        .toLocaleDateString(undefined, { month: "long", year: "numeric" })
+    });
+    const nextBtn = header.createEl("button", { cls: "belki-cal-nav", attr: { type: "button" } });
+    nextBtn.setText("›");
+
+    prevBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (--viewMonth < 0) { viewMonth = 11; viewYear--; }
+      renderCal();
+    });
+    nextBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (++viewMonth > 11) { viewMonth = 0; viewYear++; }
+      renderCal();
+    });
+
+    const grid = calWrap.createDiv({ cls: "belki-cal-grid" });
+    for (const d of ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]) {
+      grid.createSpan({ cls: "belki-cal-day-hdr", text: d });
+    }
+
+    // Leading empty cells (week starts on Monday)
+    const firstDow = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
+    const leadingEmpties = firstDow === 0 ? 6 : firstDow - 1;
+    for (let i = 0; i < leadingEmpties; i++) {
+      grid.createDiv({ cls: "belki-cal-day is-empty" });
+    }
+
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const cell = grid.createEl("button", {
+        cls: "belki-cal-day",
+        text: String(d),
+        attr: { type: "button" }
+      });
+      if (iso === todayStr) cell.addClass("is-today");
+      if (iso === currentValue) cell.addClass("is-selected");
+      cell.addEventListener("click", (e) => {
+        e.stopPropagation();
+        onSelect(iso);
+      });
+    }
+  }
+
+  trigger.addEventListener("click", (e) => {
     e.stopPropagation();
-    if (typeof (input as any).showPicker === "function") {
-      (input as any).showPicker();
-    } else {
-      input.click();
-    }
-  });
-
-  input.addEventListener("change", () => {
-    if (input.value) {
-      btn.removeClass("is-placeholder");
-      btnText.textContent = formatDueDateChip(input.value);
-      onSelect(input.value);
-    }
+    const opening = calWrap.hasClass("is-hidden");
+    calWrap.toggleClass("is-hidden", !opening);
+    if (opening) renderCal();
   });
 }
 

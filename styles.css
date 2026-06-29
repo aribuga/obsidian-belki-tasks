@@ -1240,43 +1240,105 @@ button.belki-add-inline {
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.belki-date-custom-trigger {
-  align-items: center;
-  background: var(--belki-bg);
-  border: 1.5px solid var(--belki-border);
-  border-radius: 8px;
-  color: var(--belki-text);
-  display: flex;
-  font: inherit;
-  font-size: 13px;
-  gap: 8px;
-  height: 38px;
-  padding: 0 10px;
-  text-align: left;
   width: 100%;
 }
 
-.belki-date-custom-trigger.is-placeholder {
-  color: var(--belki-muted);
+/* Calendar panel — rendered inline below the "Custom date…" trigger */
+.belki-cal-wrap {
+  width: 100%;
 }
 
-.belki-date-custom-trigger svg {
-  flex: 0 0 auto;
-  height: 14px;
-  width: 14px;
+.belki-cal-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
 }
 
-.belki-date-custom-input {
-  background: var(--belki-bg);
-  border: 1.5px solid var(--belki-border);
-  border-radius: 8px;
+.belki-cal-nav {
+  background: transparent;
+  border: none;
+  border-radius: 4px;
   color: var(--belki-text);
+  cursor: pointer;
+  font-size: 18px;
+  height: 28px;
+  line-height: 1;
+  padding: 0 8px;
+}
+
+.belki-cal-nav:hover {
+  background: var(--belki-hover);
+}
+
+.belki-cal-title {
+  color: var(--belki-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.belki-cal-grid {
+  display: grid;
+  gap: 2px;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.belki-cal-day-hdr {
+  color: var(--belki-muted);
+  font-size: 11px;
+  padding: 2px 0 4px;
+  text-align: center;
+}
+
+.belki-cal-day {
+  align-items: center;
+  aspect-ratio: 1;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--belki-text);
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  justify-content: center;
+  padding: 0;
+  width: 100%;
+}
+
+.belki-cal-day:not(.is-empty):hover {
+  background: var(--belki-hover);
+}
+
+.belki-cal-day.is-today {
+  color: var(--belki-accent);
+  font-weight: 600;
+}
+
+.belki-cal-day.is-selected {
+  background: var(--belki-accent);
+  color: white;
+}
+
+.belki-cal-day.is-empty {
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Used in AddTaskComposer for a standalone visible date input */
+.belki-date-custom-input {
+  -webkit-appearance: auto;
+  appearance: auto;
+  background: var(--belki-bg);
+  border: 1px solid var(--belki-border);
+  border-radius: 6px;
+  box-shadow: none;
+  color: var(--belki-text);
+  cursor: pointer;
   font: inherit;
   font-size: 13px;
-  height: 38px;
+  min-height: 36px;
   padding: 0 10px;
+  touch-action: manipulation;
   width: 100%;
 }
 
