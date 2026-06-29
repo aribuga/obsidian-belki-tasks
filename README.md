@@ -85,6 +85,9 @@ It sits between simple checkbox plugins and heavy task-note systems: structured 
 
 **Mobile**
 - Full mobile layout support
+- Custom inline calendar picker (fixes iOS date input issues)
+- Label and Deadline chips visible directly in the composer action row
+- Selected deadline date shown inside the Deadline chip
 
 **Storage**
 - All task data stored as Markdown in your vault
