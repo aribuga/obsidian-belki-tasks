@@ -4,6 +4,15 @@ All notable changes to belki are documented here.
 
 ---
 
+## 0.2.1 — 2026-06-30
+
+### Fixed
+
+- Fixed TypeScript build error (`deadlinePanel` reference left over from the `renderDeadlineButton` refactor).
+- Replaced direct `style.xxx` assignments with `setCssStyles()` and CSS class toggling to comply with the Obsidian plugin lint rule `obsidianmd/no-static-styles-assignment`.
+
+---
+
 ## 0.2.0 — 2026-06-29
 
 This release adds recurring tasks, sub-tasks, wikilinks, project management actions, group-by options, and a large number of mobile UX improvements and bug fixes.
