@@ -28,7 +28,7 @@ export class AddTaskComposer {
   private customProjectInput?: HTMLInputElement;
   private selectedProjectValue = "";
 
-  render(parent: HTMLElement, options: ComposerOptions): void {
+  render(parent: HTMLElement, options: ComposerOptions): () => void {
     const form = parent.createEl("form", { cls: "belki-composer" });
     let selectedDue = options.defaultDue || "";
     let selectedRepeat: RepeatRule | undefined;
@@ -756,6 +756,7 @@ export class AddTaskComposer {
 
     renderDueDateButton();
     renderRepeatChip();
+    return cleanup;
   }
 
   focus(): void {

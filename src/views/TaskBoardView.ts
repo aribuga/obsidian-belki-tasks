@@ -102,6 +102,7 @@ export class TaskBoardView extends ItemView {
   private projectActionsOpen: string | null = null;
   private sidebarScrollLeft = 0;
   private pendingScrollSnapshot: { top: number; left: number } | null = null;
+  private composerCleanup: (() => void) | null = null;
   private renderScheduled = false;
   private handleRootKeyDown = (event: KeyboardEvent): void => {
     if (event.key !== "Escape") {
@@ -194,6 +195,8 @@ export class TaskBoardView extends ItemView {
   }
 
   async onClose(): Promise<void> {
+    this.composerCleanup?.();
+    this.composerCleanup = null;
     this.containerEl.removeEventListener("keydown", this.handleRootKeyDown, true);
     this.unsubscribe?.();
   }
@@ -216,6 +219,8 @@ export class TaskBoardView extends ItemView {
   }
 
   private render(): void {
+    this.composerCleanup?.();
+    this.composerCleanup = null;
     const { containerEl } = this;
     const sidebarScrollLeft =
       containerEl.querySelector<HTMLElement>(".belki-sidebar")?.scrollLeft ??
@@ -438,7 +443,7 @@ export class TaskBoardView extends ItemView {
     const addArea = main.createDiv({ cls: "belki-add-area" });
     if (this.composerOpen) {
       const composer = new AddTaskComposer();
-      composer.render(addArea, {
+      this.composerCleanup = composer.render(addArea, {
         app: this.app,
         projects: this.getActiveProjects(),
         labels: this.getAllLabels(),
