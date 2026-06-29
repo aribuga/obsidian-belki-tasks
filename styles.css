@@ -885,7 +885,8 @@ button.belki-add-inline {
   padding: 2px 0 0;
 }
 
-.belki-composer-more {
+.belki-composer-labels-wrap,
+.belki-composer-deadline-wrap {
   overflow: visible;
   position: relative;
 }

@@ -140,15 +140,13 @@ export class AddTaskComposer {
       renderPendingAttachments();
     });
 
-    const moreWrap = chipRow.createDiv({ cls: "belki-composer-more" });
     const mobilePanelSide = Platform.isMobile ? "above" : "below";
-    const moreButton = createChipButton(moreWrap, "", "ellipsis", "More task options");
-    moreButton.addClass("belki-more-button");
-    const menu = moreWrap.createDiv({ cls: "belki-composer-menu is-hidden" });
-    const labelsButton = createMenuItem(menu, "Labels", "tag");
-    const deadlineButton = createMenuItem(menu, "Deadline", "diamond");
+    const labelsWrap = chipRow.createDiv({ cls: "belki-composer-labels-wrap" });
+    const labelsButton = createChipButton(labelsWrap, "Labels", "tag");
+    const deadlineWrap = chipRow.createDiv({ cls: "belki-composer-deadline-wrap" });
+    const deadlineButton = createChipButton(deadlineWrap, "Deadline", "diamond");
 
-    const labelsPanel = moreWrap.createDiv({ cls: "belki-composer-popover is-hidden" });
+    const labelsPanel = labelsWrap.createDiv({ cls: "belki-composer-popover is-hidden" });
     const selectedLabelsEl = labelsPanel.createDiv({ cls: "belki-selected-labels" });
     const labelInput = labelsPanel.createEl("input", {
       cls: "belki-label-input",
@@ -159,7 +157,7 @@ export class AddTaskComposer {
     });
     const labelSuggestions = labelsPanel.createDiv({ cls: "belki-label-suggestions" });
 
-    const deadlinePanel = moreWrap.createDiv({ cls: "belki-composer-popover is-hidden" });
+    const deadlinePanel = deadlineWrap.createDiv({ cls: "belki-composer-popover is-hidden" });
     deadlinePanel.createDiv({ cls: "belki-popover-title", text: "Deadline" });
     const deadlineInput = deadlinePanel.createEl("input", {
       cls: "belki-deadline-input",
@@ -185,12 +183,7 @@ export class AddTaskComposer {
       deadlinePanel.addClass("is-hidden");
     };
 
-    const closeMenu = () => {
-      menu.addClass("is-hidden");
-    };
-
     const closeComposerPopovers = () => {
-      closeMenu();
       closePanels();
       closeProjectMenu();
       closeDueDatePopover();
@@ -237,20 +230,12 @@ export class AddTaskComposer {
       ownerWindow.setTimeout(scrollIntoView, 650);
     };
 
-    moreButton.addEventListener("click", () => {
-      const shouldOpen = menu.hasClass("is-hidden");
-      closeComposerPopovers();
-      if (shouldOpen) {
-        menu.removeClass("is-hidden");
-        watchLocalPopover(moreWrap, menu, { preferredSide: "below" });
-      }
-    });
     labelsButton.addEventListener("click", () => {
       const shouldOpen = labelsPanel.hasClass("is-hidden");
       closeComposerPopovers();
       if (shouldOpen) {
         labelsPanel.removeClass("is-hidden");
-        watchLocalPopover(moreWrap, labelsPanel, { preferredSide: mobilePanelSide });
+        watchLocalPopover(labelsWrap, labelsPanel, { preferredSide: mobilePanelSide });
         labelInput.focus();
         keepLabelInputVisible();
       }
@@ -260,7 +245,7 @@ export class AddTaskComposer {
       closeComposerPopovers();
       if (shouldOpen) {
         deadlinePanel.removeClass("is-hidden");
-        watchLocalPopover(moreWrap, deadlinePanel, { preferredSide: mobilePanelSide });
+        watchLocalPopover(deadlineWrap, deadlinePanel, { preferredSide: mobilePanelSide });
         deadlineInput.focus();
       }
     });
@@ -529,7 +514,6 @@ export class AddTaskComposer {
     };
 
     const hasOpenComposerPopover = () =>
-      !menu.hasClass("is-hidden") ||
       !labelsPanel.hasClass("is-hidden") ||
       !deadlinePanel.hasClass("is-hidden") ||
       projectMenu.isConnected ||
