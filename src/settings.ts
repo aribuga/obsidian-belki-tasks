@@ -22,6 +22,7 @@ export interface BelkiSettings {
   labelColors: Record<string, string>;
   labelRegistry: string[];
   sortMode: BelkiSortMode;
+  groupBy: "none" | "label" | "priority";
   defaultOverdueRange: OverdueRange;
   uiFont: BelkiFontOption;
   taskTitleFont: BelkiFontOption;
@@ -58,6 +59,7 @@ export const DEFAULT_SETTINGS: BelkiSettings = {
   labelRegistry: [],
   archivedProjects: [],
   sortMode: "smart",
+  groupBy: "none",
   defaultOverdueRange: "last7",
   uiFont: "system",
   taskTitleFont: "system",

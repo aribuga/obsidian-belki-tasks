@@ -307,6 +307,24 @@
   padding: 6px 8px 4px;
 }
 
+.belki-sorting-divider {
+  border-top: 1px solid var(--belki-border);
+  margin: 4px 0;
+}
+
+.belki-task-group {
+  margin-top: 8px;
+}
+
+.belki-task-group-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--belki-muted);
+  padding: 4px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .belki-sorting-option {
   align-items: center;
   appearance: none;

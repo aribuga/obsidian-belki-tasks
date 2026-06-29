@@ -16,11 +16,11 @@ import {
   overdueRangeLabel
 } from "../settings";
 import { TaskStore } from "../taskStore";
-import { BelkiSortMode, BelkiTask, BoardViewMode, OVERDUE_RANGES } from "../types";
+import { BelkiSortMode, BelkiTask, BoardViewMode, OVERDUE_RANGES, Priority } from "../types";
 import { AddTaskComposer } from "./AddTaskComposer";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
 import { TaskDetailModal } from "./TaskDetailModal";
-import { getPriorityClass, getPriorityColor } from "../priority";
+import { getPriorityClass, getPriorityColor, getPriorityLabel } from "../priority";
 import {
   normalizeTaskProject,
   projectDisplayName,
@@ -479,6 +479,40 @@ export class TaskBoardView extends ItemView {
     }
   }
 
+  private groupTasks(tasks: BelkiTask[]): Map<string, BelkiTask[]> {
+    const result = new Map<string, BelkiTask[]>();
+
+    if (this.settings.groupBy === "label") {
+      const noLabel: BelkiTask[] = [];
+      for (const task of tasks) {
+        if (task.labels.length === 0) {
+          noLabel.push(task);
+        } else {
+          const key = task.labels[0];
+          if (!result.has(key)) result.set(key, []);
+          result.get(key)!.push(task);
+        }
+      }
+      if (noLabel.length > 0) result.set("No label", noLabel);
+    } else if (this.settings.groupBy === "priority") {
+      const order: Priority[] = ["P1", "P2", "P3", "P4", "none"];
+      const buckets = new Map<Priority, BelkiTask[]>();
+      for (const task of tasks) {
+        const p = task.priority || "none";
+        if (!buckets.has(p)) buckets.set(p, []);
+        buckets.get(p)!.push(task);
+      }
+      for (const p of order) {
+        if (buckets.has(p) && buckets.get(p)!.length > 0) {
+          const label = p === "none" ? "No priority" : getPriorityLabel(p);
+          result.set(label, buckets.get(p)!);
+        }
+      }
+    }
+
+    return result;
+  }
+
   private renderSortingControl(parent: HTMLElement): void {
     const wrapper = parent.createDiv({ cls: "belki-sorting" });
     const button = wrapper.createEl("button", {
@@ -530,6 +564,35 @@ export class TaskBoardView extends ItemView {
           this.render();
         })();
       });
+    }
+
+    if (this.mode === "projects") {
+      popover.createDiv({ cls: "belki-sorting-divider" });
+      popover.createDiv({ cls: "belki-sorting-title", text: "Group by" });
+      const GROUP_OPTIONS: { label: string; value: "none" | "label" | "priority" }[] = [
+        { label: "None", value: "none" },
+        { label: "Label", value: "label" },
+        { label: "Priority", value: "priority" }
+      ];
+      for (const opt of GROUP_OPTIONS) {
+        const item = popover.createEl("button", {
+          cls: "belki-sorting-option",
+          attr: { type: "button", role: "menuitemradio", "aria-checked": String(this.settings.groupBy === opt.value) }
+        });
+        item.toggleClass("is-active", this.settings.groupBy === opt.value);
+        item.createSpan({ cls: "belki-sorting-check", text: this.settings.groupBy === opt.value ? "✓" : "" });
+        item.createSpan({ text: opt.label });
+        item.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          this.settings.groupBy = opt.value;
+          this.sortPopoverOpen = false;
+          void (async () => {
+            await this.saveSettings();
+            this.render();
+          })();
+        });
+      }
     }
   }
 
@@ -593,11 +656,27 @@ export class TaskBoardView extends ItemView {
         const projectTasks = this.sortTasks(
           active.filter((task) => normalizeTaskProject(task.project) === project)
         );
-        const section = this.createSection(parent, project, projectTasks.length, (header) => {
-          this.renderProjectActionsButton(header, project);
-        });
-        this.enableProjectDrop(section, project);
-        this.renderTaskList(section, projectTasks);
+
+        if (this.settings.groupBy === "none") {
+          const section = this.createSection(parent, project, projectTasks.length, (header) => {
+            this.renderProjectActionsButton(header, project);
+          });
+          this.enableProjectDrop(section, project);
+          this.renderTaskList(section, projectTasks);
+        } else {
+          // Project header (no task count — shown per-group below)
+          const projectSection = this.createSection(parent, project, projectTasks.length, (header) => {
+            this.renderProjectActionsButton(header, project);
+          });
+          this.enableProjectDrop(projectSection, project);
+
+          const groups = this.groupTasks(projectTasks);
+          for (const [groupName, groupTasks] of groups) {
+            const sub = projectSection.createDiv({ cls: "belki-task-group" });
+            sub.createDiv({ cls: "belki-task-group-label", text: groupName });
+            this.renderTaskList(sub, groupTasks);
+          }
+        }
       }
       return;
     }
