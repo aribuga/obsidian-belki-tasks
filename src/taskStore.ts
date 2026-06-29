@@ -18,6 +18,7 @@ export class TaskStore {
   private tasks: BelkiTask[] = [];
   private listeners = new Set<Listener>();
   private warnedStorageIssues = new Set<string>();
+  private writingPaths = new Set<string>();
 
   constructor(private app: App, private settings: BelkiSettings) {}
 
@@ -39,6 +40,10 @@ export class TaskStore {
 
   get attachmentsDir(): string {
     return normalizePath(`${this.rootDir}/Attachments`);
+  }
+
+  isCurrentlyWriting(path: string): boolean {
+    return this.writingPaths.has(normalizePath(path));
   }
 
   isTaskStorageFile(path: string): boolean {
@@ -417,7 +422,12 @@ export class TaskStore {
       if (!file) {
         continue;
       }
-      await this.app.vault.modify(file, content);
+      this.writingPaths.add(normalizePath(sourcePath));
+      try {
+        await this.app.vault.modify(file, content);
+      } finally {
+        this.writingPaths.delete(normalizePath(sourcePath));
+      }
       this.documents.set(sourcePath, parseTaskDocument(content));
     }
   }

@@ -20,6 +20,7 @@ import { cleanProjectName, uniqueRealProjects } from "./projects";
 export default class BelkiPlugin extends Plugin {
   settings: BelkiSettings;
   store: TaskStore;
+  private reloadDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -113,7 +114,7 @@ export default class BelkiPlugin extends Plugin {
           this.store.isTaskStorageFile(oldPath) ||
           this.store.isTaskStorageFile(file.path)
         ) {
-          void this.reloadTasks();
+          this.scheduleReload();
         }
       })
     );
@@ -121,12 +122,18 @@ export default class BelkiPlugin extends Plugin {
     this.registerEvent(
       this.app.vault.on("delete", (file) => {
         if (this.store.isTaskStorageFile(file.path)) {
-          void this.reloadTasks();
+          this.scheduleReload();
         }
       })
     );
 
     void this.initializeStore();
+  }
+
+  onunload(): void {
+    if (this.reloadDebounceTimer !== null) {
+      clearTimeout(this.reloadDebounceTimer);
+    }
   }
 
   async loadSettings(): Promise<void> {
@@ -220,10 +227,20 @@ export default class BelkiPlugin extends Plugin {
     this.app.workspace.setActiveLeaf(leaf, { focus: true });
   }
 
-  private async refreshIfTaskFile(file: TAbstractFile): Promise<void> {
-    if (this.store.isTaskStorageFile(file.path)) {
-      await this.reloadTasks();
+  private scheduleReload(): void {
+    if (this.reloadDebounceTimer !== null) {
+      clearTimeout(this.reloadDebounceTimer);
     }
+    this.reloadDebounceTimer = setTimeout(() => {
+      this.reloadDebounceTimer = null;
+      void this.reloadTasks();
+    }, 300);
+  }
+
+  private refreshIfTaskFile(file: TAbstractFile): void {
+    if (!this.store.isTaskStorageFile(file.path)) return;
+    if (this.store.isCurrentlyWriting(file.path)) return;
+    this.scheduleReload();
   }
 
   private async initializeStore(): Promise<void> {
