@@ -14,7 +14,7 @@ export function attachWikilinkAutocomplete(textarea: HTMLTextAreaElement, app: A
     activeIndex = 0;
     renderItems = null;
     if (escapeHandler) {
-      document.removeEventListener("keydown", escapeHandler, true);
+      window.removeEventListener("keydown", escapeHandler, true);
       escapeHandler = null;
     }
   };
@@ -103,7 +103,7 @@ export function attachWikilinkAutocomplete(textarea: HTMLTextAreaElement, app: A
         closeDropdown();
       }
     };
-    document.addEventListener("keydown", escapeHandler, true);
+    window.addEventListener("keydown", escapeHandler, true);
   };
 
   textarea.addEventListener("input", () => {
