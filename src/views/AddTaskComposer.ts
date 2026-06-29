@@ -426,12 +426,12 @@ export class AddTaskComposer {
     });
 
     closeProjectMenu = () => {
-      projectMenu.addClass("is-hidden");
+      projectMenu.remove();
       projectPicker.setAttr("aria-expanded", "false");
     };
 
     const openProjectMenu = () => {
-      projectMenu.removeClass("is-hidden");
+      document.body.appendChild(projectMenu);
       projectPicker.setAttr("aria-expanded", "true");
       watchLocalPopover(projectArea, projectMenu, { preferredSide: "above", useFixed: true });
     };
@@ -531,7 +531,7 @@ export class AddTaskComposer {
       !menu.hasClass("is-hidden") ||
       !labelsPanel.hasClass("is-hidden") ||
       !deadlinePanel.hasClass("is-hidden") ||
-      !projectMenu.hasClass("is-hidden") ||
+      projectMenu.isConnected ||
       Boolean(dueDateWrap.querySelector(".belki-date-popover:not(.is-hidden)"));
 
     projectPicker.addEventListener("click", (event) => {
