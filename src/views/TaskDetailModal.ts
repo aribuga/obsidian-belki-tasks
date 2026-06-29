@@ -752,6 +752,8 @@ export class TaskDetailModal extends Modal {
           expandPanel.empty();
           renderChips();
           input.focus();
+        }).catch((err: unknown) => {
+          console.error("[belki] Failed to create sub-task", err);
         });
       };
 
