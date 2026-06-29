@@ -1,0 +1,77 @@
+# Tasks
+
+## Creating a task
+
+Click **+ Add task** or run `belki: Add task` from the command palette.
+
+The quick-add composer lets you set:
+
+- Title
+- Project
+- Due date
+- Priority
+- Labels
+- Description
+- Attachments
+
+You can also type `#label` or `//project` directly in the title field. belki parses these tokens and applies them automatically when you save.
+
+---
+
+## Editing a task
+
+Click a task row to open its detail view. You can edit:
+
+- Title (with wikilink support)
+- Description (with wikilink support)
+- Project
+- Due date
+- Deadline
+- Priority
+- Labels
+- Attachments
+- Repeat rule
+
+Changes are saved automatically when you close the detail view or click **Save**.
+
+---
+
+## Wikilinks in tasks
+
+You can use Obsidian wikilinks inside task titles and descriptions:
+
+```
+[[Note name]]
+[[Note name|Alias]]
+[[Note name#Heading]]
+```
+
+Clicking a wikilink opens the linked note in Obsidian.
+
+---
+
+## Completing a task
+
+Click the circle on the left of any task row. Completed tasks move to the **Completed** view.
+
+To undo completion, click the circle again in the Completed view or open the task detail.
+
+---
+
+## Recurring tasks
+
+Recurring tasks reset after completion instead of marking as done. See [Recurring tasks](recurring-tasks.md).
+
+---
+
+## Deleting a task
+
+Open the task detail and click **Delete task** at the bottom.
+
+Deleting a parent task does not automatically delete its sub-tasks. Sub-tasks become orphaned. This will be improved in a future version.
+
+---
+
+## Drag and drop
+
+You can drag a task to a different position within a list. You can also drag a task onto a project section or a date group in Upcoming to update its project or due date.

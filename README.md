@@ -1,219 +1,214 @@
-# belki
+<p align="center">
+  <img src="assets/brand/belki-logo.png" width="96" alt="belki logo">
+</p>
 
-belki is a minimal Todoist-like task manager for Obsidian. It keeps your tasks inside your vault as readable Markdown and does not connect to Todoist or any external service.
+<h1 align="center">belki</h1>
 
-belki aims to sit between lightweight checkbox-based task plugins and heavier task-note systems: structured enough to work as a real task manager, but small enough to stay calm and easy to use.
+<p align="center">
+  A calm Todoist-like task manager for Obsidian.<br>
+  Tasks stay inside your vault.
+</p>
 
-Task data is stored by default in:
+---
 
-```text
-_belki_files/
-├─ main.md
-├─ Data/
-│  └─ YYYY-MM.md
-└─ Attachments/
-   └─ <task-id>/
-```
+belki is a Todoist-inspired task manager that lives entirely inside your Obsidian vault. There is no account, no external service, and no sync. Your tasks are stored as plain Markdown files you own.
+
+It sits between simple checkbox plugins and heavy task-note systems: structured enough to work as a real task manager, small enough to stay calm.
+
+> belki is **not** a Todoist integration. It does not connect to Todoist or any external service.
+
+---
 
 ## Screenshots
 
-| Today | Today with overdue tasks |
-| --- | --- |
-| ![belki Today view](docs/screenshots/today.png) | ![belki Today view with overdue tasks](docs/screenshots/today-overdue.png) |
+<p align="center">
+  <img src="assets/screenshots/today.png" alt="belki Today view" width="49%">
+  <img src="assets/screenshots/task-detail.png" alt="belki task detail" width="49%">
+</p>
 
-| Task details | Upcoming |
-| --- | --- |
-| ![belki task detail modal](docs/screenshots/task-detail.png) | ![belki Upcoming view](docs/screenshots/upcoming.png) |
+<p align="center">
+  <img src="assets/screenshots/projects.png" alt="belki Projects view" width="49%">
+  <img src="assets/screenshots/filters-labels.png" alt="belki Filters and Labels" width="49%">
+</p>
+
+---
 
 ## Features
 
-- Inbox, Today, Upcoming, Projects, Filters & Labels, Search, and Completed views
-- Add, edit, complete, uncomplete, delete, and reschedule tasks
-- Due dates, deadlines, projects, priorities, descriptions, labels, and attachments
-- Markdown-first storage using the Obsidian Vault API
-- Automatic refresh when belki task data changes on disk
-- Drag a task onto a project or compatible date group to update metadata
-- Configurable data folder, sidebar icons, project colors, label colors, overdue range, sort mode, and fonts
+**Views**
+- Inbox — tasks without a project
+- Today — due today + overdue tasks
+- Upcoming — tasks grouped by date
+- Projects — all projects or a single project, flat or grouped
+- Filters & Labels — browse by priority, date, or label
+- Completed — done tasks grouped by completion date
+- Search — full-text search across all tasks
 
-## Task Format
+**Task management**
+- Add tasks from a quick-add composer or via command
+- Edit title, description, project, priority, due date, deadline, labels, and attachments
+- Complete, uncomplete, reschedule, and delete tasks
+- Drag tasks onto a project or date group to update them
+- Wikilinks work inside task titles and descriptions
+- Type `#label` or `//project` in the task title to set them from the keyboard
 
-belki stores tasks as Markdown list items with metadata underneath:
+**Sub-tasks**
+- Add sub-tasks inline from the parent task detail view
+- Sub-tasks show a completion counter on the parent task card
+- Completing a sub-task moves it to the bottom of the list
+- Sub-tasks are hidden from top-level views to avoid duplication
+
+**Recurring tasks**
+- Repeat rules: daily, weekly, monthly, and custom
+- Completion-based or calendar-based repeat modes
+
+**Projects**
+- Create, rename, archive, and color projects
+- Group by label or priority inside a project view
+- Sub-tasks inherit the parent task's project
+
+**Labels and priorities**
+- Labels with customizable colors
+- Four priority levels: P1 through P4
+- Priority shown on the task completion circle
+
+**Sorting**
+- Smart, Due date, Priority, Deadline, Created date, Project, Alphabetical
+
+**Grouping** (project views only)
+- Group by: None, Label, Priority
+
+**Attachments**
+- Images show inline previews in the task detail view
+- Other files show as compact rows
+- Attachments are stored inside your vault
+
+**Mobile**
+- Full mobile layout support
+
+**Storage**
+- All task data stored as Markdown in your vault
+- No external service, no account, no sync
+
+---
+
+## Why belki?
+
+- You want Todoist-style task management without a Todoist account
+- You want your tasks to stay inside your vault as readable Markdown
+- You want projects, labels, priorities, and due dates without the weight of a full note-based task system
+- You want something that works well on desktop and mobile
+
+---
+
+## How it stores tasks
+
+belki creates a data folder in your vault. The default location is:
+
+```
+_belki_files/
+├─ Data/
+│  └─ YYYY-MM.md     ← tasks stored by month
+└─ Attachments/
+   └─ <task-id>/     ← attachments per task
+```
+
+Each task is a Markdown list item with metadata:
 
 ```markdown
-- [ ] Task title
-  id:: task-unique-id
-  created:: 2026-06-22
-  due:: 2026-06-22
-  deadline:: 2026-06-25
-  priority:: P1
-  description:: Optional description
-  labels:: client, urgent
-  attachments:: [[_belki_files/Attachments/task-unique-id/image.png]]
+- [ ] Write portfolio case study draft
+  id:: abc123
+  created:: 2026-06-29
+  due:: 2026-07-01
+  deadline:: 2026-07-03
+  project:: Client Work
+  priority:: P2
+  description:: Keep it short and visual.
+  labels:: writing, portfolio
 ```
 
-Tasks without a project appear in the Inbox smart view and do not write a `project::` line. When a real project is selected, belki writes `project:: Project Name`.
+Completed tasks use `[x]` and include a `completed::` date. The folder path is configurable in settings.
 
-Completed tasks use `[x]` and include:
+See [Markdown storage](docs/markdown-storage.md) for full details.
 
-```markdown
-completed:: 2026-06-22
-```
-
-Older `belki/tasks.md` files can be migrated with the command:
-
-```text
-belki: Migrate old task file
-```
-
-## Priority System
-
-Priorities are stored as Markdown metadata:
-
-- `P1` = Priority 1
-- `P2` = Priority 2
-- `P3` = Priority 3
-- `P4` = Priority 4
-- `none` = no priority
-
-In the UI, priority is shown with subtle colors, including the task completion circle. Task titles are not recolored by priority.
-
-## Labels
-
-Labels are stored in the `labels::` metadata field as comma-separated values. belki normalizes duplicate labels and can show labels as small chips in task rows and task details.
-
-The Filters & Labels view lets you browse label-based task lists. Label colors can be customized in settings; otherwise belki assigns stable muted colors automatically.
-
-## Attachments
-
-Attachments are copied into the vault under:
-
-```text
-_belki_files/Attachments/<task-id>/
-```
-
-Image attachments show previews in the task detail modal and can be opened in a lightbox. Other attachments are shown as compact file rows. Attachments can be downloaded or removed from a task.
-
-## Obsidian Search and Excluded Files
-
-belki stores task data as local Markdown files in the configurable data folder, `_belki_files/` by default. Because these are real vault files, they can appear in Obsidian search, graph, and unlinked mentions.
-
-If you do not want belki task data to appear there, add `_belki_files/` to Obsidian Settings -> Files and links -> Excluded files. If you use a custom belki data folder, exclude that folder instead.
-
-belki itself only reads its configured data folder and does not scan the whole vault. Future vault-wide checklist import should respect Obsidian excluded folders.
-
-## Sorting and Filtering
-
-The task board includes a Sorting menu with:
-
-- Smart
-- Due date
-- Priority
-- Deadline
-- Created date
-- Project
-- Alphabetical
-
-Today keeps today's tasks and overdue tasks in separate groups. Upcoming keeps date groups in date order. Sorting applies inside the current group or view.
-
-The Today view also includes an overdue range selector:
-
-- Yesterday
-- Last 7 days
-- Last 30 days
-- Older
-
-## Roadmap
-
-These are planned directions, not promises for the current release:
-
-- Natural language date parsing: Users should eventually be able to type dates like `tomorrow`, `next Friday`, or `in 3 days` and have belki convert them into due dates.
-- Standalone recurring tasks: belki should eventually support independent recurring tasks, such as daily, weekly, monthly, or completion-based repeats.
-- Vault-wide checklist import: belki should eventually be able to import existing Markdown checklists from across the vault. This must respect Obsidian excluded files and folders.
-- Better GTD-style workflows: belki may support lightweight GTD-style workflows such as Inbox, Next Actions, Waiting, Someday/Maybe, and Projects, without forcing users into a rigid system.
-- Minimal, understandable settings: belki should avoid settings bloat. Prefer clear defaults, simple options, and optional advanced workflows instead of an overwhelming settings menu.
+---
 
 ## Installation
 
-### From Community Plugins
+### Community plugins
 
-belki is available from the Obsidian Community Plugins directory:
+> **Note:** belki is pending review for the Obsidian Community Plugin directory. Until it is listed, use manual installation below.
 
-[https://community.obsidian.md/plugins/belki](https://community.obsidian.md/plugins/belki)
+### Manual installation
 
-1. Open Obsidian Settings.
-2. Go to Community plugins.
-3. Search for `belki`.
-4. Install and enable the plugin.
-5. Run the command `belki: Open`.
-
-### Manual Installation
-
-1. Download `manifest.json`, `main.js`, and `styles.css` from a GitHub release.
+1. Download `manifest.json`, `main.js`, and `styles.css` from a [GitHub release](https://github.com/aribuga/obsidian-belki-tasks/releases).
 2. Create this folder inside your vault:
-
-```text
-.obsidian/plugins/belki/
-```
-
-3. Copy the three downloaded files into that folder.
+   ```
+   .obsidian/plugins/belki/
+   ```
+3. Copy the three files into that folder.
 4. Reload Obsidian.
-5. Enable `belki` in Community plugins.
+5. Enable **belki** in Settings → Community plugins.
 6. Run the command `belki: Open`.
 
-## Development
+---
 
-Requirements:
+## Quick start
 
-- Node.js
-- npm
+1. Install and enable belki.
+2. Run `belki: Open` from the command palette.
+3. Click **+ Add task** to create your first task.
+4. Set a due date, project, or priority from the task detail view.
+5. Tasks with no project land in **Inbox**. Assign a project to move them.
 
-Install dependencies:
+See [Getting started](docs/getting-started.md) for a walkthrough.
 
-```bash
-npm install
-```
+---
 
-Build:
+## Documentation
 
-```bash
-npm run build
-```
+| Page | Description |
+|---|---|
+| [Getting started](docs/getting-started.md) | Install and take your first steps |
+| [Tasks](docs/tasks.md) | Creating, editing, and completing tasks |
+| [Projects and Inbox](docs/projects-and-inbox.md) | How projects and Inbox work |
+| [Sub-tasks](docs/subtasks.md) | Adding and managing sub-tasks |
+| [Recurring tasks](docs/recurring-tasks.md) | Repeat rules and behavior |
+| [Labels and priorities](docs/labels-and-priorities.md) | Labeling tasks and setting priority |
+| [Sorting and filtering](docs/sorting-and-filtering.md) | Sorting, grouping, and filtering |
+| [Attachments](docs/attachments.md) | Adding files and images to tasks |
+| [Mobile](docs/mobile.md) | Using belki on mobile |
+| [Settings](docs/settings.md) | Configuration options |
+| [Markdown storage](docs/markdown-storage.md) | How belki stores task data |
+| [FAQ](docs/faq.md) | Common questions |
 
-The build outputs:
+---
 
-- `main.js`
-- `styles.css`
-- `manifest.json`
+## Planned improvements
 
-For local testing, copy or symlink this repository into an Obsidian vault at:
+These are directions being explored, not commitments:
 
-```text
-.obsidian/plugins/belki/
-```
+- Natural language date parsing (`tomorrow`, `next Friday`)
+- Vault-wide checklist import
+- Lightweight GTD-style workflows (Next, Waiting, Someday)
+- Additional group-by options in non-project views
 
-Then reload Obsidian and enable the plugin.
+---
 
-## Release Checklist
+## Contributing and feedback
 
-Before publishing a release:
+Bug reports and feature requests are welcome at [github.com/aribuga/obsidian-belki-tasks/issues](https://github.com/aribuga/obsidian-belki-tasks/issues).
 
-1. Update `version` in `manifest.json` and `package.json`.
-2. Update `versions.json` with the same plugin version and the matching `minAppVersion`.
-3. Run `npm install`.
-4. Run `npm run build`.
-5. Confirm `manifest.json`, `main.js`, and `styles.css` exist.
-6. Create a GitHub release whose tag exactly matches the plugin version, for example `0.1.0`.
-7. Do not prefix the release tag with `v`.
-8. Upload `manifest.json`, `main.js`, and `styles.css` as individual release assets.
-
-## Privacy and Network Usage
-
-belki stores task data and attachments inside your Obsidian vault. It does not add telemetry, analytics, cloud sync, account login, or network requests.
+---
 
 ## License
 
 MIT. See [LICENSE](LICENSE).
 
-## Author
+---
 
-Yasin Aribuga
+## Maintenance note
+
+The GitHub social preview image is stored at `assets/brand/belki-social-preview.png`. To update the social preview shown on GitHub, upload this file manually at:
+
+> GitHub repo → Settings → Social preview
