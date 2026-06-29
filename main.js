@@ -3381,10 +3381,9 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
         this.close();
       })();
     });
-    const footerActions = footer.createDiv({ cls: "belki-detail-actions" });
     if (this.draft.repeat && !this.draft.completed) {
-      footerActions.createEl("button", {
-        cls: "belki-button belki-button-danger",
+      footer.createEl("button", {
+        cls: "belki-button belki-button-danger belki-detail-complete-perm",
         text: "Complete permanently",
         attr: { type: "button" }
       }).addEventListener("click", () => {
@@ -3400,6 +3399,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
         })();
       });
     }
+    const footerActions = footer.createDiv({ cls: "belki-detail-actions" });
     footerActions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } }).addEventListener("click", () => this.close());
     footerActions.createEl("button", {
       cls: "belki-button belki-button-primary",

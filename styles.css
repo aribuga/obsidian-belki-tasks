@@ -3417,9 +3417,22 @@ button.belki-search-result.is-selected {
     padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
   }
 
+  /* Complete permanently: own full-width row at top */
+  .belki-detail-complete-perm {
+    flex: 0 0 100%;
+    order: 0;
+  }
+
+  /* Delete task and actions share the bottom row */
+  .belki-detail-delete {
+    flex: 0 0 auto;
+    order: 1;
+  }
+
   .belki-detail-actions {
     flex: 1 1 auto;
     justify-content: flex-end;
+    order: 1;
   }
 
   .belki-detail-delete,
@@ -3569,7 +3582,25 @@ button.belki-search-result.is-selected {
 }
 
 :where(.is-mobile, .mod-mobile) .belki-detail-footer {
+  flex-wrap: wrap;
+  gap: 8px;
   padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+}
+
+:where(.is-mobile, .mod-mobile) .belki-detail-complete-perm {
+  flex: 0 0 100%;
+  order: 0;
+}
+
+:where(.is-mobile, .mod-mobile) .belki-detail-delete {
+  flex: 0 0 auto;
+  order: 1;
+}
+
+:where(.is-mobile, .mod-mobile) .belki-detail-actions {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  order: 1;
 }
 
 .is-hidden {

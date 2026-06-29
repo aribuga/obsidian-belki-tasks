@@ -216,12 +216,10 @@ export class TaskDetailModal extends Modal {
         })();
       });
 
-    const footerActions = footer.createDiv({ cls: "belki-detail-actions" });
-
     if (this.draft.repeat && !this.draft.completed) {
-      footerActions
+      footer
         .createEl("button", {
-          cls: "belki-button belki-button-danger",
+          cls: "belki-button belki-button-danger belki-detail-complete-perm",
           text: "Complete permanently",
           attr: { type: "button" }
         })
@@ -238,6 +236,8 @@ export class TaskDetailModal extends Modal {
           })();
         });
     }
+
+    const footerActions = footer.createDiv({ cls: "belki-detail-actions" });
 
     footerActions
       .createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } })
