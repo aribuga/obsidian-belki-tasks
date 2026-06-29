@@ -367,8 +367,8 @@ export class AddTaskComposer {
     });
     const projectDot = projectPicker.createSpan({ cls: "belki-project-dot belki-composer-project-dot" });
     const projectLabel = projectPicker.createSpan({ cls: "belki-project-trigger-label" });
-    const projectMenu = document.body.createDiv({
-      cls: "belki-project-menu is-hidden",
+    const projectMenu = createEl("div", {
+      cls: "belki-project-menu",
       attr: {
         role: "listbox"
       }
@@ -428,11 +428,11 @@ export class AddTaskComposer {
     closeProjectMenu = () => {
       projectMenu.remove();
       projectPicker.setAttr("aria-expanded", "false");
+      projectPicker.focus({ preventScroll: true });
     };
 
     const openProjectMenu = () => {
       document.body.appendChild(projectMenu);
-      projectMenu.removeClass("is-hidden");
       projectPicker.setAttr("aria-expanded", "true");
       watchLocalPopover(projectArea, projectMenu, { preferredSide: "above", useFixed: true });
     };
@@ -538,7 +538,7 @@ export class AddTaskComposer {
     projectPicker.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      const shouldOpen = projectMenu.hasClass("is-hidden");
+      const shouldOpen = !projectMenu.isConnected;
       closeComposerPopovers();
       if (shouldOpen) {
         openProjectMenu();
