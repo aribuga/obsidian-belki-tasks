@@ -4515,6 +4515,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     this.draggedTaskId = null;
     this.sortPopoverOpen = false;
     this.projectActionsOpen = null;
+    this.projectMenuEl = null;
     this.sidebarScrollLeft = 0;
     this.pendingScrollSnapshot = null;
     this.composerCleanup = null;
@@ -4538,7 +4539,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
         return;
       }
       const openPopover = this.containerEl.querySelector(
-        ".belki-composer-popover:not(.is-hidden), .belki-project-menu:not(.is-hidden)"
+        ".belki-composer-popover:not(.is-hidden)"
       );
       if (openPopover) {
         this.stopEscape(event);
@@ -4592,8 +4593,14 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     var _a, _b;
     (_a = this.composerCleanup) == null ? void 0 : _a.call(this);
     this.composerCleanup = null;
+    this.removeProjectMenu();
     this.containerEl.removeEventListener("keydown", this.handleRootKeyDown, true);
     (_b = this.unsubscribe) == null ? void 0 : _b.call(this);
+  }
+  removeProjectMenu() {
+    var _a;
+    (_a = this.projectMenuEl) == null ? void 0 : _a.remove();
+    this.projectMenuEl = null;
   }
   refresh() {
     this.render();
@@ -4614,6 +4621,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     var _a, _b, _c;
     (_a = this.composerCleanup) == null ? void 0 : _a.call(this);
     this.composerCleanup = null;
+    this.removeProjectMenu();
     const { containerEl } = this;
     const sidebarScrollLeft = (_c = (_b = containerEl.querySelector(".belki-sidebar")) == null ? void 0 : _b.scrollLeft) != null ? _c : this.sidebarScrollLeft;
     containerEl.empty();
@@ -5160,7 +5168,9 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
       this.render();
     });
     if (this.projectActionsOpen !== project) return;
-    const menu = wrapper.createDiv({ cls: "belki-project-menu is-open-down" });
+    const menu = document.body.createDiv({ cls: "belki-project-menu" });
+    this.projectMenuEl = menu;
+    menu.style.visibility = "hidden";
     const renameItem = menu.createEl("button", { cls: "belki-project-option", text: "Rename project", attr: { type: "button" } });
     renameItem.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -5205,6 +5215,28 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
         await this.saveSettings();
         this.render();
       }).open();
+    });
+    requestAnimationFrame(() => {
+      if (!menu.isConnected) return;
+      const btnRect = button.getBoundingClientRect();
+      const margin = 8;
+      const menuW = menu.offsetWidth || 220;
+      const menuH = menu.offsetHeight || 120;
+      let left = btnRect.left;
+      if (left + menuW > window.innerWidth - margin) {
+        left = btnRect.right - menuW;
+      }
+      menu.style.left = `${Math.max(margin, left)}px`;
+      const fitsBelow = btnRect.bottom + menuH + margin <= window.innerHeight;
+      const fitsAbove = btnRect.top - menuH - margin >= 0;
+      if (!fitsBelow && fitsAbove) {
+        menu.style.bottom = `${window.innerHeight - btnRect.top + 4}px`;
+        menu.addClass("is-open-up");
+      } else {
+        menu.style.top = `${btnRect.bottom + 4}px`;
+        menu.addClass("is-open-down");
+      }
+      menu.style.visibility = "";
     });
   }
   renderArchivedProjectsView(parent, allTasks) {
