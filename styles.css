@@ -1041,11 +1041,17 @@ button.belki-add-inline {
 
 .belki-label-chip-remove {
   align-items: center;
+  background: none !important;
+  border: none;
+  box-shadow: none !important;
   color: var(--belki-muted);
+  cursor: pointer;
   display: inline-flex;
   justify-content: center;
   margin-left: 2px;
   opacity: 0;
+  outline: none;
+  padding: 0;
   pointer-events: none;
   transition: opacity 120ms ease, color 120ms ease;
 }
@@ -1071,6 +1077,8 @@ button.belki-add-inline {
 }
 
 .belki-label-chip-remove:hover {
+  background: none !important;
+  box-shadow: none !important;
   color: var(--belki-danger);
 }
 
