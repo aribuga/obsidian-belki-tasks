@@ -291,7 +291,7 @@ export class TaskDetailModal extends Modal {
 
     this.renderProject(parent);
     this.renderDueDatePicker(parent);
-    this.renderDate(parent, "Deadline", "deadline");
+    this.renderDeadlinePicker(parent);
     this.renderPriority(parent);
     this.renderLabels(parent);
   }
@@ -964,14 +964,9 @@ export class TaskDetailModal extends Modal {
       addPreset("Next week", addDaysIso(7));
       addPreset("Next weekend", nextWeekdayIso(6));
 
-      const customInput = popover.createEl("input", {
-        cls: "belki-date-custom-input",
-        attr: { type: "date" }
-      });
-      if (this.draft.due) customInput.value = this.draft.due;
-      customInput.addEventListener("change", () => {
-        if (customInput.value) selectDate(customInput.value);
-      });
+      popover.createDiv({ cls: "belki-date-divider" });
+
+      renderCustomDatePicker(popover, this.draft.due, "calendar", selectDate);
 
       popover.createDiv({ cls: "belki-date-divider" });
       const repeatHeader = popover.createDiv({ cls: "belki-repeat-header" });
@@ -1057,18 +1052,89 @@ export class TaskDetailModal extends Modal {
     renderPicker();
   }
 
-  private renderDate(parent: HTMLElement, label: string, key: "due" | "deadline"): void {
-    const field = this.createField(parent, label);
-    const input = field.createEl("input", {
-      cls: "belki-detail-input",
-      attr: {
-        type: "date",
-        value: this.draft[key] || ""
+  private renderDeadlinePicker(parent: HTMLElement): void {
+    const field = this.createField(parent, "Deadline");
+    const wrap = field.createDiv({ cls: "belki-date-picker-wrap belki-date-picker-inline" });
+
+    let detachOutside: (() => void) | undefined;
+
+    const closePopover = () => {
+      wrap.querySelector(".belki-date-popover-inline")?.addClass("is-hidden");
+      detachOutside?.();
+      detachOutside = undefined;
+    };
+
+    const renderPicker = () => {
+      wrap.empty();
+      const hasDate = Boolean(this.draft.deadline);
+
+      const btnRow = wrap.createDiv({ cls: "belki-date-btn-row" });
+      const btn = btnRow.createEl("button", {
+        cls: `belki-detail-date-btn${hasDate ? " is-active" : ""}`,
+        attr: { type: "button" }
+      });
+      const iconSpan = btn.createSpan({ cls: "belki-chip-icon" });
+      setIcon(iconSpan, "diamond");
+      btn.createSpan({ text: hasDate ? formatDueDateChip(this.draft.deadline!) : "No deadline" });
+
+      if (hasDate) {
+        const clearBtn = btnRow.createEl("button", {
+          cls: "belki-date-chip-clear",
+          attr: { type: "button", "aria-label": "Clear deadline" }
+        });
+        clearBtn.setText("×");
+        clearBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.draft.deadline = undefined;
+          closePopover();
+          renderPicker();
+        });
       }
-    });
-    input.addEventListener("change", () => {
-      this.draft[key] = input.value || undefined;
-    });
+
+      const popover = wrap.createDiv({ cls: "belki-date-popover belki-date-popover-inline is-hidden" });
+
+      const selectDate = (value: string) => {
+        this.draft.deadline = value || undefined;
+        closePopover();
+        renderPicker();
+      };
+
+      const addPreset = (label: string, value: string) => {
+        const presetBtn = popover.createEl("button", {
+          cls: "belki-date-preset",
+          text: label,
+          attr: { type: "button" }
+        });
+        presetBtn.toggleClass("is-active", value === this.draft.deadline);
+        presetBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectDate(value);
+        });
+      };
+
+      addPreset("Today", todayIso());
+      addPreset("Tomorrow", addDaysIso(1));
+      addPreset("Next week", addDaysIso(7));
+      addPreset("Next weekend", nextWeekdayIso(6));
+
+      renderCustomDatePicker(popover, this.draft.deadline, "diamond", selectDate);
+
+      btn.addEventListener("click", () => {
+        const isHidden = popover.hasClass("is-hidden");
+        closePopover();
+        if (!isHidden) return;
+        popover.removeClass("is-hidden");
+        const ownerDocument = wrap.ownerDocument;
+        const handleOutside = (e: PointerEvent) => {
+          if (e.target instanceof Node && wrap.contains(e.target)) return;
+          closePopover();
+        };
+        ownerDocument.addEventListener("pointerdown", handleOutside, true);
+        detachOutside = () => ownerDocument.removeEventListener("pointerdown", handleOutside, true);
+      });
+    };
+
+    renderPicker();
   }
 
   private renderPriority(parent: HTMLElement): void {
@@ -1245,6 +1311,47 @@ export class TaskDetailModal extends Modal {
     this.options.onChange();
     this.close();
   }
+}
+
+function renderCustomDatePicker(
+  parent: HTMLElement,
+  currentValue: string | undefined,
+  iconName: string,
+  onSelect: (value: string) => void
+): void {
+  const wrap = parent.createDiv({ cls: "belki-date-custom-wrap" });
+
+  const btn = wrap.createEl("button", {
+    cls: `belki-date-custom-trigger${currentValue ? "" : " is-placeholder"}`,
+    attr: { type: "button" }
+  });
+  setIcon(btn, iconName);
+  const btnText = btn.createSpan({
+    text: currentValue ? formatDueDateChip(currentValue) : "Pick a date"
+  });
+
+  const input = wrap.createEl("input", {
+    cls: "belki-date-custom-input",
+    attr: { type: "date" }
+  });
+  if (currentValue) input.value = currentValue;
+
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (typeof (input as any).showPicker === "function") {
+      (input as any).showPicker();
+    } else {
+      input.click();
+    }
+  });
+
+  input.addEventListener("change", () => {
+    if (input.value) {
+      btn.removeClass("is-placeholder");
+      btnText.textContent = formatDueDateChip(input.value);
+      onSelect(input.value);
+    }
+  });
 }
 
 function attachmentName(path: string): string {

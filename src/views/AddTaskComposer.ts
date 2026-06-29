@@ -169,6 +169,8 @@ export class AddTaskComposer {
       selectedDeadline = deadlineInput.value;
     });
 
+    const labelChipsRow = form.createDiv({ cls: "belki-composer-label-chips is-hidden" });
+
     let detachOutsideListener = () => undefined;
     let closeProjectMenu = () => undefined;
     let closeDueDatePopover: () => void = () => undefined;
@@ -266,21 +268,37 @@ export class AddTaskComposer {
 
     const renderLabels = () => {
       selectedLabelsEl.empty();
+      labelChipsRow.empty();
+      labelChipsRow.toggleClass("is-hidden", selectedLabels.length === 0);
+
       for (const label of selectedLabels) {
+        const color = getLabelColor(label, options.labelColors);
+        const removeLabel = () => {
+          selectedLabels = selectedLabels.filter((c) => c !== label);
+          renderLabels();
+        };
+
         const chip = selectedLabelsEl.createEl("button", {
           cls: "belki-selected-label",
           text: displayLabel(label),
           attr: { type: "button" }
         });
-        const color = getLabelColor(label, options.labelColors);
-        chip.setCssStyles({
-          backgroundColor: color.light,
-          borderColor: color.light
+        chip.setCssStyles({ backgroundColor: color.light, borderColor: color.light });
+        chip.addEventListener("click", removeLabel);
+
+        const externalChip = labelChipsRow.createEl("span", {
+          cls: "belki-label-chip",
+          attr: { "aria-label": `Remove label ${displayLabel(label)}` }
         });
-        chip.addEventListener("click", () => {
-          selectedLabels = selectedLabels.filter((candidate) => candidate !== label);
-          renderLabels();
+        externalChip.setCssProps({ "--belki-label-chip-color": color.regular, "--belki-label-chip-bg": color.light });
+        createIcon(externalChip, "tag");
+        externalChip.createSpan({ cls: "belki-label-chip-name", text: displayLabel(label) });
+        const removeBtn = externalChip.createEl("button", {
+          cls: "belki-label-chip-remove",
+          attr: { type: "button", "aria-label": `Remove ${displayLabel(label)}` }
         });
+        createIcon(removeBtn, "x");
+        removeBtn.addEventListener("click", removeLabel);
       }
 
       labelSuggestions.empty();

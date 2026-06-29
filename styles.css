@@ -1005,7 +1005,8 @@ button.belki-add-inline {
   padding: 4px 8px;
 }
 
-.belki-detail-label-chip {
+.belki-detail-label-chip,
+.belki-label-chip {
   align-items: center;
   color: var(--belki-text);
   display: inline-flex;
@@ -1013,18 +1014,60 @@ button.belki-add-inline {
   gap: 6px;
 }
 
+.belki-label-chip {
+  background: var(--belki-label-chip-bg, var(--belki-chip-bg));
+  border: 1px solid var(--belki-label-chip-color, var(--belki-border));
+  border-radius: 999px;
+  color: var(--belki-label-chip-color, var(--belki-text));
+  font-size: 12px;
+  padding: 3px 6px 3px 8px;
+}
+
+.belki-label-chip svg {
+  height: 11px;
+  width: 11px;
+}
+
+.belki-label-chip-name {
+  line-height: 1;
+}
+
+.belki-composer-label-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 4px 4px;
+}
+
 .belki-label-chip-remove {
+  align-items: center;
   color: var(--belki-muted);
+  display: inline-flex;
+  justify-content: center;
   margin-left: 2px;
   opacity: 0;
   pointer-events: none;
   transition: opacity 120ms ease, color 120ms ease;
 }
 
+.belki-label-chip-remove svg {
+  height: 10px;
+  width: 10px;
+}
+
 .belki-detail-label-chip:hover .belki-label-chip-remove,
-.belki-detail-label-chip:focus-visible .belki-label-chip-remove {
+.belki-detail-label-chip:focus-visible .belki-label-chip-remove,
+.belki-label-chip:hover .belki-label-chip-remove {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* On touch devices there is no hover — always show the remove button */
+@media (hover: none) {
+  .belki-label-chip .belki-label-chip-remove {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .belki-label-chip-remove:hover {
@@ -1193,14 +1236,47 @@ button.belki-add-inline {
   font-weight: 600;
 }
 
-.belki-date-custom-input {
-  background: var(--belki-surface);
-  border: 1px solid var(--belki-border);
-  border-radius: 6px;
+.belki-date-custom-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.belki-date-custom-trigger {
+  align-items: center;
+  background: var(--belki-bg);
+  border: 1.5px solid var(--belki-border);
+  border-radius: 8px;
   color: var(--belki-text);
+  display: flex;
+  font: inherit;
   font-size: 13px;
-  height: 32px;
-  padding: 0 8px;
+  gap: 8px;
+  height: 38px;
+  padding: 0 10px;
+  text-align: left;
+  width: 100%;
+}
+
+.belki-date-custom-trigger.is-placeholder {
+  color: var(--belki-muted);
+}
+
+.belki-date-custom-trigger svg {
+  flex: 0 0 auto;
+  height: 14px;
+  width: 14px;
+}
+
+.belki-date-custom-input {
+  background: var(--belki-bg);
+  border: 1.5px solid var(--belki-border);
+  border-radius: 8px;
+  color: var(--belki-text);
+  font: inherit;
+  font-size: 13px;
+  height: 38px;
+  padding: 0 10px;
   width: 100%;
 }
 
@@ -3060,6 +3136,21 @@ button.belki-search-result.is-selected {
   .belki-button,
   .belki-add-attachment-inline {
     min-height: 40px;
+  }
+
+  .belki-label-chip {
+    font-size: 11px;
+    padding: 2px 5px 2px 6px;
+  }
+
+  .belki-label-chip svg {
+    height: 10px;
+    width: 10px;
+  }
+
+  .belki-label-chip-remove svg {
+    height: 9px;
+    width: 9px;
   }
 
   .belki-composer-footer {
