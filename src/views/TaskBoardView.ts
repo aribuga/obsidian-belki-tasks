@@ -536,7 +536,7 @@ export class TaskBoardView extends ItemView {
   private renderTaskSections(parent: HTMLElement, allTasks: BelkiTask[]): void {
     parent.empty();
 
-    const active = allTasks.filter((task) => !task.completed);
+    const active = allTasks.filter((task) => !task.completed && !task.parentId);
 
     if (this.mode === "today") {
       const todayTasks = this.sortTasks(active.filter((task) => isToday(task.due)));
@@ -1272,7 +1272,7 @@ export class TaskBoardView extends ItemView {
   private getVisibleTasks(tasks: BelkiTask[]): BelkiTask[] {
     const archivedSet = new Set(this.settings.archivedProjects);
     const active = tasks.filter(
-      (task) => !task.completed && !archivedSet.has(normalizeTaskProject(task.project) || "")
+      (task) => !task.completed && !archivedSet.has(normalizeTaskProject(task.project) || "") && !task.parentId
     );
 
     if (this.mode === "inbox") {

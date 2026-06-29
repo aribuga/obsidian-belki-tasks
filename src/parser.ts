@@ -18,7 +18,8 @@ const KNOWN_PROPERTIES = new Set([
   "tags",
   "attachments",
   "repeat",
-  "completedoccurrences"
+  "completedoccurrences",
+  "parentid"
 ]);
 
 export function parseTasks(markdown: string): BelkiTask[] {
@@ -76,6 +77,7 @@ export function parseTaskDocument(markdown: string): ParsedTaskDocument {
       attachments: parseAttachments(properties.attachments),
       repeat: parseRepeat(properties.repeat),
       completedOccurrences: parseCompletedOccurrences(properties["completedoccurrences"]),
+      parentId: properties["parentid"] || undefined,
       extraProperties,
       order
     });

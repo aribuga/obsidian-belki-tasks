@@ -97,6 +97,10 @@ function serializeTaskLines(task: BelkiTask): string[] {
     lines.push(`  completedOccurrences:: ${task.completedOccurrences.join(", ")}`);
   }
 
+  if (task.parentId) {
+    lines.push(`  parentId:: ${singleLine(task.parentId)}`);
+  }
+
   const project = normalizeTaskProject(task.project);
   if (project) {
     lines.push(`  project:: ${singleLine(project)}`);

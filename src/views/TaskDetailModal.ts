@@ -61,6 +61,11 @@ export class TaskDetailModal extends Modal {
     applyBelkiFontSettings(contentEl, this.options.settings);
     this.modalEl.addEventListener("keydown", this.handleEscape, true);
 
+    const isSubTask = Boolean(this.draft.parentId);
+    const parentTask = isSubTask
+      ? this.options.store.getTasks().find((t) => t.id === this.draft.parentId)
+      : undefined;
+
     const mobileHeader = contentEl.createDiv({ cls: "belki-detail-mobile-header" });
     mobileHeader
       .createEl("button", {
@@ -69,7 +74,10 @@ export class TaskDetailModal extends Modal {
         attr: { type: "button", "aria-label": "Back to task list" }
       })
       .addEventListener("click", () => this.close());
-    mobileHeader.createDiv({ cls: "belki-detail-mobile-title", text: "Task details" });
+    mobileHeader.createDiv({
+      cls: "belki-detail-mobile-title",
+      text: isSubTask ? "Sub-task" : "Task details"
+    });
 
     const shell = contentEl.createDiv({ cls: "belki-detail-shell" });
     const main = shell.createDiv({ cls: "belki-detail-main" });
@@ -82,6 +90,28 @@ export class TaskDetailModal extends Modal {
       attr: { type: "button", "aria-label": "Close task details" }
     });
     closeButton.addEventListener("click", () => this.close());
+
+    if (isSubTask && parentTask) {
+      const contextBar = main.createDiv({ cls: "belki-subtask-context-bar" });
+      contextBar.createSpan({ cls: "belki-subtask-context-arrow", text: "↳" });
+      contextBar.createSpan({ cls: "belki-subtask-context-label", text: "Sub-task of " });
+      const parentLink = contextBar.createEl("button", {
+        cls: "belki-subtask-context-parent",
+        text: `"${parentTask.title}"`,
+        attr: { type: "button" }
+      });
+      parentLink.addEventListener("click", () => {
+        this.close();
+        new TaskDetailModal(this.app, {
+          task: parentTask,
+          projects: this.options.projects,
+          labels: this.options.labels,
+          settings: this.options.settings,
+          store: this.options.store,
+          onChange: this.options.onChange
+        }).open();
+      });
+    }
 
     const titleRow = main.createDiv({ cls: "belki-detail-title-row" });
     const checkbox = titleRow.createEl("button", {
@@ -165,6 +195,7 @@ export class TaskDetailModal extends Modal {
       descRendered.style.display = "";
     });
 
+    this.renderSubTasks(main);
     this.renderAttachments(main);
     this.renderSidePanel(side);
 
@@ -229,7 +260,33 @@ export class TaskDetailModal extends Modal {
   }
 
   private renderSidePanel(parent: HTMLElement): void {
-    parent.createEl("h3", { text: "Task details" });
+    const isSubTask = Boolean(this.draft.parentId);
+    const parentTask = isSubTask
+      ? this.options.store.getTasks().find((t) => t.id === this.draft.parentId)
+      : undefined;
+
+    parent.createEl("h3", { text: isSubTask ? "Sub-task details" : "Task details" });
+
+    if (isSubTask && parentTask) {
+      const field = this.createField(parent, "Parent");
+      const parentBtn = field.createEl("button", {
+        cls: "belki-subtask-parent-field",
+        text: parentTask.title,
+        attr: { type: "button" }
+      });
+      parentBtn.addEventListener("click", () => {
+        this.close();
+        new TaskDetailModal(this.app, {
+          task: parentTask,
+          projects: this.options.projects,
+          labels: this.options.labels,
+          settings: this.options.settings,
+          store: this.options.store,
+          onChange: this.options.onChange
+        }).open();
+      });
+    }
+
     this.renderProject(parent);
     this.renderDueDatePicker(parent);
     this.renderDate(parent, "Deadline", "deadline");
@@ -466,6 +523,258 @@ export class TaskDetailModal extends Modal {
     } catch {
       await this.app.workspace.openLinkText(path, "", false);
     }
+  }
+
+  private renderSubTasks(parent: HTMLElement): void {
+    const allTasks = this.options.store.getTasks();
+    const subTasks = allTasks.filter((t) => t.parentId === this.draft.id);
+    const doneCount = subTasks.filter((t) => t.completed).length;
+
+    const section = parent.createDiv({ cls: "belki-subtasks-section" });
+    const header = section.createDiv({ cls: "belki-attachments-header" });
+    const titleEl = header.createEl("h3", { cls: "belki-subtasks-title" });
+    titleEl.createSpan({ text: "Sub-tasks" });
+    const countEl = titleEl.createSpan({
+      cls: "belki-subtasks-count",
+      text: subTasks.length > 0 ? ` ${doneCount}/${subTasks.length}` : ""
+    });
+
+    const list = section.createDiv({ cls: "belki-subtasks-list" });
+
+    const renderList = () => {
+      list.empty();
+      const all = this.options.store.getTasks().filter((t) => t.parentId === this.draft.id);
+      const current = [...all.filter((t) => !t.completed), ...all.filter((t) => t.completed)];
+      current.forEach((sub) => {
+        const row = list.createDiv({ cls: "belki-subtask-row" });
+        const checkbox = row.createEl("button", {
+          cls: "belki-task-checkbox belki-subtask-checkbox",
+          attr: { type: "button" }
+        });
+        checkbox.toggleClass("is-checked", sub.completed);
+        checkbox.addEventListener("click", () => {
+          void this.options.store.toggleComplete(sub.id).then(() => {
+            renderList();
+            const updated = this.options.store.getTasks().filter((t) => t.parentId === this.draft.id);
+            const done = updated.filter((t) => t.completed).length;
+            countEl.setText(updated.length > 0 ? ` ${done}/${updated.length}` : "");
+          });
+        });
+
+        const info = row.createDiv({ cls: "belki-subtask-info" });
+
+        const titleLine = info.createDiv({ cls: "belki-subtask-title-line" });
+        const titleEl2 = titleLine.createSpan({ cls: `belki-subtask-title${sub.completed ? " is-completed" : ""}`, text: sub.title });
+        titleEl2.addEventListener("click", () => {
+          new TaskDetailModal(this.app, {
+            task: sub,
+            projects: this.options.projects,
+            labels: this.options.labels,
+            settings: this.options.settings,
+            store: this.options.store,
+            onChange: () => { renderList(); this.options.onChange(); }
+          }).open();
+        });
+
+        const deleteBtn = titleLine.createSpan({
+          cls: "belki-subtask-delete",
+          text: "×",
+          attr: { role: "button", tabindex: "0", "aria-label": "Delete sub-task" }
+        });
+        deleteBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          void this.options.store.deleteTask(sub.id).then(() => {
+            renderList();
+            updateHeader();
+            this.options.onChange();
+          });
+        });
+
+        const meta = info.createDiv({ cls: "belki-subtask-meta" });
+        if (sub.due) {
+          meta.createSpan({ cls: "belki-subtask-due", text: formatDueDateChip(sub.due) });
+        }
+        if (sub.priority && sub.priority !== "none") {
+          const pc = getPriorityColor(sub.priority);
+          const badge = meta.createSpan({ cls: "belki-subtask-priority", text: getPriorityLabel(sub.priority) });
+          badge.style.color = pc.color;
+        }
+      });
+    };
+
+    renderList();
+
+    const addRow = section.createDiv({ cls: "belki-subtask-add-row" });
+
+    const updateHeader = () => {
+      const current = this.options.store.getTasks().filter((t) => t.parentId === this.draft.id);
+      const done = current.filter((t) => t.completed).length;
+      countEl.setText(current.length > 0 ? ` ${done}/${current.length}` : "");
+    };
+
+    const showComposer = () => {
+      addRow.empty();
+
+      let composerDue = "";
+      let composerPriority: Priority = "none";
+      type ExpandedPanel = "date" | "priority" | null;
+      let expandedPanel: ExpandedPanel = null;
+
+      const input = addRow.createEl("input", {
+        cls: "belki-subtask-input",
+        attr: { type: "text", placeholder: "Sub-task title" }
+      });
+
+      // ── chips row ─────────────────────────────────────────────
+      const chipsRow = addRow.createDiv({ cls: "belki-subtask-chips" });
+
+      // inline expand panel (shared, shown below chips row)
+      const expandPanel = addRow.createDiv({ cls: "belki-subtask-expand-panel is-hidden" });
+
+      const closePanel = () => {
+        expandPanel.addClass("is-hidden");
+        expandPanel.empty();
+        expandedPanel = null;
+        renderChips();
+      };
+
+      const openDatePanel = () => {
+        expandedPanel = "date";
+        expandPanel.empty();
+        expandPanel.removeClass("is-hidden");
+
+        const presets: [string, string][] = [
+          ["Today", todayIso()],
+          ["Tomorrow", addDaysIso(1)],
+          ["Next week", addDaysIso(7)],
+          ["Weekend", nextWeekdayIso(6)]
+        ];
+        for (const [label, value] of presets) {
+          const btn = expandPanel.createEl("button", {
+            cls: "belki-subtask-preset" + (value === composerDue ? " is-active" : ""),
+            text: label,
+            attr: { type: "button" }
+          });
+          btn.addEventListener("click", () => { composerDue = composerDue === value ? "" : value; closePanel(); });
+        }
+
+        // native date input as compact last option
+        const customInput = expandPanel.createEl("input", {
+          cls: "belki-subtask-preset-date",
+          attr: { type: "date", title: "Custom date" }
+        });
+        if (composerDue) customInput.value = composerDue;
+        customInput.addEventListener("change", () => { if (customInput.value) { composerDue = customInput.value; closePanel(); } });
+      };
+
+      const openPriorityPanel = () => {
+        expandedPanel = "priority";
+        expandPanel.empty();
+        expandPanel.removeClass("is-hidden");
+
+        for (const p of PRIORITIES) {
+          const btn = expandPanel.createEl("button", {
+            cls: "belki-subtask-preset" + (p === composerPriority ? " is-active" : ""),
+            text: getPriorityLabel(p),
+            attr: { type: "button" }
+          });
+          if (p !== "none") btn.style.color = getPriorityColor(p).color;
+          btn.addEventListener("click", () => { composerPriority = p; closePanel(); });
+        }
+      };
+
+      // ── render chip row ────────────────────────────────────────
+      const renderChips = () => {
+        chipsRow.empty();
+
+        // date chip
+        const dateChip = chipsRow.createEl("button", {
+          cls: "belki-subtask-chip" + (composerDue ? " is-active" : "") + (expandedPanel === "date" ? " is-open" : ""),
+          attr: { type: "button" }
+        });
+        const calIcon = dateChip.createSpan({ cls: "belki-chip-icon" });
+        setIcon(calIcon, "calendar");
+        dateChip.createSpan({ text: composerDue ? formatDueDateChip(composerDue) : "Date" });
+        if (composerDue) {
+          const clr = dateChip.createSpan({ cls: "belki-subtask-chip-clear", text: "×" });
+          clr.addEventListener("click", (e) => { e.stopPropagation(); composerDue = ""; closePanel(); renderChips(); });
+        }
+        dateChip.addEventListener("click", () => {
+          if (expandedPanel === "date") { closePanel(); } else { openDatePanel(); renderChips(); }
+        });
+
+        // priority chip
+        const priChip = chipsRow.createEl("button", {
+          cls: "belki-subtask-chip" + (composerPriority !== "none" ? " is-active" : "") + (expandedPanel === "priority" ? " is-open" : ""),
+          attr: { type: "button" }
+        });
+        if (composerPriority !== "none") priChip.style.color = getPriorityColor(composerPriority).color;
+        const flagIcon = priChip.createSpan({ cls: "belki-chip-icon" });
+        setIcon(flagIcon, "flag");
+        priChip.createSpan({ text: composerPriority !== "none" ? getPriorityLabel(composerPriority) : "Priority" });
+        priChip.addEventListener("click", () => {
+          if (expandedPanel === "priority") { closePanel(); } else { openPriorityPanel(); renderChips(); }
+        });
+      };
+
+      renderChips();
+
+      // ── Action buttons ─────────────────────────────────────────
+      const btnRow = addRow.createDiv({ cls: "belki-subtask-btn-row" });
+      const addBtn = btnRow.createEl("button", {
+        cls: "belki-button belki-button-primary",
+        text: "Add task",
+        attr: { type: "button" }
+      });
+      const cancelBtn = btnRow.createEl("button", {
+        cls: "belki-button",
+        text: "Cancel",
+        attr: { type: "button" }
+      });
+
+      const submit = () => {
+        const title = input.value.trim();
+        if (!title) return;
+        void this.options.store.createTask({
+          title,
+          project: this.draft.project,
+          parentId: this.draft.id,
+          due: composerDue || undefined,
+          priority: composerPriority
+        }).then(() => {
+          renderList();
+          updateHeader();
+          input.value = "";
+          composerDue = "";
+          composerPriority = "none";
+          expandedPanel = null;
+          expandPanel.addClass("is-hidden");
+          expandPanel.empty();
+          renderChips();
+          input.focus();
+        });
+      };
+
+      addBtn.addEventListener("click", submit);
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); submit(); }
+        if (e.key === "Escape") { e.preventDefault(); showAddButton(); }
+      });
+      cancelBtn.addEventListener("click", showAddButton);
+      input.focus();
+    };
+
+    const showAddButton = () => {
+      addRow.empty();
+      const btn = addRow.createEl("button", {
+        cls: "belki-subtask-add-btn",
+        attr: { type: "button" }
+      });
+      btn.createSpan({ text: "+ Add sub-task" });
+      btn.addEventListener("click", showComposer);
+    };
+
+    showAddButton();
   }
 
   private renderProject(parent: HTMLElement): void {

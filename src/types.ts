@@ -52,6 +52,7 @@ export interface BelkiTask {
   attachments: string[];
   repeat?: RepeatRule;
   completedOccurrences?: string[];
+  parentId?: string;
   extraProperties: TaskProperty[];
   order: number;
   sourcePath?: string;
@@ -88,6 +89,7 @@ export interface CreateTaskInput {
   attachments?: string[];
   pendingAttachments?: File[];
   repeat?: RepeatRule;
+  parentId?: string;
 }
 
 export type TaskPatch = Partial<Omit<BelkiTask, "id" | "order">>;

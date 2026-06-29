@@ -153,6 +153,7 @@ export class TaskStore {
       labels: normalizeLabels(input.labels || []),
       attachments: normalizeAttachments(attachments),
       repeat: input.repeat,
+      parentId: input.parentId,
       extraProperties: [],
       order: this.nextOrder(),
       sourcePath
