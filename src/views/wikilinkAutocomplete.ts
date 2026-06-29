@@ -5,6 +5,7 @@ export function attachWikilinkAutocomplete(textarea: HTMLTextAreaElement, app: A
   let activeIndex = 0;
   let currentMatches: string[] = [];
   let renderItems: (() => void) | null = null;
+  let escapeHandler: ((e: KeyboardEvent) => void) | null = null;
 
   const closeDropdown = () => {
     dropdown?.remove();
@@ -12,6 +13,10 @@ export function attachWikilinkAutocomplete(textarea: HTMLTextAreaElement, app: A
     currentMatches = [];
     activeIndex = 0;
     renderItems = null;
+    if (escapeHandler) {
+      document.removeEventListener("keydown", escapeHandler, true);
+      escapeHandler = null;
+    }
   };
 
   const getWikilinkQuery = (): { query: string; bracketStart: number } | null => {
@@ -89,6 +94,16 @@ export function attachWikilinkAutocomplete(textarea: HTMLTextAreaElement, app: A
 
     renderItems();
     document.body.appendChild(dropdown);
+
+    escapeHandler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        closeDropdown();
+      }
+    };
+    document.addEventListener("keydown", escapeHandler, true);
   };
 
   textarea.addEventListener("input", () => {
