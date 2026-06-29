@@ -27,6 +27,7 @@ export class TaskDetailModal extends Modal {
   private draft: BelkiTask;
   private sideEl: HTMLElement | null = null;
   private closeWikilinkDropdown: (() => void) | null = null;
+  private closeQuickAddDropdown: (() => void) | null = null;
   private handleEscape = (event: KeyboardEvent): void => {
     if (event.key !== "Escape") {
       return;
@@ -134,7 +135,7 @@ export class TaskDetailModal extends Modal {
       this.draft.title = titleInput.value;
     });
 
-    attachQuickAddAutocomplete(
+    this.closeQuickAddDropdown = attachQuickAddAutocomplete(
       titleInput,
       () => this.options.labels,
       () => this.options.projects
@@ -257,6 +258,7 @@ export class TaskDetailModal extends Modal {
   }
 
   onClose(): void {
+    this.closeQuickAddDropdown?.();
     this.closeWikilinkDropdown?.();
     this.modalEl.removeEventListener("keydown", this.handleEscape, true);
   }
@@ -1124,13 +1126,11 @@ export class TaskDetailModal extends Modal {
         closePopover();
         if (!isHidden) return;
         popover.removeClass("is-hidden");
-        const ownerDocument = wrap.ownerDocument;
-        const handleOutside = (e: PointerEvent) => {
-          if (e.target instanceof Node && wrap.contains(e.target)) return;
-          closePopover();
+        const handleOutside = (e: MouseEvent) => {
+          if (!wrap.contains(e.target as Node)) closePopover();
         };
-        ownerDocument.addEventListener("pointerdown", handleOutside, true);
-        detachOutside = () => ownerDocument.removeEventListener("pointerdown", handleOutside, true);
+        document.addEventListener("click", handleOutside, { capture: true });
+        detachOutside = () => document.removeEventListener("click", handleOutside, { capture: true });
       });
     };
 

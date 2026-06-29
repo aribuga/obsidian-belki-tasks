@@ -740,6 +740,12 @@
   color: var(--belki-danger);
 }
 
+@media (hover: none) {
+  .belki-task-delete {
+    opacity: 1;
+  }
+}
+
 .belki-custom-project-wrap {
   align-items: center;
   display: flex;
@@ -1330,6 +1336,12 @@ button.belki-add-inline {
 .belki-cal-day.is-empty {
   cursor: default;
   pointer-events: none;
+}
+
+@media (hover: none) {
+  .belki-cal-day {
+    min-height: 36px;
+  }
 }
 
 /* Used in AddTaskComposer for a standalone visible date input */
@@ -3133,8 +3145,14 @@ button.belki-search-result.is-selected {
 
   .belki-task-row {
     gap: 10px;
-    grid-template-columns: 24px minmax(0, 1fr);
+    grid-template-columns: 24px minmax(0, 1fr) 28px;
     padding: 13px 0;
+  }
+
+  .belki-task-delete {
+    align-self: center;
+    grid-column: 3;
+    grid-row: 1;
   }
 
   .belki-task-drag-handle {
@@ -3170,10 +3188,6 @@ button.belki-search-result.is-selected {
   .belki-task-project span:last-child {
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-
-  .belki-task-delete {
-    display: none;
   }
 
   .belki-add-inline {

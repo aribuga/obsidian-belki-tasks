@@ -3224,6 +3224,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     this.options = options;
     this.sideEl = null;
     this.closeWikilinkDropdown = null;
+    this.closeQuickAddDropdown = null;
     this.handleEscape = (event) => {
       if (event.key !== "Escape") {
         return;
@@ -3311,7 +3312,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     titleInput.addEventListener("input", () => {
       this.draft.title = titleInput.value;
     });
-    attachQuickAddAutocomplete(
+    this.closeQuickAddDropdown = attachQuickAddAutocomplete(
       titleInput,
       () => this.options.labels,
       () => this.options.projects
@@ -3412,8 +3413,9 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     }
   }
   onClose() {
-    var _a;
-    (_a = this.closeWikilinkDropdown) == null ? void 0 : _a.call(this);
+    var _a, _b;
+    (_a = this.closeQuickAddDropdown) == null ? void 0 : _a.call(this);
+    (_b = this.closeWikilinkDropdown) == null ? void 0 : _b.call(this);
     this.modalEl.removeEventListener("keydown", this.handleEscape, true);
   }
   renderSidePanel(parent) {
@@ -4199,13 +4201,11 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
         closePopover();
         if (!isHidden) return;
         popover.removeClass("is-hidden");
-        const ownerDocument = wrap.ownerDocument;
         const handleOutside = (e) => {
-          if (e.target instanceof Node && wrap.contains(e.target)) return;
-          closePopover();
+          if (!wrap.contains(e.target)) closePopover();
         };
-        ownerDocument.addEventListener("pointerdown", handleOutside, true);
-        detachOutside = () => ownerDocument.removeEventListener("pointerdown", handleOutside, true);
+        document.addEventListener("click", handleOutside, { capture: true });
+        detachOutside = () => document.removeEventListener("click", handleOutside, { capture: true });
       });
     };
     renderPicker();
