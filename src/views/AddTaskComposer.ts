@@ -51,7 +51,7 @@ export class AddTaskComposer {
       }
     });
 
-    attachWikilinkAutocomplete(descriptionInput, options.app);
+    const closeWikilinkDropdown = attachWikilinkAutocomplete(descriptionInput, options.app);
     attachQuickAddAutocomplete(
       this.titleInput,
       () => options.labels,
@@ -574,7 +574,7 @@ export class AddTaskComposer {
       }
     });
 
-    const cleanup = () => projectMenu.remove();
+    const cleanup = () => { projectMenu.remove(); closeWikilinkDropdown(); };
     cancelButton.addEventListener("click", () => { cleanup(); options.onCancel(); });
     form.addEventListener("submit", () => cleanup());
     form.addEventListener("submit", (event) => {

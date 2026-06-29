@@ -26,6 +26,7 @@ interface TaskDetailModalOptions {
 export class TaskDetailModal extends Modal {
   private draft: BelkiTask;
   private sideEl: HTMLElement | null = null;
+  private closeWikilinkDropdown: (() => void) | null = null;
   private handleEscape = (event: KeyboardEvent): void => {
     if (event.key !== "Escape") {
       return;
@@ -187,7 +188,7 @@ export class TaskDetailModal extends Modal {
       this.draft.description = descriptionInput.value;
     });
 
-    attachWikilinkAutocomplete(descriptionInput, this.app);
+    this.closeWikilinkDropdown = attachWikilinkAutocomplete(descriptionInput, this.app);
 
     descriptionInput.addEventListener("blur", () => {
       refreshRendered();
@@ -256,6 +257,7 @@ export class TaskDetailModal extends Modal {
   }
 
   onClose(): void {
+    this.closeWikilinkDropdown?.();
     this.modalEl.removeEventListener("keydown", this.handleEscape, true);
   }
 

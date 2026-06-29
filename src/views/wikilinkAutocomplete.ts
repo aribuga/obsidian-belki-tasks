@@ -1,6 +1,6 @@
 import { App } from "obsidian";
 
-export function attachWikilinkAutocomplete(textarea: HTMLTextAreaElement, app: App): void {
+export function attachWikilinkAutocomplete(textarea: HTMLTextAreaElement, app: App): () => void {
   let dropdown: HTMLDivElement | null = null;
   let activeIndex = 0;
   let currentMatches: string[] = [];
@@ -136,4 +136,6 @@ export function attachWikilinkAutocomplete(textarea: HTMLTextAreaElement, app: A
   textarea.addEventListener("blur", () => {
     setTimeout(() => closeDropdown(), 150);
   });
+
+  return closeDropdown;
 }
