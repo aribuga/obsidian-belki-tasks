@@ -836,12 +836,12 @@ var KNOWN_PROPERTIES2 = /* @__PURE__ */ new Set([
   "repeat",
   "completedoccurrences"
 ]);
-function serializeTaskDocument(document2, tasks) {
+function serializeTaskDocument(document, tasks) {
   const orderedTasks = [...tasks].sort((a, b) => a.order - b.order);
   const tasksById = new Map(orderedTasks.map((task) => [task.id, task]));
   const serializedTaskIds = /* @__PURE__ */ new Set();
   const outputLines = [];
-  for (const block of document2.blocks) {
+  for (const block of document.blocks) {
     if (block.type === "raw") {
       outputLines.push(...block.lines);
       continue;
@@ -1379,9 +1379,9 @@ var TaskStore = class {
     }
     for (const file of files.sort((a, b) => a.path.localeCompare(b.path))) {
       const content = await this.app.vault.read(file);
-      const document2 = parseTaskDocument(content, file.path);
-      nextDocuments.set(file.path, document2);
-      for (const task of document2.tasks) {
+      const document = parseTaskDocument(content, file.path);
+      nextDocuments.set(file.path, document);
+      for (const task of document.tasks) {
         nextTasks.push({
           ...task,
           created: task.created || todayIso(),
@@ -1631,9 +1631,9 @@ var TaskStore = class {
   async writeSources(sourcePaths) {
     for (const sourcePath of dedupeStrings(sourcePaths.filter(Boolean))) {
       await this.ensureSourceDocument(sourcePath);
-      const document2 = this.documents.get(sourcePath) || { blocks: [], tasks: [] };
+      const document = this.documents.get(sourcePath) || { blocks: [], tasks: [] };
       const tasks = this.tasks.filter((task) => task.sourcePath === sourcePath).map((task) => normalizeTaskForSave(task, sourcePath));
-      const content = serializeTaskDocument(document2, tasks);
+      const content = serializeTaskDocument(document, tasks);
       const file = await this.ensureFile(sourcePath, "");
       if (!file) {
         continue;
@@ -1662,11 +1662,11 @@ var TaskStore = class {
   }
   async clearDemoWritableData() {
     for (const file of this.getDataFiles()) {
-      await this.app.vault.trash(file, true);
+      await this.app.fileManager.trashFile(file);
     }
     const attachmentsRoot = this.app.vault.getAbstractFileByPath(this.attachmentsDir);
     if (attachmentsRoot) {
-      await this.app.vault.trash(attachmentsRoot, true);
+      await this.app.fileManager.trashFile(attachmentsRoot);
     }
     this.documents.clear();
     this.tasks = [];
@@ -1726,9 +1726,8 @@ var TaskStore = class {
         this.warnWrongType(normalizedPath, "file", created);
         return null;
       }
-      console.warn("[belki] File already exists but is not available in the vault index yet.", {
-        path: normalizedPath,
-        error
+      console.warn("[belki] File already exists but is not available in the vault index yet.", error, {
+        path: normalizedPath
       });
       return null;
     }
@@ -1783,9 +1782,8 @@ var TaskStore = class {
         this.warnWrongType(normalizedPath, "folder", created);
         return false;
       }
-      console.warn("[belki] Folder already exists but is not available in the vault index yet.", {
-        path: normalizedPath,
-        error
+      console.warn("[belki] Folder already exists but is not available in the vault index yet.", error, {
+        path: normalizedPath
       });
       return true;
     }
@@ -2145,7 +2143,7 @@ function attachWikilinkAutocomplete(textarea, app) {
     currentMatches = matches;
     activeIndex = 0;
     const rect = textarea.getBoundingClientRect();
-    dropdown = document.createElement("div");
+    dropdown = activeDocument.createElement("div");
     dropdown.className = "belki-wikilink-dropdown";
     const spaceBelow = window.innerHeight - rect.bottom;
     const dropdownMaxHeight = 220;
@@ -2160,16 +2158,16 @@ function attachWikilinkAutocomplete(textarea, app) {
       if (!dropdown) return;
       dropdown.innerHTML = "";
       matches.forEach((name, i) => {
-        const item = document.createElement("div");
+        const item = activeDocument.createElement("div");
         item.className = "belki-wikilink-item" + (i === activeIndex ? " is-active" : "");
         const basename = name.includes("/") ? name.split("/").pop() : name;
         const folder = name.includes("/") ? name.slice(0, name.lastIndexOf("/")) : "";
-        const nameSpan = document.createElement("span");
+        const nameSpan = activeDocument.createElement("span");
         nameSpan.className = "belki-wikilink-item-name";
         nameSpan.textContent = basename;
         item.appendChild(nameSpan);
         if (folder) {
-          const folderSpan = document.createElement("span");
+          const folderSpan = activeDocument.createElement("span");
           folderSpan.className = "belki-wikilink-item-folder";
           folderSpan.textContent = folder;
           item.appendChild(folderSpan);
@@ -2183,7 +2181,7 @@ function attachWikilinkAutocomplete(textarea, app) {
       });
     };
     renderItems();
-    document.body.appendChild(dropdown);
+    activeDocument.body.appendChild(dropdown);
     escapeHandler = (e) => {
       if (e.key === "Escape") {
         e.preventDefault();
@@ -2233,7 +2231,7 @@ function attachWikilinkAutocomplete(textarea, app) {
     }
   });
   textarea.addEventListener("blur", () => {
-    setTimeout(() => closeDropdown(), 150);
+    window.setTimeout(() => closeDropdown(), 150);
   });
   return closeDropdown;
 }
@@ -2317,7 +2315,7 @@ function attachQuickAddAutocomplete(input, getLabels, getProjects) {
     currentMatches = matches;
     activeIndex = 0;
     const rect = input.getBoundingClientRect();
-    dropdown = document.createElement("div");
+    dropdown = activeDocument.createElement("div");
     dropdown.className = "belki-wikilink-dropdown";
     dropdown.style.left = `${rect.left}px`;
     dropdown.style.top = `${rect.bottom + 2}px`;
@@ -2326,7 +2324,7 @@ function attachQuickAddAutocomplete(input, getLabels, getProjects) {
       if (!dropdown) return;
       dropdown.innerHTML = "";
       matches.forEach((m, i) => {
-        const item = document.createElement("div");
+        const item = activeDocument.createElement("div");
         item.className = "belki-wikilink-item" + (i === activeIndex ? " is-active" : "");
         const prefix = token.type === "label" ? "#" : "//";
         item.textContent = prefix + m;
@@ -2339,7 +2337,7 @@ function attachQuickAddAutocomplete(input, getLabels, getProjects) {
       });
     };
     renderItems();
-    document.body.appendChild(dropdown);
+    activeDocument.body.appendChild(dropdown);
     escapeHandler = (e) => {
       if (e.key === "Escape") {
         e.preventDefault();
@@ -2390,7 +2388,7 @@ function attachQuickAddAutocomplete(input, getLabels, getProjects) {
     }
   });
   input.addEventListener("blur", () => {
-    setTimeout(() => closeDropdown(), 150);
+    window.setTimeout(() => closeDropdown(), 150);
   });
   return closeDropdown;
 }
@@ -2787,7 +2785,7 @@ var AddTaskComposer = class {
       projectPicker.focus({ preventScroll: true });
     };
     const openProjectMenu = () => {
-      document.body.appendChild(projectMenu);
+      activeDocument.body.appendChild(projectMenu);
       projectPicker.setAttr("aria-expanded", "true");
       watchLocalPopover(projectArea, projectMenu, { preferredSide: "above", useFixed: true });
     };
@@ -4135,8 +4133,8 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
               closePopover();
             }
           };
-          document.addEventListener("click", onOutside, { capture: true });
-          detachOutside = () => document.removeEventListener("click", onOutside, { capture: true });
+          activeDocument.addEventListener("click", onOutside, { capture: true });
+          detachOutside = () => activeDocument.removeEventListener("click", onOutside, { capture: true });
         }
       });
       if (this.draft.repeat) {
@@ -4231,8 +4229,8 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
         const handleOutside = (e) => {
           if (!wrap.contains(e.target)) closePopover();
         };
-        document.addEventListener("click", handleOutside, { capture: true });
-        detachOutside = () => document.removeEventListener("click", handleOutside, { capture: true });
+        activeDocument.addEventListener("click", handleOutside, { capture: true });
+        detachOutside = () => activeDocument.removeEventListener("click", handleOutside, { capture: true });
       });
     };
     renderPicker();
@@ -5195,7 +5193,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
       this.render();
     });
     if (this.projectActionsOpen !== project) return;
-    const menu = document.body.createDiv({ cls: "belki-project-menu" });
+    const menu = activeDocument.body.createDiv({ cls: "belki-project-menu" });
     this.projectMenuEl = menu;
     menu.setCssStyles({ visibility: "hidden" });
     const renameItem = menu.createEl("button", { cls: "belki-project-option", text: "Rename project", attr: { type: "button" } });
@@ -5243,7 +5241,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
         this.render();
       }).open();
     });
-    requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
       if (!menu.isConnected) return;
       const btnRect = button.getBoundingClientRect();
       const margin = 8;
@@ -6405,7 +6403,7 @@ var BelkiPlugin = class extends import_obsidian9.Plugin {
   }
   onunload() {
     if (this.reloadDebounceTimer !== null) {
-      clearTimeout(this.reloadDebounceTimer);
+      window.clearTimeout(this.reloadDebounceTimer);
     }
   }
   async loadSettings() {
@@ -6490,9 +6488,9 @@ var BelkiPlugin = class extends import_obsidian9.Plugin {
   }
   scheduleReload() {
     if (this.reloadDebounceTimer !== null) {
-      clearTimeout(this.reloadDebounceTimer);
+      window.clearTimeout(this.reloadDebounceTimer);
     }
-    this.reloadDebounceTimer = setTimeout(() => {
+    this.reloadDebounceTimer = window.setTimeout(() => {
       this.reloadDebounceTimer = null;
       void this.reloadTasks();
     }, 300);
@@ -6507,10 +6505,9 @@ var BelkiPlugin = class extends import_obsidian9.Plugin {
       await this.store.load();
     } catch (error) {
       new import_obsidian9.Notice("belki could not initialize task storage. Open the developer console for details.");
-      console.error("[belki] Failed to initialize task storage.", {
+      console.error("[belki] Failed to initialize task storage.", error, {
         dataFolderPath: this.settings.dataFolderPath,
-        tasksFilePath: this.settings.tasksFilePath,
-        error
+        tasksFilePath: this.settings.tasksFilePath
       });
     }
   }

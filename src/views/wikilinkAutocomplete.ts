@@ -48,7 +48,7 @@ export function attachWikilinkAutocomplete(textarea: HTMLTextAreaElement, app: A
     activeIndex = 0;
 
     const rect = textarea.getBoundingClientRect();
-    dropdown = document.createElement("div");
+    dropdown = activeDocument.createElement("div");
     dropdown.className = "belki-wikilink-dropdown";
 
     // Position below textarea; flip above if not enough space
@@ -66,18 +66,18 @@ export function attachWikilinkAutocomplete(textarea: HTMLTextAreaElement, app: A
       if (!dropdown) return;
       dropdown.innerHTML = "";
       matches.forEach((name, i) => {
-        const item = document.createElement("div");
+        const item = activeDocument.createElement("div");
         item.className = "belki-wikilink-item" + (i === activeIndex ? " is-active" : "");
         const basename = name.includes("/") ? name.split("/").pop()! : name;
         const folder = name.includes("/") ? name.slice(0, name.lastIndexOf("/")) : "";
 
-        const nameSpan = document.createElement("span");
+        const nameSpan = activeDocument.createElement("span");
         nameSpan.className = "belki-wikilink-item-name";
         nameSpan.textContent = basename;
         item.appendChild(nameSpan);
 
         if (folder) {
-          const folderSpan = document.createElement("span");
+          const folderSpan = activeDocument.createElement("span");
           folderSpan.className = "belki-wikilink-item-folder";
           folderSpan.textContent = folder;
           item.appendChild(folderSpan);
@@ -93,7 +93,7 @@ export function attachWikilinkAutocomplete(textarea: HTMLTextAreaElement, app: A
     };
 
     renderItems();
-    document.body.appendChild(dropdown);
+    activeDocument.body.appendChild(dropdown);
 
     escapeHandler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -149,7 +149,7 @@ export function attachWikilinkAutocomplete(textarea: HTMLTextAreaElement, app: A
   });
 
   textarea.addEventListener("blur", () => {
-    setTimeout(() => closeDropdown(), 150);
+    window.setTimeout(() => closeDropdown(), 150);
   });
 
   return closeDropdown;

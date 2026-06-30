@@ -1020,8 +1020,8 @@ export class TaskDetailModal extends Modal {
               closePopover();
             }
           };
-          document.addEventListener("click", onOutside, { capture: true });
-          detachOutside = () => document.removeEventListener("click", onOutside, { capture: true });
+          activeDocument.addEventListener("click", onOutside, { capture: true });
+          detachOutside = () => activeDocument.removeEventListener("click", onOutside, { capture: true });
         }
       });
 
@@ -1077,7 +1077,7 @@ export class TaskDetailModal extends Modal {
       });
       const iconSpan = btn.createSpan({ cls: "belki-chip-icon" });
       setIcon(iconSpan, "diamond");
-      btn.createSpan({ text: hasDate ? formatDueDateChip(this.draft.deadline!) : "No deadline" });
+      btn.createSpan({ text: hasDate ? formatDueDateChip(this.draft.deadline) : "No deadline" });
 
       if (hasDate) {
         const clearBtn = btnRow.createEl("button", {
@@ -1129,8 +1129,8 @@ export class TaskDetailModal extends Modal {
         const handleOutside = (e: MouseEvent) => {
           if (!wrap.contains(e.target as Node)) closePopover();
         };
-        document.addEventListener("click", handleOutside, { capture: true });
-        detachOutside = () => document.removeEventListener("click", handleOutside, { capture: true });
+        activeDocument.addEventListener("click", handleOutside, { capture: true });
+        detachOutside = () => activeDocument.removeEventListener("click", handleOutside, { capture: true });
       });
     };
 

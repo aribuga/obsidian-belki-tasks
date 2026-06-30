@@ -20,7 +20,7 @@ import { cleanProjectName, uniqueRealProjects } from "./projects";
 export default class BelkiPlugin extends Plugin {
   settings: BelkiSettings;
   store: TaskStore;
-  private reloadDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private reloadDebounceTimer: number | null = null;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -132,7 +132,7 @@ export default class BelkiPlugin extends Plugin {
 
   onunload(): void {
     if (this.reloadDebounceTimer !== null) {
-      clearTimeout(this.reloadDebounceTimer);
+      window.clearTimeout(this.reloadDebounceTimer);
     }
   }
 
@@ -229,9 +229,9 @@ export default class BelkiPlugin extends Plugin {
 
   private scheduleReload(): void {
     if (this.reloadDebounceTimer !== null) {
-      clearTimeout(this.reloadDebounceTimer);
+      window.clearTimeout(this.reloadDebounceTimer);
     }
-    this.reloadDebounceTimer = setTimeout(() => {
+    this.reloadDebounceTimer = window.setTimeout(() => {
       this.reloadDebounceTimer = null;
       void this.reloadTasks();
     }, 300);
@@ -248,10 +248,9 @@ export default class BelkiPlugin extends Plugin {
       await this.store.load();
     } catch (error) {
       new Notice("belki could not initialize task storage. Open the developer console for details.");
-      console.error("[belki] Failed to initialize task storage.", {
+      console.error("[belki] Failed to initialize task storage.", error, {
         dataFolderPath: this.settings.dataFolderPath,
-        tasksFilePath: this.settings.tasksFilePath,
-        error
+        tasksFilePath: this.settings.tasksFilePath
       });
     }
   }

@@ -1,5 +1,5 @@
 import { App, Modal, setIcon } from "obsidian";
-import { RepeatEndsType, RepeatFrequency, RepeatMode, RepeatRule } from "../types";
+import { RepeatFrequency, RepeatRule } from "../types";
 import { getRepeatLabel } from "../repeatUtils";
 
 const FREQ_LABELS: Record<RepeatFrequency, string> = {

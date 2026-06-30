@@ -885,7 +885,7 @@ export class TaskBoardView extends ItemView {
     if (this.projectActionsOpen !== project) return;
 
     // Appended to body so Obsidian panel transforms don't trap it
-    const menu = document.body.createDiv({ cls: "belki-project-menu" });
+    const menu = activeDocument.body.createDiv({ cls: "belki-project-menu" });
     this.projectMenuEl = menu;
     menu.setCssStyles({ visibility: "hidden" });
 
@@ -938,7 +938,7 @@ export class TaskBoardView extends ItemView {
     });
 
     // Position after browser layout so getBoundingClientRect returns real values
-    requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
       if (!menu.isConnected) return;
       const btnRect = button.getBoundingClientRect();
       const margin = 8;

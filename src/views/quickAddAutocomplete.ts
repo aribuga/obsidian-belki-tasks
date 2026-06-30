@@ -110,7 +110,7 @@ export function attachQuickAddAutocomplete(
     activeIndex = 0;
 
     const rect = input.getBoundingClientRect();
-    dropdown = document.createElement("div");
+    dropdown = activeDocument.createElement("div");
     dropdown.className = "belki-wikilink-dropdown";
     dropdown.style.left = `${rect.left}px`;
     dropdown.style.top = `${rect.bottom + 2}px`;
@@ -120,7 +120,7 @@ export function attachQuickAddAutocomplete(
       if (!dropdown) return;
       dropdown.innerHTML = "";
       matches.forEach((m, i) => {
-        const item = document.createElement("div");
+        const item = activeDocument.createElement("div");
         item.className = "belki-wikilink-item" + (i === activeIndex ? " is-active" : "");
         const prefix = token.type === "label" ? "#" : "//";
         item.textContent = prefix + m;
@@ -133,7 +133,7 @@ export function attachQuickAddAutocomplete(
       });
     };
     renderItems();
-    document.body.appendChild(dropdown);
+    activeDocument.body.appendChild(dropdown);
 
     escapeHandler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -191,7 +191,7 @@ export function attachQuickAddAutocomplete(
   });
 
   input.addEventListener("blur", () => {
-    setTimeout(() => closeDropdown(), 150);
+    window.setTimeout(() => closeDropdown(), 150);
   });
 
   return closeDropdown;

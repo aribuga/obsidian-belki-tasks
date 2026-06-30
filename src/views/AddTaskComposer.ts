@@ -465,7 +465,7 @@ export class AddTaskComposer {
     };
 
     const openProjectMenu = () => {
-      document.body.appendChild(projectMenu);
+      activeDocument.body.appendChild(projectMenu);
       projectPicker.setAttr("aria-expanded", "true");
       watchLocalPopover(projectArea, projectMenu, { preferredSide: "above", useFixed: true });
     };
@@ -774,7 +774,7 @@ export class AddTaskComposer {
         const shouldOpen = dueDateWrap.querySelector(".belki-date-popover:not(.is-hidden)") === null;
         closeComposerPopovers();
         if (shouldOpen) {
-          const popover = dueDateWrap.querySelector(".belki-date-popover") as HTMLElement | null;
+          const popover = dueDateWrap.querySelector<HTMLElement>(".belki-date-popover");
           popover?.removeClass("is-hidden");
           if (popover) watchLocalPopover(dueDateWrap, popover, { preferredSide: mobilePanelSide });
         }
@@ -831,20 +831,6 @@ function createChipButton(
     button.createSpan({ cls: "belki-chip-label", text: label });
   }
 
-  return button;
-}
-
-function createMenuItem(
-  parent: HTMLElement,
-  label: string,
-  iconName: string
-): HTMLButtonElement {
-  const button = parent.createEl("button", {
-    cls: "belki-menu-item",
-    attr: { type: "button" }
-  });
-  createIcon(button, iconName, "belki-menu-icon");
-  button.createSpan({ text: label });
   return button;
 }
 

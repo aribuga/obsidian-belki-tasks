@@ -448,12 +448,12 @@ export class TaskStore {
 
   private async clearDemoWritableData(): Promise<void> {
     for (const file of this.getDataFiles()) {
-      await this.app.vault.trash(file, true);
+      await this.app.fileManager.trashFile(file);
     }
 
     const attachmentsRoot = this.app.vault.getAbstractFileByPath(this.attachmentsDir);
     if (attachmentsRoot) {
-      await this.app.vault.trash(attachmentsRoot, true);
+      await this.app.fileManager.trashFile(attachmentsRoot);
     }
 
     this.documents.clear();
@@ -527,9 +527,8 @@ export class TaskStore {
         return null;
       }
 
-      console.warn("[belki] File already exists but is not available in the vault index yet.", {
-        path: normalizedPath,
-        error
+      console.warn("[belki] File already exists but is not available in the vault index yet.", error, {
+        path: normalizedPath
       });
       return null;
     }
@@ -593,9 +592,8 @@ export class TaskStore {
         return false;
       }
 
-      console.warn("[belki] Folder already exists but is not available in the vault index yet.", {
-        path: normalizedPath,
-        error
+      console.warn("[belki] Folder already exists but is not available in the vault index yet.", error, {
+        path: normalizedPath
       });
       return true;
     }
