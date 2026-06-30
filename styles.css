@@ -1045,11 +1045,17 @@ button.belki-add-inline {
   padding: 0 4px 4px;
 }
 
+.belki-label-chip .belki-label-chip-remove,
+.belki-detail-label-chip .belki-label-chip-remove {
+  background: none;
+  box-shadow: none;
+}
+
 .belki-label-chip-remove {
   align-items: center;
-  background: none !important;
+  background: none;
   border: none;
-  box-shadow: none !important;
+  box-shadow: none;
   color: var(--belki-muted);
   cursor: pointer;
   display: inline-flex;
@@ -1082,9 +1088,11 @@ button.belki-add-inline {
   }
 }
 
+.belki-label-chip .belki-label-chip-remove:hover,
+.belki-detail-label-chip .belki-label-chip-remove:hover,
 .belki-label-chip-remove:hover {
-  background: none !important;
-  box-shadow: none !important;
+  background: none;
+  box-shadow: none;
   color: var(--belki-danger);
 }
 
@@ -1934,19 +1942,19 @@ button.belki-add-inline {
 .belki-root button.belki-button.belki-button-primary:hover,
 .belki-root button.belki-button.belki-button-primary:focus-visible,
 .belki-root button.belki-button.belki-button-primary:active {
-  background: var(--belki-accent) !important;
-  border-color: transparent !important;
-  color: var(--belki-on-accent) !important;
+  background: var(--belki-accent);
+  border-color: transparent;
+  color: var(--belki-on-accent);
 }
 
 .belki-root button.belki-button.belki-button-primary:hover,
 .belki-root button.belki-button.belki-button-primary:focus-visible {
-  background: var(--belki-accent-hover) !important;
+  background: var(--belki-accent-hover);
 }
 
 .belki-root button.belki-button.belki-button-primary:disabled {
-  background: var(--belki-accent) !important;
-  color: var(--belki-on-accent) !important;
+  background: var(--belki-accent);
+  color: var(--belki-on-accent);
   opacity: 0.72;
 }
 
@@ -2388,12 +2396,12 @@ button.belki-search-result.is-selected {
   min-width: 260px;
 }
 
-.modal:has(.belki-detail-modal) {
+.modal.belki-modal-detail {
   max-width: min(1100px, calc(100vw - 48px));
   width: min(1100px, calc(100vw - 48px));
 }
 
-.modal:has(.belki-detail-modal) .modal-close-button,
+.modal.belki-modal-detail .modal-close-button,
 .belki-image-preview-modal .modal-close-button,
 .belki-image-lightbox-modal .modal-close-button {
   display: none;
@@ -3068,7 +3076,6 @@ button.belki-search-result.is-selected {
     overflow-x: auto;
     overflow-y: hidden;
     padding: calc(8px + var(--belki-mobile-safe-top)) 10px 8px;
-    scrollbar-width: none;
     white-space: nowrap;
     -webkit-overflow-scrolling: touch;
   }
@@ -3297,15 +3304,14 @@ button.belki-search-result.is-selected {
     width: calc(100vw - 24px);
   }
 
-  .modal-container:has(.belki-detail-modal) {
+  .modal-container.belki-modal-detail-container {
     align-items: stretch;
     justify-content: stretch;
     padding: 0;
   }
 
-  .modal:has(.belki-detail-modal) {
+  .modal.belki-modal-detail {
     border-radius: 0;
-    height: 100vh;
     height: 100dvh;
     margin: 0;
     max-height: none;
@@ -3316,7 +3322,6 @@ button.belki-search-result.is-selected {
   .belki-detail-modal {
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
-    height: 100vh;
     height: 100dvh;
     max-height: none;
     min-height: 0;
@@ -3478,7 +3483,6 @@ button.belki-search-result.is-selected {
   overflow-x: auto;
   overflow-y: hidden;
   padding: calc(8px + var(--belki-mobile-safe-top)) 10px 8px;
-  scrollbar-width: none;
   white-space: nowrap;
   -webkit-overflow-scrolling: touch;
 }
@@ -3521,15 +3525,14 @@ button.belki-search-result.is-selected {
   width: 100%;
 }
 
-:where(.is-mobile, .mod-mobile) .modal-container:has(.belki-detail-modal) {
+:where(.is-mobile, .mod-mobile) .modal-container.belki-modal-detail-container {
   align-items: stretch;
   justify-content: stretch;
   padding: 0;
 }
 
-:where(.is-mobile, .mod-mobile) .modal:has(.belki-detail-modal) {
+:where(.is-mobile, .mod-mobile) .modal.belki-modal-detail {
   border-radius: 0;
-  height: 100vh;
   height: 100dvh;
   margin: 0;
   max-height: none;
@@ -3540,7 +3543,6 @@ button.belki-search-result.is-selected {
 :where(.is-mobile, .mod-mobile) .belki-detail-modal {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  height: 100vh;
   height: 100dvh;
   max-height: none;
   min-height: 0;
@@ -3778,10 +3780,16 @@ button.belki-search-result.is-selected {
   margin-top: 4px;
 }
 
+.belki-detail-modal .belki-subtask-add-btn {
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
 .belki-subtask-add-btn {
-  background: none !important;
-  border: none !important;
-  box-shadow: none !important;
+  background: none;
+  border: none;
+  box-shadow: none;
   cursor: pointer;
   color: var(--text-muted);
   font-size: var(--font-ui-small);
@@ -3793,10 +3801,14 @@ button.belki-search-result.is-selected {
   color: var(--text-accent);
 }
 
+.belki-detail-modal .belki-subtask-input {
+  border-radius: 6px;
+}
+
 .belki-subtask-input {
   width: 100%;
   box-sizing: border-box;
-  border-radius: 6px !important;
+  border-radius: 6px;
   margin-bottom: 0;
   display: block;
 }
@@ -3814,16 +3826,25 @@ button.belki-search-result.is-selected {
   flex-wrap: wrap;
 }
 
+.belki-detail-modal .belki-subtask-chip {
+  display: inline-flex;
+  padding: 0 10px;
+  height: 28px;
+  min-height: unset;
+  max-height: 28px;
+  font-size: 12px;
+}
+
 .belki-subtask-chip {
-  display: inline-flex !important;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 0 10px !important;
-  height: 28px !important;
-  min-height: unset !important;
-  max-height: 28px !important;
+  padding: 0 10px;
+  height: 28px;
+  min-height: unset;
+  max-height: 28px;
   line-height: 28px;
-  font-size: 12px !important;
+  font-size: 12px;
   border-radius: 6px;
   border: 1px solid var(--belki-border);
   background: var(--belki-surface);
@@ -3860,10 +3881,14 @@ button.belki-search-result.is-selected {
   display: none;
 }
 
+.belki-detail-modal .belki-subtask-preset {
+  min-height: unset;
+}
+
 .belki-subtask-preset {
   padding: 0 10px;
   height: 28px;
-  min-height: unset !important;
+  min-height: unset;
   font-size: 12px;
   border-radius: 4px;
   border: 1px solid var(--background-modifier-border);
@@ -3946,10 +3971,11 @@ button.belki-search-result.is-selected {
   font-size: var(--font-ui-small);
 }
 
+.belki-detail-modal .belki-subtask-context-parent,
 .belki-subtask-context-parent {
-  background: none !important;
-  border: none !important;
-  box-shadow: none !important;
+  background: none;
+  border: none;
+  box-shadow: none;
   padding: 0;
   cursor: pointer;
   color: var(--text-accent);
@@ -3964,10 +3990,11 @@ button.belki-search-result.is-selected {
 
 /* ── Parent field in side panel ───────────────────────────────── */
 
+.belki-detail-modal .belki-subtask-parent-field,
 .belki-subtask-parent-field {
-  background: none !important;
-  border: none !important;
-  box-shadow: none !important;
+  background: none;
+  border: none;
+  box-shadow: none;
   padding: 0;
   cursor: pointer;
   color: var(--text-accent);

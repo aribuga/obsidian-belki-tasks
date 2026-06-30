@@ -3274,6 +3274,8 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     contentEl.empty();
     contentEl.addClass("belki-root");
     contentEl.addClass("belki-detail-modal");
+    this.modalEl.addClass("belki-modal-detail");
+    this.containerEl.addClass("belki-modal-detail-container");
     applyBelkiFontSettings(contentEl, this.options.settings);
     this.modalEl.addEventListener("keydown", this.handleEscape, true);
     const isSubTask = Boolean(this.draft.parentId);
