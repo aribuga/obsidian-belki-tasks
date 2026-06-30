@@ -5,9 +5,7 @@
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production",
-    "test:vault": "node esbuild.config.mjs production && node scripts/copy-to-test-vault.js",
-    "test:vault:reset": "node scripts/reset-test-vault.js && node esbuild.config.mjs production && node scripts/copy-to-test-vault.js"
+    "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production"
   },
   "keywords": [
     "obsidian",
