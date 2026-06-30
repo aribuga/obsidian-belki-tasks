@@ -4,6 +4,14 @@ All notable changes to belki are documented here.
 
 ---
 
+## 0.2.3 — 2026-06-30
+
+### Fixed
+
+- Bumped `minAppVersion` to `1.6.6` to match the `FileManager.trashFile()` API introduced in that version.
+
+---
+
 ## 0.2.2 — 2026-06-30
 
 ### Fixed

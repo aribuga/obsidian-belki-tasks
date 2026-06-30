@@ -1,8 +1,8 @@
 {
   "id": "belki",
   "name": "belki",
-  "version": "0.2.2",
-  "minAppVersion": "1.5.0",
+  "version": "0.2.3",
+  "minAppVersion": "1.6.6",
   "description": "A minimal Todoist-like task manager using local Markdown files.",
   "author": "Yasin Aribuga",
   "isDesktopOnly": false
