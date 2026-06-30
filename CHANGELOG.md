@@ -4,6 +4,14 @@ All notable changes to belki are documented here.
 
 ---
 
+## 0.2.2 — 2026-06-30
+
+### Fixed
+
+- Fixed Obsidian CSS lint warnings: replaced `:has()` selectors with JS-added classes on the modal element, removed duplicate `height: 100vh/100dvh` fallbacks, eliminated all `!important` overrides by increasing selector specificity, and removed `scrollbar-width: none` in favour of the `::-webkit-scrollbar` rule already present.
+
+---
+
 ## 0.2.1 — 2026-06-30
 
 ### Fixed
