@@ -21,6 +21,7 @@ export interface BelkiSettings {
   projectColors: Record<string, string>;
   labelColors: Record<string, string>;
   labelRegistry: string[];
+  projectRegistry: string[];
   sortMode: BelkiSortMode;
   groupBy: "none" | "label" | "priority";
   defaultOverdueRange: OverdueRange;
@@ -57,6 +58,7 @@ export const DEFAULT_SETTINGS: BelkiSettings = {
   projectColors: {},
   labelColors: {},
   labelRegistry: [],
+  projectRegistry: [],
   archivedProjects: [],
   sortMode: "smart",
   groupBy: "none",
@@ -121,6 +123,11 @@ export function normalizeLabelColorMap(
 
 export function normalizeLabelRegistry(labels: string[] | undefined): string[] {
   return dedupeLabels(labels || []);
+}
+
+export function normalizeProjectRegistry(projects: string[] | undefined): string[] {
+  return [...new Set((projects || []).map(normalizeTaskProject).filter(Boolean) as string[])]
+    .sort((a, b) => a.localeCompare(b));
 }
 
 export function normalizeDataFolderPath(value: string | undefined): string {

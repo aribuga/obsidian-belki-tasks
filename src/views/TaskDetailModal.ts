@@ -21,6 +21,7 @@ interface TaskDetailModalOptions {
   settings: BelkiSettings;
   store: TaskStore;
   onChange: () => void;
+  onProjectUsed?: (project: string) => void;
 }
 
 export class TaskDetailModal extends Modal {
@@ -1310,6 +1311,9 @@ export class TaskDetailModal extends Modal {
       repeat: this.draft.repeat,
       completedOccurrences: this.draft.completedOccurrences
     });
+    if (this.draft.project) {
+      this.options.onProjectUsed?.(this.draft.project);
+    }
     this.options.onChange();
     this.close();
   }

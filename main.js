@@ -192,6 +192,7 @@ var DEFAULT_SETTINGS = {
   projectColors: {},
   labelColors: {},
   labelRegistry: [],
+  projectRegistry: [],
   archivedProjects: [],
   sortMode: "smart",
   groupBy: "none",
@@ -246,6 +247,9 @@ function normalizeLabelColorMap(colors) {
 }
 function normalizeLabelRegistry(labels) {
   return dedupeLabels(labels || []);
+}
+function normalizeProjectRegistry(projects) {
+  return [...new Set((projects || []).map(normalizeTaskProject).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 function normalizeDataFolderPath(value) {
   const trimmed = (value || "").trim().replace(/^\/+/, "");
@@ -4375,6 +4379,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     return getLabelColor(label, this.options.settings.labelColors);
   }
   async save() {
+    var _a, _b;
     await this.options.store.updateTask(this.draft.id, {
       title: this.draft.title,
       completed: this.draft.completed,
@@ -4389,6 +4394,9 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
       repeat: this.draft.repeat,
       completedOccurrences: this.draft.completedOccurrences
     });
+    if (this.draft.project) {
+      (_b = (_a = this.options).onProjectUsed) == null ? void 0 : _b.call(_a, this.draft.project);
+    }
     this.options.onChange();
     this.close();
   }
@@ -4729,14 +4737,25 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     this.renderNavButton(nav, "Filters & Labels", "filters", void 0, "filters");
     this.renderNavButton(nav, "Projects", "projects", void 0, "projects");
     const projectsSection = sidebar.createDiv({ cls: "belki-sidebar-section" });
-    projectsSection.createDiv({ cls: "belki-sidebar-heading", text: "Projects" });
-    const archivedSet = new Set(this.settings.archivedProjects);
-    const activeTasks = active.filter((task) => !archivedSet.has(normalizeTaskProject(task.project) || ""));
-    for (const project of this.store.getProjects()) {
-      const cleanProject = normalizeTaskProject(project);
-      if (!cleanProject || archivedSet.has(cleanProject)) {
-        continue;
-      }
+    const projectsHeadingRow = projectsSection.createDiv({ cls: "belki-sidebar-heading-row" });
+    projectsHeadingRow.createDiv({ cls: "belki-sidebar-heading", text: "Projects" });
+    const addProjectBtn = projectsHeadingRow.createEl("button", {
+      cls: "belki-sidebar-add-project",
+      attr: { type: "button", "aria-label": "New project" }
+    });
+    (0, import_obsidian8.setIcon)(addProjectBtn, "plus");
+    addProjectBtn.createSpan({ cls: "belki-sidebar-add-project-label", text: "Project" });
+    addProjectBtn.addEventListener("click", () => {
+      new CreateProjectModal(this.app, this.getActiveProjects(), (name) => {
+        this.ensureProjectInRegistry(name);
+        void this.saveSettings().then(() => this.render());
+      }).open();
+    });
+    const activeTasks = active.filter((task) => {
+      const p = normalizeTaskProject(task.project);
+      return !p || !new Set(this.settings.archivedProjects).has(p);
+    });
+    for (const cleanProject of this.getActiveProjects()) {
       const count = activeTasks.filter((task) => normalizeTaskProject(task.project) === cleanProject).length;
       const button = projectsSection.createEl("button", {
         cls: "belki-project-button"
@@ -4846,6 +4865,10 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
         },
         onSubmit: async (input) => {
           await this.store.createTask(input);
+          if (input.project) {
+            this.ensureProjectInRegistry(input.project);
+            await this.saveSettings();
+          }
           this.composerOpen = false;
           this.render();
         }
@@ -5178,8 +5201,15 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     return uniqueRealProjects([
       this.settings.defaultProject,
       ...this.store.getProjects(),
-      ...Object.keys(this.settings.projectColors)
+      ...Object.keys(this.settings.projectColors),
+      ...this.settings.projectRegistry
     ]).filter((p) => !archivedSet.has(p));
+  }
+  ensureProjectInRegistry(project) {
+    const normalized = normalizeTaskProject(project);
+    if (!normalized) return;
+    if (this.settings.projectRegistry.includes(normalized)) return;
+    this.settings.projectRegistry = [...this.settings.projectRegistry, normalized].sort((a, b) => a.localeCompare(b));
   }
   renderProjectActionsButton(header, project) {
     const wrapper = header.createDiv({ cls: "belki-project-actions-wrap" });
@@ -5210,6 +5240,9 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
           this.settings.projectColors[newName] = colorOverride;
           delete this.settings.projectColors[project];
         }
+        this.settings.projectRegistry = this.settings.projectRegistry.map(
+          (p) => p === project ? newName : p
+        );
         await this.saveSettings();
         this.render();
       }).open();
@@ -5235,6 +5268,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
       new DeleteProjectModal(this.app, project, taskCount, async () => {
         await this.store.deleteProject(project);
         delete this.settings.projectColors[project];
+        this.settings.projectRegistry = this.settings.projectRegistry.filter((p) => p !== project);
         if (this.selectedProject === project) {
           this.selectedProject = null;
           this.mode = "projects";
@@ -5468,11 +5502,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     const canMoveToToday = !isToday(task.due) && isBeforeToday(task.due);
     const canMoveToUpcomingDate = this.mode === "upcoming" && this.getUpcomingDropDates().some((date) => date !== task.due);
     const currentProject = normalizeTaskProject(task.project);
-    const canMoveToProject = uniqueRealProjects([
-      this.settings.defaultProject,
-      ...this.store.getProjects(),
-      ...Object.keys(this.settings.projectColors)
-    ]).some((project) => project !== currentProject);
+    const canMoveToProject = this.getActiveProjects().some((project) => project !== currentProject);
     return canMoveToToday || canMoveToUpcomingDate || canMoveToProject;
   }
   renderEmptySection(parent, text) {
@@ -5634,15 +5664,15 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
   openTaskDetail(task) {
     new TaskDetailModal(this.app, {
       task,
-      projects: uniqueRealProjects([
-        this.settings.defaultProject,
-        ...this.store.getProjects(),
-        ...Object.keys(this.settings.projectColors)
-      ]),
+      projects: this.getActiveProjects(),
       labels: this.getAllLabels(),
       settings: this.settings,
       store: this.store,
-      onChange: () => this.renderPreservingMainScroll()
+      onChange: () => this.renderPreservingMainScroll(),
+      onProjectUsed: (project) => {
+        this.ensureProjectInRegistry(project);
+        void this.saveSettings();
+      }
     }).open();
   }
   getVisibleTasks(tasks) {
@@ -6299,6 +6329,63 @@ function groupByDueDate(tasks) {
   }
   return [...map.entries()];
 }
+var CreateProjectModal = class extends import_obsidian8.Modal {
+  constructor(app, existingProjects, onSubmit) {
+    super(app);
+    this.existingProjects = existingProjects;
+    this.onSubmit = onSubmit;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("belki-project-rename-modal");
+    contentEl.createEl("h2", { text: "New project" });
+    const input = contentEl.createEl("input", {
+      cls: "belki-label-prompt-input",
+      attr: { type: "text", placeholder: "Project name" }
+    });
+    let errorEl = null;
+    const showError = (msg) => {
+      if (!errorEl) {
+        errorEl = contentEl.createDiv({ cls: "belki-modal-error" });
+        actions.before(errorEl);
+      }
+      errorEl.setText(msg);
+    };
+    const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
+    actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } }).addEventListener("click", () => this.close());
+    const submitButton = actions.createEl("button", {
+      cls: "belki-button belki-button-primary",
+      text: "Create",
+      attr: { type: "button" }
+    });
+    const submit = () => {
+      const name = input.value.trim();
+      if (!name) {
+        showError("Project name cannot be empty.");
+        return;
+      }
+      if (isReservedInboxProject(name)) {
+        showError('"Inbox" is reserved.');
+        return;
+      }
+      if (this.existingProjects.some((p) => p.toLowerCase() === name.toLowerCase())) {
+        showError("A project with that name already exists.");
+        return;
+      }
+      this.onSubmit(name);
+      this.close();
+    };
+    submitButton.addEventListener("click", submit);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        submit();
+      }
+    });
+    input.focus();
+  }
+};
 function searchableText(task) {
   return [
     task.title,
@@ -6432,6 +6519,10 @@ var BelkiPlugin = class extends import_obsidian9.Plugin {
         ...(saved == null ? void 0 : saved.labelRegistry) || [],
         ...Object.keys((saved == null ? void 0 : saved.labelColors) || {})
       ]),
+      projectRegistry: normalizeProjectRegistry([
+        ...(saved == null ? void 0 : saved.projectRegistry) || [],
+        ...Object.keys((saved == null ? void 0 : saved.projectColors) || {})
+      ]),
       sortMode: normalizeSortMode(saved == null ? void 0 : saved.sortMode),
       defaultOverdueRange: normalizeOverdueRange(saved == null ? void 0 : saved.defaultOverdueRange),
       uiFont: normalizeFontOption(saved == null ? void 0 : saved.uiFont),
@@ -6463,7 +6554,8 @@ var BelkiPlugin = class extends import_obsidian9.Plugin {
     return uniqueRealProjects([
       cleanProjectName(this.settings.defaultProject),
       ...this.store.getProjects().map(cleanProjectName),
-      ...Object.keys(this.settings.projectColors).map(cleanProjectName)
+      ...Object.keys(this.settings.projectColors).map(cleanProjectName),
+      ...this.settings.projectRegistry.map(cleanProjectName)
     ]);
   }
   getLabelNames() {

@@ -9,7 +9,8 @@ import {
   normalizeLabelColorMap,
   normalizeLabelRegistry,
   normalizeOverdueRange,
-  normalizeSortMode
+  normalizeSortMode,
+  normalizeProjectRegistry
 } from "./settings";
 import { dedupeLabels } from "./labels";
 import { TaskStore } from "./taskStore";
@@ -160,6 +161,10 @@ export default class BelkiPlugin extends Plugin {
         ...(saved?.labelRegistry || []),
         ...Object.keys(saved?.labelColors || {})
       ]),
+      projectRegistry: normalizeProjectRegistry([
+        ...(saved?.projectRegistry || []),
+        ...Object.keys(saved?.projectColors || {})
+      ]),
       sortMode: normalizeSortMode(saved?.sortMode),
       defaultOverdueRange: normalizeOverdueRange(saved?.defaultOverdueRange),
       uiFont: normalizeFontOption(saved?.uiFont),
@@ -195,7 +200,8 @@ export default class BelkiPlugin extends Plugin {
     return uniqueRealProjects([
       cleanProjectName(this.settings.defaultProject),
       ...this.store.getProjects().map(cleanProjectName),
-      ...Object.keys(this.settings.projectColors).map(cleanProjectName)
+      ...Object.keys(this.settings.projectColors).map(cleanProjectName),
+      ...this.settings.projectRegistry.map(cleanProjectName)
     ]);
   }
 
