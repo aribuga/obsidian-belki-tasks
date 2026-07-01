@@ -78,6 +78,31 @@ export function renderLinkedText(text: string, el: HTMLElement, app?: App): void
   if (last < text.length) el.appendText(text.slice(last));
 }
 
+function markdownPreviewText(text: string): string {
+  return text
+    .replace(/```[a-zA-Z0-9_-]*\n?([\s\S]*?)```/g, "$1")
+    .split(/\r?\n/)
+    .map((line) =>
+      line
+        .replace(/^\s{0,3}#{1,6}\s+/, "")
+        .replace(/^\s{0,3}>\s?/, "")
+        .replace(/^\s*(?:[-*+]|\d+\.)\s+/, "")
+        .trim()
+    )
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\[\[([^\]|#\n]+?)(?:#[^\]|\n]+?)?(?:\|([^\]\n]+?))?\]\]/g, (_match, notePath: string, alias: string | undefined) => alias || notePath.split("/").pop() || notePath)
+    .replace(/\[([^\]]+)\]\((?:https?:\/\/|obsidian:\/\/|mailto:)[^)]+\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/~~([^~]+)~~/g, "$1")
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1$2")
+    .replace(/(^|[^_])_([^_\n]+)_/g, "$1$2")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 const SORT_OPTIONS: Array<{ mode: BelkiSortMode; label: string }> = [
   { mode: "smart", label: "Smart" },
   { mode: "due", label: "Due date" },
@@ -1327,7 +1352,7 @@ export class TaskBoardView extends ItemView {
     renderLinkedText(task.title, content.createDiv({ cls: "belki-task-title" }), this.app);
 
     if (task.description) {
-      renderLinkedText(task.description, content.createDiv({ cls: "belki-task-description" }), this.app);
+      renderLinkedText(markdownPreviewText(task.description), content.createDiv({ cls: "belki-task-description" }), this.app);
     }
 
     const meta = content.createDiv({ cls: "belki-task-meta" });
@@ -1775,7 +1800,7 @@ export class TaskBoardView extends ItemView {
         result.toggleClass("is-selected", index === selectedIndex);
         result.createDiv({ cls: "belki-search-title", text: task.title });
         if (task.description) {
-          renderLinkedText(task.description, result.createDiv({ cls: "belki-search-description" }), this.app);
+          renderLinkedText(markdownPreviewText(task.description), result.createDiv({ cls: "belki-search-description" }), this.app);
         }
         const meta = result.createDiv({ cls: "belki-search-meta" });
         meta.createSpan({ text: projectDisplayName(task.project) });

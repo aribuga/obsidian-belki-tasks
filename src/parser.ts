@@ -52,9 +52,33 @@ export function parseTaskDocument(markdown: string, sourcePath?: string): Parsed
 
     const propertyLines: string[] = [];
     let cursor = index + 1;
-    while (cursor < lines.length && PROPERTY_PATTERN.test(lines[cursor])) {
-      propertyLines.push(lines[cursor]);
-      cursor += 1;
+    let inDescriptionBlock = false;
+    while (cursor < lines.length) {
+      if (TASK_LINE_PATTERN.test(lines[cursor])) {
+        break;
+      }
+
+      const propertyMatch = lines[cursor].match(PROPERTY_PATTERN);
+      if (propertyMatch) {
+        propertyLines.push(lines[cursor]);
+        inDescriptionBlock =
+          propertyMatch[1].toLowerCase() === "description" &&
+          (propertyMatch[2].trim() === "" || propertyMatch[2].trim() === "|");
+        cursor += 1;
+        continue;
+      }
+
+      if (inDescriptionBlock && (lines[cursor].startsWith("    ") || lines[cursor].trim() === "")) {
+        propertyLines.push(lines[cursor]);
+        cursor += 1;
+        continue;
+      }
+
+      break;
+    }
+
+    while (propertyLines.length > 0 && propertyLines[propertyLines.length - 1].trim() === "") {
+      propertyLines.pop();
     }
 
     const { properties, extraProperties } = parseProperties(propertyLines);
@@ -98,7 +122,8 @@ function parseProperties(lines: string[]): {
   const properties: Record<string, string> = {};
   const extraProperties: TaskProperty[] = [];
 
-  for (const line of lines) {
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
     const match = line.match(PROPERTY_PATTERN);
     if (!match) {
       continue;
@@ -107,6 +132,26 @@ function parseProperties(lines: string[]): {
     const name = match[1];
     const normalizedName = name.toLowerCase();
     const value = cleanValue(match[2]);
+
+    if (normalizedName === "description" && (value === "" || value === "|")) {
+      const descriptionLines: string[] = [];
+      let cursor = index + 1;
+      while (cursor < lines.length && !PROPERTY_PATTERN.test(lines[cursor])) {
+        const descriptionLine = lines[cursor];
+        descriptionLines.push(
+          descriptionLine.startsWith("    ")
+            ? descriptionLine.slice(4)
+            : descriptionLine.trim() === ""
+              ? ""
+              : descriptionLine
+        );
+        cursor += 1;
+      }
+
+      properties.description = trimMultiline(descriptionLines.join("\n"));
+      index = cursor - 1;
+      continue;
+    }
 
     if (KNOWN_PROPERTIES.has(normalizedName)) {
       properties[normalizedName] = value;
@@ -160,6 +205,10 @@ function parseCompletedOccurrences(value: string | undefined): string[] | undefi
 
 function cleanValue(value: string): string {
   return value.trim();
+}
+
+function trimMultiline(value: string): string {
+  return value.replace(/^\s*\n/, "").replace(/\n\s*$/, "");
 }
 
 function fallbackId(order: number, sourcePath?: string): string {

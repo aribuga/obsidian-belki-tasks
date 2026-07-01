@@ -107,8 +107,9 @@ function serializeTaskLines(task: BelkiTask): string[] {
   }
   lines.push(`  priority:: ${singleLine(task.priority || "none")}`);
 
-  if (task.description) {
-    lines.push(`  description:: ${singleLine(task.description)}`);
+  const descriptionLines = serializeDescriptionLines(task.description);
+  if (descriptionLines.length > 0) {
+    lines.push(...descriptionLines);
   }
 
   const labels = dedupeLabels(task.labels);
@@ -139,4 +140,20 @@ function serializeTaskLines(task: BelkiTask): string[] {
 
 function singleLine(value: string): string {
   return value.replace(/\s+/g, " ").trim();
+}
+
+function serializeDescriptionLines(description: string | undefined): string[] {
+  const value = description?.trim();
+  if (!value) {
+    return [];
+  }
+
+  if (!value.includes("\n")) {
+    return [`  description:: ${singleLine(value)}`];
+  }
+
+  return [
+    "  description:: |",
+    ...value.split(/\r?\n/).map((line) => (line ? `    ${line}` : ""))
+  ];
 }

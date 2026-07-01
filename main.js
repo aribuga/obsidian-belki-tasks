@@ -782,9 +782,27 @@ function parseTaskDocument(markdown, sourcePath) {
     flushRawLines();
     const propertyLines = [];
     let cursor = index + 1;
-    while (cursor < lines.length && PROPERTY_PATTERN.test(lines[cursor])) {
-      propertyLines.push(lines[cursor]);
-      cursor += 1;
+    let inDescriptionBlock = false;
+    while (cursor < lines.length) {
+      if (TASK_LINE_PATTERN.test(lines[cursor])) {
+        break;
+      }
+      const propertyMatch = lines[cursor].match(PROPERTY_PATTERN);
+      if (propertyMatch) {
+        propertyLines.push(lines[cursor]);
+        inDescriptionBlock = propertyMatch[1].toLowerCase() === "description" && (propertyMatch[2].trim() === "" || propertyMatch[2].trim() === "|");
+        cursor += 1;
+        continue;
+      }
+      if (inDescriptionBlock && (lines[cursor].startsWith("    ") || lines[cursor].trim() === "")) {
+        propertyLines.push(lines[cursor]);
+        cursor += 1;
+        continue;
+      }
+      break;
+    }
+    while (propertyLines.length > 0 && propertyLines[propertyLines.length - 1].trim() === "") {
+      propertyLines.pop();
     }
     const { properties, extraProperties } = parseProperties(propertyLines);
     const completed = match[1].toLowerCase() === "x";
@@ -818,7 +836,8 @@ function parseTaskDocument(markdown, sourcePath) {
 function parseProperties(lines) {
   const properties = {};
   const extraProperties = [];
-  for (const line of lines) {
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
     const match = line.match(PROPERTY_PATTERN);
     if (!match) {
       continue;
@@ -826,6 +845,20 @@ function parseProperties(lines) {
     const name = match[1];
     const normalizedName = name.toLowerCase();
     const value = cleanValue(match[2]);
+    if (normalizedName === "description" && (value === "" || value === "|")) {
+      const descriptionLines = [];
+      let cursor = index + 1;
+      while (cursor < lines.length && !PROPERTY_PATTERN.test(lines[cursor])) {
+        const descriptionLine = lines[cursor];
+        descriptionLines.push(
+          descriptionLine.startsWith("    ") ? descriptionLine.slice(4) : descriptionLine.trim() === "" ? "" : descriptionLine
+        );
+        cursor += 1;
+      }
+      properties.description = trimMultiline(descriptionLines.join("\n"));
+      index = cursor - 1;
+      continue;
+    }
     if (KNOWN_PROPERTIES.has(normalizedName)) {
       properties[normalizedName] = value;
     } else {
@@ -862,6 +895,9 @@ function parseCompletedOccurrences(value) {
 }
 function cleanValue(value) {
   return value.trim();
+}
+function trimMultiline(value) {
+  return value.replace(/^\s*\n/, "").replace(/\n\s*$/, "");
 }
 function fallbackId(order, sourcePath) {
   return sourcePath ? `task-imported-${sourcePath}-${order + 1}` : `task-imported-${order + 1}`;
@@ -940,8 +976,9 @@ function serializeTaskLines(task) {
     lines.push(`  project:: ${singleLine(project)}`);
   }
   lines.push(`  priority:: ${singleLine(task.priority || "none")}`);
-  if (task.description) {
-    lines.push(`  description:: ${singleLine(task.description)}`);
+  const descriptionLines = serializeDescriptionLines(task.description);
+  if (descriptionLines.length > 0) {
+    lines.push(...descriptionLines);
   }
   const labels = dedupeLabels(task.labels);
   if (labels.length > 0) {
@@ -963,6 +1000,19 @@ function serializeTaskLines(task) {
 }
 function singleLine(value) {
   return value.replace(/\s+/g, " ").trim();
+}
+function serializeDescriptionLines(description) {
+  const value = description == null ? void 0 : description.trim();
+  if (!value) {
+    return [];
+  }
+  if (!value.includes("\n")) {
+    return [`  description:: ${singleLine(value)}`];
+  }
+  return [
+    "  description:: |",
+    ...value.split(/\r?\n/).map((line) => line ? `    ${line}` : "")
+  ];
 }
 
 // src/demoData.ts
@@ -3410,6 +3460,17 @@ var ImagePreviewModal = class extends import_obsidian6.Modal {
 };
 
 // src/views/TaskDetailModal.ts
+var DESCRIPTION_FORMAT_ACTIONS = [
+  { id: "bold", label: "B", title: "Bold" },
+  { id: "italic", label: "I", title: "Italic" },
+  { id: "strike", label: "S", title: "Strikethrough" },
+  { id: "quote", label: "\u201C", title: "Quote" },
+  { id: "inline-code", label: "`", title: "Inline code" },
+  { id: "code-block", label: "{ }", title: "Code block" },
+  { id: "bullet-list", label: "\u2022", title: "Bullet list" },
+  { id: "numbered-list", label: "1.", title: "Numbered list" },
+  { id: "link", label: "\u2197", title: "Link" }
+];
 var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
   constructor(app, options) {
     super(app);
@@ -3417,8 +3478,19 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     this.sideEl = null;
     this.closeWikilinkDropdown = null;
     this.closeQuickAddDropdown = null;
+    this.closeDescriptionToolbar = null;
+    this.hideDescriptionToolbar = null;
+    this.descriptionToolbarVisible = false;
+    this.markdownRenderComponent = null;
     this.handleEscape = (event) => {
       if (event.key !== "Escape") {
+        return;
+      }
+      if (this.descriptionToolbarVisible && this.hideDescriptionToolbar) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        this.hideDescriptionToolbar();
         return;
       }
       if (event.target instanceof HTMLElement && event.target.closest(".belki-detail-project-create")) {
@@ -3437,12 +3509,16 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     };
   }
   onOpen() {
+    var _a, _b;
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("belki-root");
     contentEl.addClass("belki-detail-modal");
     this.modalEl.addClass("belki-modal-detail");
     this.containerEl.addClass("belki-modal-detail-container");
+    (_a = this.markdownRenderComponent) == null ? void 0 : _a.unload();
+    this.markdownRenderComponent = new import_obsidian7.Component();
+    this.markdownRenderComponent.load();
     applyBelkiFontSettings(contentEl, this.options.settings);
     this.modalEl.addEventListener("keydown", this.handleEscape, true);
     const isSubTask = Boolean(this.draft.parentId);
@@ -3528,17 +3604,49 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
         }
       }
     });
-    const descRendered = main.createDiv({ cls: "belki-detail-description-rendered" });
-    const refreshRendered = () => {
+    const descRendered = main.createDiv({ cls: "belki-detail-description-rendered markdown-rendered" });
+    let renderRequest = 0;
+    const refreshRendered = async () => {
+      const request = ++renderRequest;
+      const markdown = this.draft.description || "";
       descRendered.empty();
-      if (this.draft.description) {
-        renderLinkedText(this.draft.description, descRendered, this.app);
-        descRendered.removeClass("is-empty");
-      } else {
+      if (!markdown.trim()) {
         descRendered.addClass("is-empty");
+        return;
+      }
+      descRendered.removeClass("is-empty");
+      const component = this.markdownRenderComponent;
+      if (!component) {
+        descRendered.setText(markdown);
+        return;
+      }
+      const renderTarget = descRendered.createDiv({ cls: "belki-detail-description-content" });
+      try {
+        await import_obsidian7.MarkdownRenderer.render(
+          this.app,
+          markdown,
+          renderTarget,
+          this.draft.sourcePath || "",
+          component
+        );
+      } catch (error) {
+        renderTarget.remove();
+        console.warn("belki: failed to render task description markdown", error);
+        if (request === renderRequest) {
+          descRendered.empty();
+          descRendered.createEl("pre", {
+            cls: "belki-detail-description-fallback",
+            text: markdown
+          });
+        }
+        return;
+      }
+      if (request !== renderRequest) {
+        renderTarget.remove();
+        return;
       }
     };
-    refreshRendered();
+    void refreshRendered();
     const descriptionInput = main.createEl("textarea", {
       cls: "belki-detail-description",
       attr: { placeholder: "Description" }
@@ -3546,7 +3654,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     descriptionInput.value = this.draft.description || "";
     descriptionInput.addClass("is-hidden");
     descRendered.addEventListener("click", (e) => {
-      if (e.target.tagName === "A") return;
+      if (e.target.closest("a")) return;
       descRendered.addClass("is-hidden");
       descriptionInput.removeClass("is-hidden");
       descriptionInput.focus();
@@ -3555,8 +3663,12 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
       this.draft.description = descriptionInput.value;
     });
     this.closeWikilinkDropdown = attachWikilinkAutocomplete(descriptionInput, this.app);
+    (_b = this.closeDescriptionToolbar) == null ? void 0 : _b.call(this);
+    this.closeDescriptionToolbar = this.attachDescriptionFormattingToolbar(descriptionInput);
     descriptionInput.addEventListener("blur", () => {
-      refreshRendered();
+      var _a2;
+      (_a2 = this.hideDescriptionToolbar) == null ? void 0 : _a2.call(this);
+      void refreshRendered();
       descriptionInput.addClass("is-hidden");
       descRendered.removeClass("is-hidden");
     });
@@ -3607,10 +3719,136 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     }
   }
   onClose() {
-    var _a, _b;
+    var _a, _b, _c, _d;
     (_a = this.closeQuickAddDropdown) == null ? void 0 : _a.call(this);
     (_b = this.closeWikilinkDropdown) == null ? void 0 : _b.call(this);
+    (_c = this.closeDescriptionToolbar) == null ? void 0 : _c.call(this);
+    this.closeDescriptionToolbar = null;
+    this.hideDescriptionToolbar = null;
+    this.descriptionToolbarVisible = false;
+    (_d = this.markdownRenderComponent) == null ? void 0 : _d.unload();
+    this.markdownRenderComponent = null;
     this.modalEl.removeEventListener("keydown", this.handleEscape, true);
+  }
+  attachDescriptionFormattingToolbar(textarea) {
+    const doc = textarea.ownerDocument;
+    const win = doc.defaultView;
+    if (!win) {
+      return () => {
+      };
+    }
+    const toolbar = doc.body.createDiv({
+      cls: "belki-description-toolbar is-hidden",
+      attr: { role: "toolbar", "aria-label": "Description formatting" }
+    });
+    const hide = () => {
+      toolbar.addClass("is-hidden");
+      this.descriptionToolbarVisible = false;
+    };
+    this.hideDescriptionToolbar = hide;
+    const update = () => {
+      if (doc.activeElement !== textarea || textarea.selectionStart === textarea.selectionEnd) {
+        hide();
+        return;
+      }
+      toolbar.removeClass("is-hidden");
+      this.descriptionToolbarVisible = true;
+      this.positionDescriptionToolbar(textarea, toolbar, win);
+    };
+    const scheduleUpdate = () => {
+      win.requestAnimationFrame(update);
+    };
+    for (const action of DESCRIPTION_FORMAT_ACTIONS) {
+      const button = toolbar.createEl("button", {
+        text: action.label,
+        attr: { type: "button", title: action.title, "aria-label": action.title }
+      });
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        this.applyDescriptionFormatting(textarea, action.id);
+        scheduleUpdate();
+      });
+    }
+    toolbar.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+    });
+    const handleDocumentPointerDown = (event) => {
+      const target = event.target;
+      if (!(target instanceof win.Node)) {
+        return;
+      }
+      if (target === textarea || toolbar.contains(target)) {
+        return;
+      }
+      hide();
+    };
+    const handleKeyboard = (event) => {
+      if (event.key === "Escape") {
+        hide();
+      }
+    };
+    textarea.addEventListener("select", scheduleUpdate);
+    textarea.addEventListener("keyup", scheduleUpdate);
+    textarea.addEventListener("mouseup", scheduleUpdate);
+    textarea.addEventListener("touchend", scheduleUpdate);
+    textarea.addEventListener("input", scheduleUpdate);
+    textarea.addEventListener("focus", scheduleUpdate);
+    textarea.addEventListener("keydown", handleKeyboard);
+    doc.addEventListener("selectionchange", scheduleUpdate);
+    doc.addEventListener("pointerdown", handleDocumentPointerDown, true);
+    doc.addEventListener("scroll", scheduleUpdate, true);
+    win.addEventListener("resize", scheduleUpdate);
+    return () => {
+      hide();
+      textarea.removeEventListener("select", scheduleUpdate);
+      textarea.removeEventListener("keyup", scheduleUpdate);
+      textarea.removeEventListener("mouseup", scheduleUpdate);
+      textarea.removeEventListener("touchend", scheduleUpdate);
+      textarea.removeEventListener("input", scheduleUpdate);
+      textarea.removeEventListener("focus", scheduleUpdate);
+      textarea.removeEventListener("keydown", handleKeyboard);
+      doc.removeEventListener("selectionchange", scheduleUpdate);
+      doc.removeEventListener("pointerdown", handleDocumentPointerDown, true);
+      doc.removeEventListener("scroll", scheduleUpdate, true);
+      win.removeEventListener("resize", scheduleUpdate);
+      toolbar.remove();
+    };
+  }
+  positionDescriptionToolbar(textarea, toolbar, win) {
+    const margin = 10;
+    const gap = 8;
+    const toolbarWidth = toolbar.offsetWidth;
+    const toolbarHeight = toolbar.offsetHeight;
+    const textareaRect = textarea.getBoundingClientRect();
+    const anchor = import_obsidian7.Platform.isMobile ? {
+      left: textareaRect.left + 8,
+      top: textareaRect.top,
+      bottom: textareaRect.bottom
+    } : getTextareaSelectionAnchor(textarea);
+    let left = anchor.left;
+    let top = anchor.top - toolbarHeight - gap;
+    if (top < margin) {
+      top = Math.min(anchor.bottom + gap, win.innerHeight - toolbarHeight - margin);
+    }
+    left = clamp(left, margin, win.innerWidth - toolbarWidth - margin);
+    top = clamp(top, margin, win.innerHeight - toolbarHeight - margin);
+    toolbar.style.left = `${Math.round(left)}px`;
+    toolbar.style.top = `${Math.round(top)}px`;
+  }
+  applyDescriptionFormatting(textarea, action) {
+    var _a, _b;
+    const result = formatDescriptionMarkdown(
+      textarea.value,
+      textarea.selectionStart,
+      textarea.selectionEnd,
+      action
+    );
+    textarea.value = result.value;
+    this.draft.description = result.value;
+    textarea.focus({ preventScroll: true });
+    textarea.setSelectionRange(result.selectionStart, result.selectionEnd);
+    const EventCtor = (_b = (_a = textarea.ownerDocument.defaultView) == null ? void 0 : _a.Event) != null ? _b : Event;
+    textarea.dispatchEvent(new EventCtor("input", { bubbles: true }));
   }
   renderSidePanel(parent) {
     const isSubTask = Boolean(this.draft.parentId);
@@ -4647,6 +4885,155 @@ function renderCustomDatePicker(parent, currentValue, _iconName, onSelect) {
     if (opening) renderCal();
   });
 }
+function formatDescriptionMarkdown(value, selectionStart, selectionEnd, action) {
+  switch (action) {
+    case "bold":
+      return wrapSelection(value, selectionStart, selectionEnd, "**", "**", "bold text");
+    case "italic":
+      return wrapSelection(value, selectionStart, selectionEnd, "*", "*", "italic text");
+    case "strike":
+      return wrapSelection(value, selectionStart, selectionEnd, "~~", "~~", "struck text");
+    case "inline-code":
+      return wrapSelection(value, selectionStart, selectionEnd, "`", "`", "code");
+    case "code-block":
+      return wrapSelection(value, selectionStart, selectionEnd, "```\n", "\n```", "code");
+    case "link":
+      return formatMarkdownLink(value, selectionStart, selectionEnd);
+    case "quote":
+      return formatSelectedLines(
+        value,
+        selectionStart,
+        selectionEnd,
+        (line) => `> ${line.replace(/^>\s?/, "")}`
+      );
+    case "bullet-list":
+      return formatSelectedLines(
+        value,
+        selectionStart,
+        selectionEnd,
+        (line) => `- ${stripListMarker(line) || "List item"}`
+      );
+    case "numbered-list":
+      return formatSelectedLines(
+        value,
+        selectionStart,
+        selectionEnd,
+        (line, index) => `${index + 1}. ${stripListMarker(line) || "List item"}`
+      );
+  }
+}
+function wrapSelection(value, selectionStart, selectionEnd, prefix, suffix, placeholder) {
+  const selected = value.slice(selectionStart, selectionEnd);
+  const content = selected || placeholder;
+  const replacement = `${prefix}${content}${suffix}`;
+  const nextValue = replaceRange(value, selectionStart, selectionEnd, replacement);
+  const innerStart = selectionStart + prefix.length;
+  return {
+    value: nextValue,
+    selectionStart: innerStart,
+    selectionEnd: innerStart + content.length
+  };
+}
+function formatMarkdownLink(value, selectionStart, selectionEnd) {
+  const selected = value.slice(selectionStart, selectionEnd) || "link text";
+  const replacement = `[${selected}](url)`;
+  const nextValue = replaceRange(value, selectionStart, selectionEnd, replacement);
+  const urlStart = selectionStart + selected.length + 3;
+  return {
+    value: nextValue,
+    selectionStart: urlStart,
+    selectionEnd: urlStart + 3
+  };
+}
+function formatSelectedLines(value, selectionStart, selectionEnd, transform) {
+  const collapsed = selectionStart === selectionEnd;
+  const effectiveEnd = selectionEnd > selectionStart && value[selectionEnd - 1] === "\n" ? selectionEnd - 1 : selectionEnd;
+  const lineStart = value.lastIndexOf("\n", Math.max(0, selectionStart - 1)) + 1;
+  const nextLineBreak = value.indexOf("\n", effectiveEnd);
+  const lineEnd = nextLineBreak === -1 ? value.length : nextLineBreak;
+  const block = collapsed ? "" : value.slice(lineStart, lineEnd);
+  const lines = block ? block.split("\n") : [""];
+  const replacement = lines.map(transform).join("\n");
+  const nextValue = replaceRange(value, collapsed ? selectionStart : lineStart, collapsed ? selectionEnd : lineEnd, replacement);
+  const replacementStart = collapsed ? selectionStart : lineStart;
+  return {
+    value: nextValue,
+    selectionStart: replacementStart,
+    selectionEnd: replacementStart + replacement.length
+  };
+}
+function replaceRange(value, start, end, replacement) {
+  return `${value.slice(0, start)}${replacement}${value.slice(end)}`;
+}
+function stripListMarker(line) {
+  return line.replace(/^\s*(?:[-*+]|\d+\.)\s+/, "");
+}
+function getTextareaSelectionAnchor(textarea) {
+  const doc = textarea.ownerDocument;
+  const win = doc.defaultView;
+  if (!win) {
+    const rect = textarea.getBoundingClientRect();
+    return { left: rect.left, top: rect.top, bottom: rect.bottom };
+  }
+  const computed = win.getComputedStyle(textarea);
+  const mirror = doc.body.createDiv({ cls: "belki-textarea-selection-mirror" });
+  const copiedProperties = [
+    "box-sizing",
+    "border-top-width",
+    "border-right-width",
+    "border-bottom-width",
+    "border-left-width",
+    "font-family",
+    "font-size",
+    "font-style",
+    "font-weight",
+    "letter-spacing",
+    "line-height",
+    "padding-top",
+    "padding-right",
+    "padding-bottom",
+    "padding-left",
+    "text-transform",
+    "text-indent",
+    "word-spacing"
+  ];
+  for (const property of copiedProperties) {
+    mirror.style.setProperty(property, computed.getPropertyValue(property));
+  }
+  mirror.style.position = "fixed";
+  mirror.style.visibility = "hidden";
+  mirror.style.pointerEvents = "none";
+  mirror.style.top = "0";
+  mirror.style.left = "-9999px";
+  mirror.style.width = `${textarea.clientWidth}px`;
+  mirror.style.minHeight = "0";
+  mirror.style.height = "auto";
+  mirror.style.whiteSpace = "pre-wrap";
+  mirror.style.overflowWrap = "break-word";
+  const position = Math.min(textarea.selectionStart, textarea.selectionEnd);
+  mirror.textContent = textarea.value.slice(0, position);
+  const marker = doc.createElement("span");
+  marker.textContent = textarea.value.slice(position, position + 1) || "\u200B";
+  mirror.appendChild(marker);
+  const markerRect = marker.getBoundingClientRect();
+  const mirrorRect = mirror.getBoundingClientRect();
+  const textareaRect = textarea.getBoundingClientRect();
+  const top = textareaRect.top + markerRect.top - mirrorRect.top - textarea.scrollTop;
+  const left = textareaRect.left + markerRect.left - mirrorRect.left - textarea.scrollLeft;
+  const lineHeight = Number.parseFloat(computed.lineHeight) || 20;
+  mirror.remove();
+  return {
+    left,
+    top,
+    bottom: top + lineHeight
+  };
+}
+function clamp(value, min, max) {
+  if (max < min) {
+    return min;
+  }
+  return Math.min(Math.max(value, min), max);
+}
 function attachmentName(path) {
   return path.split("/").pop() || path;
 }
@@ -4697,6 +5084,11 @@ function renderLinkedText(text, el, app) {
     }
   }
   if (last < text.length) el.appendText(text.slice(last));
+}
+function markdownPreviewText(text) {
+  return text.replace(/```[a-zA-Z0-9_-]*\n?([\s\S]*?)```/g, "$1").split(/\r?\n/).map(
+    (line) => line.replace(/^\s{0,3}#{1,6}\s+/, "").replace(/^\s{0,3}>\s?/, "").replace(/^\s*(?:[-*+]|\d+\.)\s+/, "").trim()
+  ).filter(Boolean).join(" ").replace(/\[\[([^\]|#\n]+?)(?:#[^\]|\n]+?)?(?:\|([^\]\n]+?))?\]\]/g, (_match, notePath, alias) => alias || notePath.split("/").pop() || notePath).replace(/\[([^\]]+)\]\((?:https?:\/\/|obsidian:\/\/|mailto:)[^)]+\)/g, "$1").replace(/`([^`]+)`/g, "$1").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/__([^_]+)__/g, "$1").replace(/~~([^~]+)~~/g, "$1").replace(/(^|[^*])\*([^*\n]+)\*/g, "$1$2").replace(/(^|[^_])_([^_\n]+)_/g, "$1$2").replace(/\s+/g, " ").trim();
 }
 var SORT_OPTIONS = [
   { mode: "smart", label: "Smart" },
@@ -5758,7 +6150,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     const content = row.createDiv({ cls: "belki-task-content" });
     renderLinkedText(task.title, content.createDiv({ cls: "belki-task-title" }), this.app);
     if (task.description) {
-      renderLinkedText(task.description, content.createDiv({ cls: "belki-task-description" }), this.app);
+      renderLinkedText(markdownPreviewText(task.description), content.createDiv({ cls: "belki-task-description" }), this.app);
     }
     const meta = content.createDiv({ cls: "belki-task-meta" });
     if (task.due) {
@@ -6135,7 +6527,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
         result.toggleClass("is-selected", index === selectedIndex);
         result.createDiv({ cls: "belki-search-title", text: task.title });
         if (task.description) {
-          renderLinkedText(task.description, result.createDiv({ cls: "belki-search-description" }), this.app);
+          renderLinkedText(markdownPreviewText(task.description), result.createDiv({ cls: "belki-search-description" }), this.app);
         }
         const meta = result.createDiv({ cls: "belki-search-meta" });
         meta.createSpan({ text: projectDisplayName(task.project) });

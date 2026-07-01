@@ -1,4 +1,4 @@
-import { App, Modal, Notice, Platform, TFile, setIcon } from "obsidian";
+import { App, Component, MarkdownRenderer, Modal, Notice, Platform, TFile, setIcon } from "obsidian";
 import { getLabelColor, getProjectColor } from "../colors";
 import { addDaysIso, formatDueDateChip, nextWeekdayIso, todayIso } from "../dateUtils";
 import { getRepeatLabel, getRepeatPresets, repeatRulesEqual } from "../repeatUtils";
@@ -10,7 +10,6 @@ import { BelkiTask, PRIORITIES, Priority } from "../types";
 import { ImagePreviewModal } from "./ImagePreviewModal";
 import { getPriorityColor, getPriorityLabel } from "../priority";
 import { normalizeTaskProject, uniqueRealProjects } from "../projects";
-import { renderLinkedText } from "./TaskBoardView";
 import { attachWikilinkAutocomplete } from "./wikilinkAutocomplete";
 import { attachQuickAddAutocomplete, parseQuickAddTokens } from "./quickAddAutocomplete";
 
@@ -24,15 +23,55 @@ interface TaskDetailModalOptions {
   onProjectUsed?: (project: string) => void;
 }
 
+type DescriptionFormatAction =
+  | "bold"
+  | "italic"
+  | "strike"
+  | "quote"
+  | "inline-code"
+  | "code-block"
+  | "bullet-list"
+  | "numbered-list"
+  | "link";
+
+const DESCRIPTION_FORMAT_ACTIONS: Array<{
+  id: DescriptionFormatAction;
+  label: string;
+  title: string;
+}> = [
+  { id: "bold", label: "B", title: "Bold" },
+  { id: "italic", label: "I", title: "Italic" },
+  { id: "strike", label: "S", title: "Strikethrough" },
+  { id: "quote", label: "“", title: "Quote" },
+  { id: "inline-code", label: "`", title: "Inline code" },
+  { id: "code-block", label: "{ }", title: "Code block" },
+  { id: "bullet-list", label: "•", title: "Bullet list" },
+  { id: "numbered-list", label: "1.", title: "Numbered list" },
+  { id: "link", label: "↗", title: "Link" }
+];
+
 export class TaskDetailModal extends Modal {
   private draft: BelkiTask;
   private sideEl: HTMLElement | null = null;
   private closeWikilinkDropdown: (() => void) | null = null;
   private closeQuickAddDropdown: (() => void) | null = null;
+  private closeDescriptionToolbar: (() => void) | null = null;
+  private hideDescriptionToolbar: (() => void) | null = null;
+  private descriptionToolbarVisible = false;
+  private markdownRenderComponent: Component | null = null;
   private handleEscape = (event: KeyboardEvent): void => {
     if (event.key !== "Escape") {
       return;
     }
+
+    if (this.descriptionToolbarVisible && this.hideDescriptionToolbar) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      this.hideDescriptionToolbar();
+      return;
+    }
+
     if (
       event.target instanceof HTMLElement &&
       event.target.closest(".belki-detail-project-create")
@@ -63,6 +102,9 @@ export class TaskDetailModal extends Modal {
     contentEl.addClass("belki-detail-modal");
     this.modalEl.addClass("belki-modal-detail");
     this.containerEl.addClass("belki-modal-detail-container");
+    this.markdownRenderComponent?.unload();
+    this.markdownRenderComponent = new Component();
+    this.markdownRenderComponent.load();
     applyBelkiFontSettings(contentEl, this.options.settings);
     this.modalEl.addEventListener("keydown", this.handleEscape, true);
 
@@ -162,17 +204,52 @@ export class TaskDetailModal extends Modal {
       }
     });
 
-    const descRendered = main.createDiv({ cls: "belki-detail-description-rendered" });
-    const refreshRendered = (): void => {
+    const descRendered = main.createDiv({ cls: "belki-detail-description-rendered markdown-rendered" });
+    let renderRequest = 0;
+    const refreshRendered = async (): Promise<void> => {
+      const request = ++renderRequest;
+      const markdown = this.draft.description || "";
       descRendered.empty();
-      if (this.draft.description) {
-        renderLinkedText(this.draft.description, descRendered, this.app);
-        descRendered.removeClass("is-empty");
-      } else {
+      if (!markdown.trim()) {
         descRendered.addClass("is-empty");
+        return;
+      }
+
+      descRendered.removeClass("is-empty");
+      const component = this.markdownRenderComponent;
+      if (!component) {
+        descRendered.setText(markdown);
+        return;
+      }
+
+      const renderTarget = descRendered.createDiv({ cls: "belki-detail-description-content" });
+      try {
+        await MarkdownRenderer.render(
+          this.app,
+          markdown,
+          renderTarget,
+          this.draft.sourcePath || "",
+          component
+        );
+      } catch (error) {
+        renderTarget.remove();
+        console.warn("belki: failed to render task description markdown", error);
+        if (request === renderRequest) {
+          descRendered.empty();
+          descRendered.createEl("pre", {
+            cls: "belki-detail-description-fallback",
+            text: markdown
+          });
+        }
+        return;
+      }
+
+      if (request !== renderRequest) {
+        renderTarget.remove();
+        return;
       }
     };
-    refreshRendered();
+    void refreshRendered();
 
     const descriptionInput = main.createEl("textarea", {
       cls: "belki-detail-description",
@@ -182,7 +259,7 @@ export class TaskDetailModal extends Modal {
     descriptionInput.addClass("is-hidden");
 
     descRendered.addEventListener("click", (e) => {
-      if ((e.target as HTMLElement).tagName === "A") return;
+      if ((e.target as HTMLElement).closest("a")) return;
       descRendered.addClass("is-hidden");
       descriptionInput.removeClass("is-hidden");
       descriptionInput.focus();
@@ -193,9 +270,12 @@ export class TaskDetailModal extends Modal {
     });
 
     this.closeWikilinkDropdown = attachWikilinkAutocomplete(descriptionInput, this.app);
+    this.closeDescriptionToolbar?.();
+    this.closeDescriptionToolbar = this.attachDescriptionFormattingToolbar(descriptionInput);
 
     descriptionInput.addEventListener("blur", () => {
-      refreshRendered();
+      this.hideDescriptionToolbar?.();
+      void refreshRendered();
       descriptionInput.addClass("is-hidden");
       descRendered.removeClass("is-hidden");
     });
@@ -263,7 +343,158 @@ export class TaskDetailModal extends Modal {
   onClose(): void {
     this.closeQuickAddDropdown?.();
     this.closeWikilinkDropdown?.();
+    this.closeDescriptionToolbar?.();
+    this.closeDescriptionToolbar = null;
+    this.hideDescriptionToolbar = null;
+    this.descriptionToolbarVisible = false;
+    this.markdownRenderComponent?.unload();
+    this.markdownRenderComponent = null;
     this.modalEl.removeEventListener("keydown", this.handleEscape, true);
+  }
+
+  private attachDescriptionFormattingToolbar(textarea: HTMLTextAreaElement): () => void {
+    const doc = textarea.ownerDocument;
+    const win = doc.defaultView;
+    if (!win) {
+      return () => {};
+    }
+
+    const toolbar = doc.body.createDiv({
+      cls: "belki-description-toolbar is-hidden",
+      attr: { role: "toolbar", "aria-label": "Description formatting" }
+    });
+
+    const hide = (): void => {
+      toolbar.addClass("is-hidden");
+      this.descriptionToolbarVisible = false;
+    };
+    this.hideDescriptionToolbar = hide;
+
+    const update = (): void => {
+      if (doc.activeElement !== textarea || textarea.selectionStart === textarea.selectionEnd) {
+        hide();
+        return;
+      }
+
+      toolbar.removeClass("is-hidden");
+      this.descriptionToolbarVisible = true;
+      this.positionDescriptionToolbar(textarea, toolbar, win);
+    };
+    const scheduleUpdate = (): void => {
+      win.requestAnimationFrame(update);
+    };
+
+    for (const action of DESCRIPTION_FORMAT_ACTIONS) {
+      const button = toolbar.createEl("button", {
+        text: action.label,
+        attr: { type: "button", title: action.title, "aria-label": action.title }
+      });
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        this.applyDescriptionFormatting(textarea, action.id);
+        scheduleUpdate();
+      });
+    }
+
+    toolbar.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+    });
+
+    const handleDocumentPointerDown = (event: PointerEvent): void => {
+      const target = event.target;
+      if (!(target instanceof win.Node)) {
+        return;
+      }
+      if (target === textarea || toolbar.contains(target)) {
+        return;
+      }
+      hide();
+    };
+
+    const handleKeyboard = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") {
+        hide();
+      }
+    };
+
+    textarea.addEventListener("select", scheduleUpdate);
+    textarea.addEventListener("keyup", scheduleUpdate);
+    textarea.addEventListener("mouseup", scheduleUpdate);
+    textarea.addEventListener("touchend", scheduleUpdate);
+    textarea.addEventListener("input", scheduleUpdate);
+    textarea.addEventListener("focus", scheduleUpdate);
+    textarea.addEventListener("keydown", handleKeyboard);
+    doc.addEventListener("selectionchange", scheduleUpdate);
+    doc.addEventListener("pointerdown", handleDocumentPointerDown, true);
+    doc.addEventListener("scroll", scheduleUpdate, true);
+    win.addEventListener("resize", scheduleUpdate);
+
+    return () => {
+      hide();
+      textarea.removeEventListener("select", scheduleUpdate);
+      textarea.removeEventListener("keyup", scheduleUpdate);
+      textarea.removeEventListener("mouseup", scheduleUpdate);
+      textarea.removeEventListener("touchend", scheduleUpdate);
+      textarea.removeEventListener("input", scheduleUpdate);
+      textarea.removeEventListener("focus", scheduleUpdate);
+      textarea.removeEventListener("keydown", handleKeyboard);
+      doc.removeEventListener("selectionchange", scheduleUpdate);
+      doc.removeEventListener("pointerdown", handleDocumentPointerDown, true);
+      doc.removeEventListener("scroll", scheduleUpdate, true);
+      win.removeEventListener("resize", scheduleUpdate);
+      toolbar.remove();
+    };
+  }
+
+  private positionDescriptionToolbar(
+    textarea: HTMLTextAreaElement,
+    toolbar: HTMLElement,
+    win: Window
+  ): void {
+    const margin = 10;
+    const gap = 8;
+    const toolbarWidth = toolbar.offsetWidth;
+    const toolbarHeight = toolbar.offsetHeight;
+    const textareaRect = textarea.getBoundingClientRect();
+    const anchor = Platform.isMobile
+      ? {
+          left: textareaRect.left + 8,
+          top: textareaRect.top,
+          bottom: textareaRect.bottom
+        }
+      : getTextareaSelectionAnchor(textarea);
+
+    let left = anchor.left;
+    let top = anchor.top - toolbarHeight - gap;
+
+    if (top < margin) {
+      top = Math.min(anchor.bottom + gap, win.innerHeight - toolbarHeight - margin);
+    }
+
+    left = clamp(left, margin, win.innerWidth - toolbarWidth - margin);
+    top = clamp(top, margin, win.innerHeight - toolbarHeight - margin);
+
+    toolbar.style.left = `${Math.round(left)}px`;
+    toolbar.style.top = `${Math.round(top)}px`;
+  }
+
+  private applyDescriptionFormatting(
+    textarea: HTMLTextAreaElement,
+    action: DescriptionFormatAction
+  ): void {
+    const result = formatDescriptionMarkdown(
+      textarea.value,
+      textarea.selectionStart,
+      textarea.selectionEnd,
+      action
+    );
+
+    textarea.value = result.value;
+    this.draft.description = result.value;
+    textarea.focus({ preventScroll: true });
+    textarea.setSelectionRange(result.selectionStart, result.selectionEnd);
+    const EventCtor = textarea.ownerDocument.defaultView?.Event ?? Event;
+    textarea.dispatchEvent(new EventCtor("input", { bubbles: true }));
   }
 
   private renderSidePanel(parent: HTMLElement): void {
@@ -1415,6 +1646,198 @@ function renderCustomDatePicker(
     calWrap.toggleClass("is-hidden", !opening);
     if (opening) renderCal();
   });
+}
+
+interface DescriptionFormatResult {
+  value: string;
+  selectionStart: number;
+  selectionEnd: number;
+}
+
+function formatDescriptionMarkdown(
+  value: string,
+  selectionStart: number,
+  selectionEnd: number,
+  action: DescriptionFormatAction
+): DescriptionFormatResult {
+  switch (action) {
+    case "bold":
+      return wrapSelection(value, selectionStart, selectionEnd, "**", "**", "bold text");
+    case "italic":
+      return wrapSelection(value, selectionStart, selectionEnd, "*", "*", "italic text");
+    case "strike":
+      return wrapSelection(value, selectionStart, selectionEnd, "~~", "~~", "struck text");
+    case "inline-code":
+      return wrapSelection(value, selectionStart, selectionEnd, "`", "`", "code");
+    case "code-block":
+      return wrapSelection(value, selectionStart, selectionEnd, "```\n", "\n```", "code");
+    case "link":
+      return formatMarkdownLink(value, selectionStart, selectionEnd);
+    case "quote":
+      return formatSelectedLines(value, selectionStart, selectionEnd, (line) =>
+        `> ${line.replace(/^>\s?/, "")}`
+      );
+    case "bullet-list":
+      return formatSelectedLines(value, selectionStart, selectionEnd, (line) =>
+        `- ${stripListMarker(line) || "List item"}`
+      );
+    case "numbered-list":
+      return formatSelectedLines(value, selectionStart, selectionEnd, (line, index) =>
+        `${index + 1}. ${stripListMarker(line) || "List item"}`
+      );
+  }
+}
+
+function wrapSelection(
+  value: string,
+  selectionStart: number,
+  selectionEnd: number,
+  prefix: string,
+  suffix: string,
+  placeholder: string
+): DescriptionFormatResult {
+  const selected = value.slice(selectionStart, selectionEnd);
+  const content = selected || placeholder;
+  const replacement = `${prefix}${content}${suffix}`;
+  const nextValue = replaceRange(value, selectionStart, selectionEnd, replacement);
+  const innerStart = selectionStart + prefix.length;
+
+  return {
+    value: nextValue,
+    selectionStart: innerStart,
+    selectionEnd: innerStart + content.length
+  };
+}
+
+function formatMarkdownLink(
+  value: string,
+  selectionStart: number,
+  selectionEnd: number
+): DescriptionFormatResult {
+  const selected = value.slice(selectionStart, selectionEnd) || "link text";
+  const replacement = `[${selected}](url)`;
+  const nextValue = replaceRange(value, selectionStart, selectionEnd, replacement);
+  const urlStart = selectionStart + selected.length + 3;
+
+  return {
+    value: nextValue,
+    selectionStart: urlStart,
+    selectionEnd: urlStart + 3
+  };
+}
+
+function formatSelectedLines(
+  value: string,
+  selectionStart: number,
+  selectionEnd: number,
+  transform: (line: string, index: number) => string
+): DescriptionFormatResult {
+  const collapsed = selectionStart === selectionEnd;
+  const effectiveEnd = selectionEnd > selectionStart && value[selectionEnd - 1] === "\n"
+    ? selectionEnd - 1
+    : selectionEnd;
+  const lineStart = value.lastIndexOf("\n", Math.max(0, selectionStart - 1)) + 1;
+  const nextLineBreak = value.indexOf("\n", effectiveEnd);
+  const lineEnd = nextLineBreak === -1 ? value.length : nextLineBreak;
+  const block = collapsed ? "" : value.slice(lineStart, lineEnd);
+  const lines = block ? block.split("\n") : [""];
+  const replacement = lines.map(transform).join("\n");
+  const nextValue = replaceRange(value, collapsed ? selectionStart : lineStart, collapsed ? selectionEnd : lineEnd, replacement);
+  const replacementStart = collapsed ? selectionStart : lineStart;
+
+  return {
+    value: nextValue,
+    selectionStart: replacementStart,
+    selectionEnd: replacementStart + replacement.length
+  };
+}
+
+function replaceRange(value: string, start: number, end: number, replacement: string): string {
+  return `${value.slice(0, start)}${replacement}${value.slice(end)}`;
+}
+
+function stripListMarker(line: string): string {
+  return line.replace(/^\s*(?:[-*+]|\d+\.)\s+/, "");
+}
+
+function getTextareaSelectionAnchor(textarea: HTMLTextAreaElement): {
+  left: number;
+  top: number;
+  bottom: number;
+} {
+  const doc = textarea.ownerDocument;
+  const win = doc.defaultView;
+  if (!win) {
+    const rect = textarea.getBoundingClientRect();
+    return { left: rect.left, top: rect.top, bottom: rect.bottom };
+  }
+
+  const computed = win.getComputedStyle(textarea);
+  const mirror = doc.body.createDiv({ cls: "belki-textarea-selection-mirror" });
+  const copiedProperties = [
+    "box-sizing",
+    "border-top-width",
+    "border-right-width",
+    "border-bottom-width",
+    "border-left-width",
+    "font-family",
+    "font-size",
+    "font-style",
+    "font-weight",
+    "letter-spacing",
+    "line-height",
+    "padding-top",
+    "padding-right",
+    "padding-bottom",
+    "padding-left",
+    "text-transform",
+    "text-indent",
+    "word-spacing"
+  ];
+
+  for (const property of copiedProperties) {
+    mirror.style.setProperty(property, computed.getPropertyValue(property));
+  }
+
+  mirror.style.position = "fixed";
+  mirror.style.visibility = "hidden";
+  mirror.style.pointerEvents = "none";
+  mirror.style.top = "0";
+  mirror.style.left = "-9999px";
+  mirror.style.width = `${textarea.clientWidth}px`;
+  mirror.style.minHeight = "0";
+  mirror.style.height = "auto";
+  mirror.style.whiteSpace = "pre-wrap";
+  mirror.style.overflowWrap = "break-word";
+
+  const position = Math.min(textarea.selectionStart, textarea.selectionEnd);
+  mirror.textContent = textarea.value.slice(0, position);
+  const marker = doc.createElement("span");
+  marker.textContent = textarea.value.slice(position, position + 1) || "\u200b";
+  mirror.appendChild(marker);
+
+  const markerRect = marker.getBoundingClientRect();
+  const mirrorRect = mirror.getBoundingClientRect();
+  const textareaRect = textarea.getBoundingClientRect();
+  const top = textareaRect.top + markerRect.top - mirrorRect.top - textarea.scrollTop;
+  const left = textareaRect.left + markerRect.left - mirrorRect.left - textarea.scrollLeft;
+  const lineHeight = Number.parseFloat(computed.lineHeight) || 20;
+
+  mirror.remove();
+
+  return {
+    left,
+    top,
+    bottom: top + lineHeight
+  };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  if (max < min) {
+    return min;
+  }
+
+  return Math.min(Math.max(value, min), max);
 }
 
 function attachmentName(path: string): string {
