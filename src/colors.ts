@@ -36,7 +36,13 @@ export function getProjectColor(
   projectName: string,
   projectColors: Record<string, string>
 ): BelkiColorPair {
-  return colorForName(projectName, projectColors[projectName]);
+  const override = projectColors[projectName];
+  const generated = BELKI_COLOR_PALETTE[hashString(projectName) % BELKI_COLOR_PALETTE.length];
+  const regular = override || generated.regular;
+  return {
+    regular,
+    light: tintColorForProject(regular)
+  };
 }
 
 export function getLabelColor(
@@ -75,6 +81,15 @@ function lightColorForOverride(value: string): string {
   const rgb = hexToRgb(value);
   if (!rgb) {
     return value;
+  }
+
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.14)`;
+}
+
+function tintColorForProject(value: string): string {
+  const rgb = hexToRgb(value);
+  if (!rgb) {
+    return lightColorForOverride(value);
   }
 
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.14)`;

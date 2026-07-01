@@ -141,7 +141,10 @@
 
 .belki-project-button:hover {
   background: var(--belki-project-bg, var(--belki-hover));
-  box-shadow: inset 0 0 0 999px rgba(55, 53, 47, 0.035);
+  color: var(--belki-text);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--belki-project-color, var(--belki-muted)) 24%, transparent),
+    inset 0 0 0 999px color-mix(in srgb, var(--belki-project-color, var(--belki-muted)) 8%, transparent);
 }
 
 .belki-project-button.is-drop-available {
@@ -152,9 +155,10 @@
 
 .belki-project-button.is-drop-target {
   background: var(--belki-project-bg, var(--belki-hover));
+  color: var(--belki-text);
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--belki-project-color, var(--belki-accent)) 45%, transparent),
-    inset 0 0 0 999px rgba(55, 53, 47, 0.08);
+    inset 0 0 0 999px color-mix(in srgb, var(--belki-project-color, var(--belki-muted)) 14%, transparent);
 }
 
 .belki-section.belki-project-drop-zone.is-drop-available {
@@ -178,9 +182,10 @@
 
 .belki-project-button.is-active {
   background: var(--belki-project-bg, var(--belki-hover));
+  color: var(--belki-text);
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--belki-project-color, var(--belki-faint)) 30%, transparent),
-    inset 0 0 0 999px rgba(55, 53, 47, 0.055);
+    inset 0 0 0 999px color-mix(in srgb, var(--belki-project-color, var(--belki-muted)) 10%, transparent);
 }
 
 .belki-nav-label {
