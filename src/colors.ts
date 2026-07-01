@@ -52,13 +52,13 @@ export function getLabelColor(
   const normalized = normalizeLabelName(labelName);
   const direct = labelColors[normalized];
   if (direct) {
-    return colorForName(normalized, direct);
+    return colorWithThemeSafeTint(normalized, direct);
   }
 
   const existing = Object.entries(labelColors).find(
     ([key]) => normalizeLabelName(key) === normalized
   );
-  return colorForName(normalized, existing?.[1]);
+  return colorWithThemeSafeTint(normalized, existing?.[1]);
 }
 
 function hashString(value: string): number {
@@ -87,6 +87,18 @@ function lightColorForOverride(value: string): string {
 }
 
 function tintColorForProject(value: string): string {
+  return themeSafeTintForColor(value);
+}
+
+function colorWithThemeSafeTint(value: string, override?: string): BelkiColorPair {
+  const color = colorForName(value, override);
+  return {
+    regular: color.regular,
+    light: themeSafeTintForColor(color.regular)
+  };
+}
+
+function themeSafeTintForColor(value: string): string {
   const rgb = hexToRgb(value);
   if (!rgb) {
     return lightColorForOverride(value);

@@ -88,12 +88,12 @@ function getLabelColor(labelName, labelColors) {
   const normalized = normalizeLabelName(labelName);
   const direct = labelColors[normalized];
   if (direct) {
-    return colorForName(normalized, direct);
+    return colorWithThemeSafeTint(normalized, direct);
   }
   const existing = Object.entries(labelColors).find(
     ([key]) => normalizeLabelName(key) === normalized
   );
-  return colorForName(normalized, existing == null ? void 0 : existing[1]);
+  return colorWithThemeSafeTint(normalized, existing == null ? void 0 : existing[1]);
 }
 function hashString(value) {
   let hash = 0;
@@ -116,6 +116,16 @@ function lightColorForOverride(value) {
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.14)`;
 }
 function tintColorForProject(value) {
+  return themeSafeTintForColor(value);
+}
+function colorWithThemeSafeTint(value, override) {
+  const color = colorForName(value, override);
+  return {
+    regular: color.regular,
+    light: themeSafeTintForColor(color.regular)
+  };
+}
+function themeSafeTintForColor(value) {
   const rgb = hexToRgb(value);
   if (!rgb) {
     return lightColorForOverride(value);
