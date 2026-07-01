@@ -2596,28 +2596,56 @@ var AddTaskComposer = class {
           renderDeadlineButton();
         });
       }
-      const panel = deadlineWrap.createDiv({ cls: "belki-composer-popover is-hidden" });
+      const panel = deadlineWrap.createDiv({ cls: "belki-composer-popover belki-date-popover is-hidden" });
       panel.createDiv({ cls: "belki-popover-title", text: "Deadline" });
-      const input = panel.createEl("input", {
-        cls: "belki-deadline-input",
-        attr: { type: "date" }
-      });
-      if (selectedDeadline) input.value = selectedDeadline;
-      closeDeadlinePanel = () => panel.addClass("is-hidden");
-      input.addEventListener("change", () => {
-        if (input.value) {
-          selectedDeadline = input.value;
-          closeComposerPopovers();
-          renderDeadlineButton();
+      closeDeadlinePanel = () => {
+        panel.addClass("is-hidden");
+        panel.removeClass("is-calendar-open");
+      };
+      let canSelectDeadline = !import_obsidian5.Platform.isMobile;
+      const selectDeadline = (value) => {
+        if (!canSelectDeadline) {
+          return;
         }
-      });
-      btn.addEventListener("click", () => {
+        selectedDeadline = value;
+        closeDeadlinePanel();
+        clearOutsideListener();
+        renderDeadlineButton();
+      };
+      const addPreset = (label, value) => {
+        const presetBtn = panel.createEl("button", {
+          cls: "belki-date-preset",
+          text: label,
+          attr: { type: "button" }
+        });
+        presetBtn.toggleClass("is-active", value === selectedDeadline);
+        presetBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          selectDeadline(value);
+        });
+      };
+      addPreset("Today", todayIso());
+      addPreset("Tomorrow", addDaysIso(1));
+      addPreset("Next week", addDaysIso(7));
+      addPreset("Next weekend", nextWeekdayIso(6));
+      renderComposerCustomDatePicker(panel, selectedDeadline, selectDeadline);
+      btn.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
         const shouldOpen = panel.hasClass("is-hidden");
         closeComposerPopovers();
         if (shouldOpen) {
-          panel.removeClass("is-hidden");
-          watchLocalPopover(deadlineWrap, panel, { preferredSide: mobilePanelSide });
-          input.focus();
+          canSelectDeadline = !import_obsidian5.Platform.isMobile;
+          const ownerWindow = btn.ownerDocument.defaultView || window;
+          ownerWindow.setTimeout(() => {
+            panel.removeClass("is-hidden");
+            watchLocalPopover(deadlineWrap, panel, { preferredSide: mobilePanelSide });
+            if (import_obsidian5.Platform.isMobile) {
+              ownerWindow.setTimeout(() => {
+                canSelectDeadline = true;
+              }, 250);
+            }
+          }, 0);
         }
       });
     };
@@ -2975,7 +3003,10 @@ var AddTaskComposer = class {
         });
       }
       const datePopover = dueDateWrap.createDiv({ cls: "belki-composer-popover belki-date-popover is-hidden" });
-      closeDueDatePopover = () => datePopover.addClass("is-hidden");
+      closeDueDatePopover = () => {
+        datePopover.addClass("is-hidden");
+        datePopover.removeClass("is-calendar-open");
+      };
       const selectDate = (value) => {
         selectedDue = value;
         closeDueDatePopover();
@@ -2999,14 +3030,7 @@ var AddTaskComposer = class {
       addPreset("Tomorrow", addDaysIso(1));
       addPreset("Next week", addDaysIso(7));
       addPreset("Next weekend", nextWeekdayIso(6));
-      const customInput = datePopover.createEl("input", {
-        cls: "belki-date-custom-input",
-        attr: { type: "date" }
-      });
-      if (selectedDue) customInput.value = selectedDue;
-      customInput.addEventListener("change", () => {
-        if (customInput.value) selectDate(customInput.value);
-      });
+      renderComposerCustomDatePicker(datePopover, selectedDue, selectDate);
       datePopover.createDiv({ cls: "belki-date-divider" });
       const repeatHeader = datePopover.createDiv({ cls: "belki-repeat-header" });
       const repeatIcon = repeatHeader.createSpan({ cls: "belki-chip-icon" });
@@ -3177,6 +3201,102 @@ function alignLocalPopover(wrapper, popover, options = {}) {
     return;
   }
   popover.addClass("is-open-down");
+}
+function renderComposerCustomDatePicker(parent, currentValue, onSelect) {
+  const today = todayIso();
+  const initialDate = currentValue ? /* @__PURE__ */ new Date(`${currentValue}T00:00:00`) : /* @__PURE__ */ new Date();
+  let viewYear = initialDate.getFullYear();
+  let viewMonth = initialDate.getMonth();
+  const container = parent.createDiv({ cls: "belki-date-custom-wrap" });
+  const trigger = container.createEl("button", {
+    cls: "belki-date-preset belki-cal-trigger",
+    attr: { type: "button" }
+  });
+  trigger.createSpan({ text: currentValue ? formatDueDateChip(currentValue) : "Custom date..." });
+  trigger.toggleClass("is-active", Boolean(currentValue));
+  const calendarWrap = container.createDiv({ cls: "belki-cal-wrap is-hidden" });
+  const renderCalendar = () => {
+    calendarWrap.empty();
+    const header = calendarWrap.createDiv({ cls: "belki-cal-header" });
+    const previousButton = header.createEl("button", {
+      cls: "belki-cal-nav",
+      text: "\u2039",
+      attr: { type: "button" }
+    });
+    header.createSpan({
+      cls: "belki-cal-title",
+      text: new Date(viewYear, viewMonth, 1).toLocaleDateString(void 0, {
+        month: "long",
+        year: "numeric"
+      })
+    });
+    const nextButton = header.createEl("button", {
+      cls: "belki-cal-nav",
+      text: "\u203A",
+      attr: { type: "button" }
+    });
+    previousButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      previousButton.blur();
+      viewMonth -= 1;
+      if (viewMonth < 0) {
+        viewMonth = 11;
+        viewYear -= 1;
+      }
+      renderCalendar();
+    });
+    nextButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      nextButton.blur();
+      viewMonth += 1;
+      if (viewMonth > 11) {
+        viewMonth = 0;
+        viewYear += 1;
+      }
+      renderCalendar();
+    });
+    const grid = calendarWrap.createDiv({ cls: "belki-cal-grid" });
+    for (const dayName of ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]) {
+      grid.createSpan({ cls: "belki-cal-day-hdr", text: dayName });
+    }
+    const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+    const leadingEmptyDays = firstDay === 0 ? 6 : firstDay - 1;
+    for (let index = 0; index < leadingEmptyDays; index += 1) {
+      grid.createDiv({ cls: "belki-cal-day is-empty" });
+    }
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const iso = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const dayButton = grid.createEl("button", {
+        cls: "belki-cal-day",
+        text: String(day),
+        attr: { type: "button" }
+      });
+      dayButton.toggleClass("is-today", iso === today);
+      dayButton.toggleClass("is-selected", iso === currentValue);
+      dayButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        onSelect(iso);
+      });
+    }
+    const renderedCells = leadingEmptyDays + daysInMonth;
+    const trailingEmptyDays = 42 - renderedCells;
+    for (let index = 0; index < trailingEmptyDays; index += 1) {
+      grid.createDiv({ cls: "belki-cal-day is-empty" });
+    }
+  };
+  trigger.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const opening = calendarWrap.hasClass("is-hidden");
+    parent.toggleClass("is-calendar-open", opening);
+    calendarWrap.toggleClass("is-hidden", !opening);
+    if (opening) {
+      renderCalendar();
+    }
+  });
 }
 function isImageFile(file) {
   return file.type.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
@@ -4426,7 +4546,9 @@ function renderCustomDatePicker(parent, currentValue, _iconName, onSelect) {
     const nextBtn = header.createEl("button", { cls: "belki-cal-nav", attr: { type: "button" } });
     nextBtn.setText("\u203A");
     prevBtn.addEventListener("click", (e) => {
+      e.preventDefault();
       e.stopPropagation();
+      prevBtn.blur();
       if (--viewMonth < 0) {
         viewMonth = 11;
         viewYear--;
@@ -4434,7 +4556,9 @@ function renderCustomDatePicker(parent, currentValue, _iconName, onSelect) {
       renderCal();
     });
     nextBtn.addEventListener("click", (e) => {
+      e.preventDefault();
       e.stopPropagation();
+      nextBtn.blur();
       if (++viewMonth > 11) {
         viewMonth = 0;
         viewYear++;
@@ -4465,10 +4589,17 @@ function renderCustomDatePicker(parent, currentValue, _iconName, onSelect) {
         onSelect(iso);
       });
     }
+    const renderedCells = leadingEmpties + daysInMonth;
+    const trailingEmpties = 42 - renderedCells;
+    for (let i = 0; i < trailingEmpties; i++) {
+      grid.createDiv({ cls: "belki-cal-day is-empty" });
+    }
   }
   trigger.addEventListener("click", (e) => {
+    e.preventDefault();
     e.stopPropagation();
     const opening = calWrap.hasClass("is-hidden");
+    parent.toggleClass("is-calendar-open", opening);
     calWrap.toggleClass("is-hidden", !opening);
     if (opening) renderCal();
   });

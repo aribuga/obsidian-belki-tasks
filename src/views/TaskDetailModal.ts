@@ -1358,12 +1358,16 @@ function renderCustomDatePicker(
     nextBtn.setText("›");
 
     prevBtn.addEventListener("click", (e) => {
+      e.preventDefault();
       e.stopPropagation();
+      prevBtn.blur();
       if (--viewMonth < 0) { viewMonth = 11; viewYear--; }
       renderCal();
     });
     nextBtn.addEventListener("click", (e) => {
+      e.preventDefault();
       e.stopPropagation();
+      nextBtn.blur();
       if (++viewMonth > 11) { viewMonth = 0; viewYear++; }
       renderCal();
     });
@@ -1395,11 +1399,19 @@ function renderCustomDatePicker(
         onSelect(iso);
       });
     }
+
+    const renderedCells = leadingEmpties + daysInMonth;
+    const trailingEmpties = 42 - renderedCells;
+    for (let i = 0; i < trailingEmpties; i++) {
+      grid.createDiv({ cls: "belki-cal-day is-empty" });
+    }
   }
 
   trigger.addEventListener("click", (e) => {
+    e.preventDefault();
     e.stopPropagation();
     const opening = calWrap.hasClass("is-hidden");
+    parent.toggleClass("is-calendar-open", opening);
     calWrap.toggleClass("is-hidden", !opening);
     if (opening) renderCal();
   });

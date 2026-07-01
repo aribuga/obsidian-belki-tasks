@@ -1265,8 +1265,11 @@ button.belki-add-inline {
   display: grid;
   gap: 6px;
   left: 0;
-  max-width: 240px;
-  min-width: min(200px, calc(100vw - 24px));
+  max-width: min(320px, calc(100vw - 24px));
+  min-width: min(304px, calc(100vw - 24px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 8px;
   position: absolute;
   top: calc(100% + 8px);
@@ -1274,6 +1277,18 @@ button.belki-add-inline {
 }
 
 .belki-date-popover.is-hidden {
+  display: none;
+}
+
+.belki-date-popover.is-calendar-open {
+  max-height: none;
+  overflow-y: visible;
+}
+
+.belki-date-popover.is-calendar-open > .belki-popover-title,
+.belki-date-popover.is-calendar-open > .belki-date-divider,
+.belki-date-popover.is-calendar-open > .belki-repeat-header,
+.belki-date-popover.is-calendar-open > .belki-date-preset {
   display: none;
 }
 
@@ -1313,7 +1328,16 @@ button.belki-add-inline {
 
 /* Calendar panel — rendered inline below the "Custom date…" trigger */
 .belki-cal-wrap {
+  overflow-anchor: none;
   width: 100%;
+}
+
+.belki-cal-wrap:not(.is-hidden) {
+  min-height: 286px;
+}
+
+.belki-date-popover:not(.is-calendar-open) .belki-cal-wrap:not(.is-hidden) {
+  display: none;
 }
 
 .belki-cal-header {
@@ -1348,6 +1372,7 @@ button.belki-add-inline {
 .belki-cal-grid {
   display: grid;
   gap: 2px;
+  min-width: 0;
   grid-template-columns: repeat(7, 1fr);
 }
 
@@ -1370,6 +1395,7 @@ button.belki-add-inline {
   font-size: 13px;
   justify-content: center;
   padding: 0;
+  min-width: 0;
   width: 100%;
 }
 
@@ -3320,6 +3346,11 @@ button.belki-search-result.is-selected {
   .belki-composer-menu {
     max-width: min(220px, calc(100vw - 36px));
     min-width: min(184px, calc(100vw - 36px));
+  }
+
+  .belki-date-popover {
+    max-width: calc(100vw - 36px);
+    min-width: min(304px, calc(100vw - 36px));
   }
 
   .belki-composer-popover,
