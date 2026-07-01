@@ -302,10 +302,30 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
       });
     });
     new import_obsidian.Setting(containerEl).setName("Data folder").setDesc("Folder where belki stores task data and attachments.").addText((text) => {
-      text.setPlaceholder(DEFAULT_DATA_FOLDER_PATH).setValue(this.plugin.settings.dataFolderPath).onChange(async (value) => {
-        this.plugin.settings.dataFolderPath = normalizeDataFolderPath(value);
+      let draftPath = this.plugin.settings.dataFolderPath;
+      const commitPathChange = async () => {
+        const normalizedPath = normalizeDataFolderPath(draftPath);
+        if (normalizedPath === this.plugin.settings.dataFolderPath) {
+          text.setValue(normalizedPath);
+          return;
+        }
+        this.plugin.settings.dataFolderPath = normalizedPath;
+        text.setValue(normalizedPath);
         await this.plugin.saveSettings();
         await this.plugin.reloadTasks();
+      };
+      text.setPlaceholder(DEFAULT_DATA_FOLDER_PATH).setValue(this.plugin.settings.dataFolderPath).onChange((value) => {
+        draftPath = value;
+      });
+      text.inputEl.addEventListener("blur", () => {
+        void commitPathChange();
+      });
+      text.inputEl.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") {
+          return;
+        }
+        event.preventDefault();
+        text.inputEl.blur();
       });
     });
     new import_obsidian.Setting(containerEl).setName("Default overdue range").setDesc("Default range used by the Today overdue section.").addDropdown((dropdown) => {
