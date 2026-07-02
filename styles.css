@@ -2811,6 +2811,7 @@ button.belki-search-result.is-selected {
 }
 
 .belki-detail-close {
+  align-items: center;
   appearance: none;
   background: transparent;
   border: 0;
@@ -2818,9 +2819,11 @@ button.belki-search-result.is-selected {
   box-shadow: none;
   color: var(--belki-muted);
   cursor: pointer;
+  display: inline-flex;
   font-size: 22px;
   height: 32px;
-  line-height: 28px;
+  justify-content: center;
+  line-height: 1;
   padding: 0;
   position: absolute;
   right: 12px;
@@ -2828,9 +2831,10 @@ button.belki-search-result.is-selected {
   width: 32px;
 }
 
-.belki-detail-close:hover {
-  background: var(--belki-hover);
-  color: var(--belki-text);
+.belki-detail-close:hover,
+.belki-detail-close:focus-visible {
+  background: var(--belki-danger-light);
+  color: var(--belki-danger);
 }
 
 .belki-detail-title-row {
