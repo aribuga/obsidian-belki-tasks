@@ -1,4 +1,4 @@
-import { App, ItemView, Modal, WorkspaceLeaf, setIcon } from "obsidian";
+import { App, ItemView, Modal, Platform, WorkspaceLeaf, setIcon } from "obsidian";
 import { getLabelColor, getProjectColor } from "../colors";
 import {
   compareIsoDates,
@@ -16,7 +16,7 @@ import {
   overdueRangeLabel
 } from "../settings";
 import { TaskStore } from "../taskStore";
-import { BelkiSortMode, BelkiTask, BoardViewMode, OVERDUE_RANGES, Priority } from "../types";
+import { BelkiSortMode, BelkiTask, BoardViewMode, CreateTaskInput, OVERDUE_RANGES, Priority } from "../types";
 import { AddTaskComposer } from "./AddTaskComposer";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
 import { TaskDetailModal } from "./TaskDetailModal";
@@ -120,6 +120,7 @@ export class TaskBoardView extends ItemView {
   private searchQuery = "";
   private searchOpen = false;
   private composerOpen = false;
+  private mobileComposerOpen = false;
   private highlightedTaskId: string | null = null;
   private activeFilter: string | null = null;
   private activeLabel: string | null = null;
@@ -129,6 +130,7 @@ export class TaskBoardView extends ItemView {
   private projectMenuEl: HTMLElement | null = null;
   private sidebarScrollLeft = 0;
   private pendingScrollSnapshot: { top: number; left: number } | null = null;
+  private mobileComposerReturnScroll: { top: number; left: number } | null = null;
   private composerCleanup: (() => void) | null = null;
   private renderScheduled = false;
   private handleRootKeyDown = (event: KeyboardEvent): void => {
@@ -174,6 +176,12 @@ export class TaskBoardView extends ItemView {
       this.stopEscape(event);
       this.composerOpen = false;
       this.render();
+      return;
+    }
+
+    if (this.mobileComposerOpen) {
+      this.stopEscape(event);
+      this.closeMobileComposer();
       return;
     }
 
@@ -246,6 +254,8 @@ export class TaskBoardView extends ItemView {
     this.searchOpen = false;
     this.searchQuery = "";
     this.composerOpen = false;
+    this.mobileComposerOpen = false;
+    this.mobileComposerReturnScroll = null;
     this.sortPopoverOpen = false;
     this.projectActionsOpen = null;
     this.render();
@@ -262,6 +272,7 @@ export class TaskBoardView extends ItemView {
     containerEl.empty();
     containerEl.addClass("belki-root");
     containerEl.addClass("belki-view");
+    containerEl.toggleClass("is-mobile", Platform.isMobile);
     applyBelkiFontSettings(containerEl, this.settings);
     containerEl.addEventListener("keydown", this.handleRootKeyDown, true);
 
@@ -272,6 +283,7 @@ export class TaskBoardView extends ItemView {
     if (this.searchOpen) {
       this.renderSearchOverlay(containerEl);
     }
+    this.renderMobileQuickAdd(containerEl);
 
     this.restoreSidebarScroll(sidebarScrollLeft);
   }
@@ -300,13 +312,23 @@ export class TaskBoardView extends ItemView {
       this.pendingScrollSnapshot = null;
       this.render();
       if (!snapshot) return;
-      window.requestAnimationFrame(() => {
-        const main = this.containerEl.querySelector<HTMLElement>(".belki-main");
-        if (main) {
-          main.scrollTop = snapshot.top;
-          main.scrollLeft = snapshot.left;
-        }
-      });
+      this.restoreMainScrollSnapshot(snapshot);
+    });
+  }
+
+  private restoreMainScrollSnapshot(snapshot: { top: number; left: number }): void {
+    const ownerWindow = this.containerEl.ownerDocument.defaultView || window;
+    const restore = () => {
+      const main = this.containerEl.querySelector<HTMLElement>(".belki-main");
+      if (main) {
+        main.scrollTop = snapshot.top;
+        main.scrollLeft = snapshot.left;
+      }
+    };
+
+    ownerWindow.requestAnimationFrame(() => {
+      restore();
+      ownerWindow.requestAnimationFrame(restore);
     });
   }
 
@@ -333,10 +355,8 @@ export class TaskBoardView extends ItemView {
     sidebarAdd.createSpan({ cls: "belki-add-plus", text: "+" });
     sidebarAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
     sidebarAdd.addEventListener("click", () => {
-        this.composerOpen = true;
-        this.sortPopoverOpen = false;
-        this.render();
-      });
+      this.openAddComposer();
+    });
 
     const tasks = this.store.getTasks();
     const active = tasks.filter((task) => !task.completed);
@@ -394,6 +414,8 @@ export class TaskBoardView extends ItemView {
         this.mode = "projects";
         this.selectedProject = cleanProject;
         this.composerOpen = false;
+        this.mobileComposerOpen = false;
+        this.mobileComposerReturnScroll = null;
         this.render();
       });
     }
@@ -410,6 +432,8 @@ export class TaskBoardView extends ItemView {
         this.mode = "archived";
         this.selectedProject = null;
         this.composerOpen = false;
+        this.mobileComposerOpen = false;
+        this.mobileComposerReturnScroll = null;
         this.render();
       });
     }
@@ -462,6 +486,8 @@ export class TaskBoardView extends ItemView {
       this.activeFilter = null;
       this.activeLabel = null;
       this.composerOpen = false;
+      this.mobileComposerOpen = false;
+      this.mobileComposerReturnScroll = null;
       this.searchOpen = false;
       this.sortPopoverOpen = false;
       this.render();
@@ -486,42 +512,17 @@ export class TaskBoardView extends ItemView {
 
     const addArea = main.createDiv({ cls: "belki-add-area" });
     if (this.composerOpen) {
-      const composer = new AddTaskComposer();
-      this.composerCleanup = composer.render(addArea, {
-        app: this.app,
-        projects: this.getActiveProjects(),
-        labels: this.getAllLabels(),
-        labelColors: this.settings.labelColors,
-        projectColors: this.settings.projectColors,
-        defaultProject: this.selectedProject || "",
-        defaultDue: this.mode === "today" ? todayIso() : undefined,
-        onCancel: () => {
-          this.composerOpen = false;
-          this.render();
-        },
-        onEnsureLabel: (label) => {
-          this.ensureLabelColor(label);
-        },
-        onSubmit: async (input) => {
-          await this.store.createTask(input);
-          if (input.project) {
-            this.ensureProjectInRegistry(input.project);
-            await this.saveSettings();
-          }
-          this.composerOpen = false;
-          this.render();
-        }
+      this.renderAddTaskComposer(addArea, () => {
+        this.composerOpen = false;
+        this.render();
       });
-      composer.focus();
     } else {
       const inlineAdd = addArea.createEl("button", { cls: "belki-add-inline" });
       inlineAdd.createSpan({ cls: "belki-add-plus", text: "+" });
       inlineAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
       inlineAdd.addEventListener("click", () => {
-          this.composerOpen = true;
-          this.sortPopoverOpen = false;
-          this.render();
-        });
+        this.openAddComposer();
+      });
     }
 
     if (active.length === 0 && tasks.length === 0) {
@@ -530,6 +531,107 @@ export class TaskBoardView extends ItemView {
         text: `No tasks yet. Add one and belki will write it to ${this.store.dataDir}/YYYY-MM.md.`
       });
     }
+  }
+
+  private openAddComposer(): void {
+    this.sortPopoverOpen = false;
+    this.projectActionsOpen = null;
+    this.searchOpen = false;
+    this.searchQuery = "";
+
+    if (Platform.isMobile) {
+      this.mobileComposerReturnScroll = this.getMainScrollSnapshot();
+      this.mobileComposerOpen = true;
+      this.composerOpen = false;
+    } else {
+      this.composerOpen = true;
+      this.mobileComposerOpen = false;
+      this.mobileComposerReturnScroll = null;
+    }
+
+    this.render();
+  }
+
+  private closeMobileComposer(): void {
+    const snapshot = this.mobileComposerReturnScroll;
+    this.mobileComposerReturnScroll = null;
+    this.mobileComposerOpen = false;
+    this.render();
+    if (snapshot) {
+      this.restoreMainScrollSnapshot(snapshot);
+    }
+  }
+
+  private renderAddTaskComposer(parent: HTMLElement, onClose: () => void): void {
+    const composer = new AddTaskComposer();
+    this.composerCleanup = composer.render(parent, {
+      app: this.app,
+      projects: this.getActiveProjects(),
+      labels: this.getAllLabels(),
+      labelColors: this.settings.labelColors,
+      projectColors: this.settings.projectColors,
+      defaultProject: this.selectedProject || "",
+      defaultDue: this.mode === "today" ? todayIso() : undefined,
+      onCancel: onClose,
+      onEnsureLabel: (label) => {
+        this.ensureLabelColor(label);
+      },
+      onSubmit: async (input) => {
+        await this.createTaskFromComposer(input);
+        onClose();
+      },
+      presentation: Platform.isMobile ? "mobile-screen" : "default"
+    });
+
+    const ownerWindow = parent.ownerDocument.defaultView || window;
+    ownerWindow.requestAnimationFrame(() => {
+      composer.focus({ preventScroll: Platform.isMobile });
+    });
+  }
+
+  private async createTaskFromComposer(input: CreateTaskInput): Promise<void> {
+    await this.store.createTask(input);
+    if (input.project) {
+      this.ensureProjectInRegistry(input.project);
+      await this.saveSettings();
+    }
+  }
+
+  private renderMobileQuickAdd(parent: HTMLElement): void {
+    if (this.searchOpen) {
+      return;
+    }
+
+    if (this.mobileComposerOpen) {
+      const screen = parent.createDiv({ cls: "belki-mobile-quick-add-screen" });
+      const header = screen.createDiv({ cls: "belki-mobile-quick-add-screen-header" });
+      const backButton = header.createEl("button", {
+        cls: "belki-mobile-quick-add-back",
+        attr: { type: "button", "aria-label": "Back to tasks" }
+      });
+      setIcon(backButton, "arrow-left");
+      backButton.addEventListener("click", () => this.closeMobileComposer());
+      header.createDiv({ cls: "belki-mobile-quick-add-title", text: "Add task" });
+      const closeButton = header.createEl("button", {
+        cls: "belki-mobile-quick-add-close",
+        attr: { type: "button", "aria-label": "Close add task" }
+      });
+      setIcon(closeButton, "x");
+      closeButton.addEventListener("click", () => this.closeMobileComposer());
+
+      const body = screen.createDiv({ cls: "belki-mobile-quick-add-body" });
+      this.renderAddTaskComposer(body, () => {
+        this.closeMobileComposer();
+      });
+      return;
+    }
+
+    const button = parent.createEl("button", {
+      cls: "belki-mobile-quick-add-button",
+      attr: { type: "button", "aria-label": "Add task" }
+    });
+    setIcon(button, "plus");
+    button.addEventListener("click", () => this.openAddComposer());
   }
 
   private groupTasks(tasks: BelkiTask[]): Map<string, BelkiTask[]> {
@@ -1827,6 +1929,8 @@ export class TaskBoardView extends ItemView {
     this.searchOpen = false;
     this.searchQuery = "";
     this.composerOpen = false;
+    this.mobileComposerOpen = false;
+    this.mobileComposerReturnScroll = null;
     this.highlightedTaskId = task.id;
 
     if (task.completed) {

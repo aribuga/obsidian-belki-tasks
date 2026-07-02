@@ -42,7 +42,9 @@ type TokenInfo = {
   end: number;
 };
 
-function getActiveToken(input: HTMLInputElement): TokenInfo | null {
+type QuickAddInput = HTMLInputElement | HTMLTextAreaElement;
+
+function getActiveToken(input: QuickAddInput): TokenInfo | null {
   const pos = input.selectionStart ?? 0;
   const text = input.value;
   let start = pos;
@@ -60,7 +62,7 @@ function getActiveToken(input: HTMLInputElement): TokenInfo | null {
   return null;
 }
 
-function completeToken(input: HTMLInputElement, token: TokenInfo, value: string): void {
+function completeToken(input: QuickAddInput, token: TokenInfo, value: string): void {
   const prefix = token.type === "label" ? "#" : "//";
   const text = input.value;
   const completed = prefix + value;
@@ -71,7 +73,7 @@ function completeToken(input: HTMLInputElement, token: TokenInfo, value: string)
 }
 
 export function attachQuickAddAutocomplete(
-  input: HTMLInputElement,
+  input: QuickAddInput,
   getLabels: () => string[],
   getProjects: () => string[]
 ): () => void {
@@ -171,7 +173,7 @@ export function attachQuickAddAutocomplete(
     showDropdown(token, matches);
   });
 
-  input.addEventListener("keydown", (e) => {
+  input.addEventListener("keydown", (e: KeyboardEvent) => {
     if (!dropdown || currentMatches.length === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();

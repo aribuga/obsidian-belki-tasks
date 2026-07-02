@@ -21,28 +21,51 @@ interface ComposerOptions {
   onCancel: () => void;
   onEnsureLabel: (label: string) => void;
   onSubmit: (input: CreateTaskInput) => Promise<void>;
+  presentation?: "default" | "mobile-screen";
 }
 
 export class AddTaskComposer {
-  private titleInput?: HTMLInputElement;
+  private titleInput?: HTMLTextAreaElement;
   private customProjectInput?: HTMLInputElement;
   private selectedProjectValue = "";
 
   render(parent: HTMLElement, options: ComposerOptions): () => void {
     const form = parent.createEl("form", { cls: "belki-composer" });
+    const isMobileScreen = options.presentation === "mobile-screen";
+    form.toggleClass("is-mobile-screen", isMobileScreen);
     let selectedDue = options.defaultDue || "";
     let selectedRepeat: RepeatRule | undefined;
     let selectedDeadline = "";
     let selectedLabels: string[] = [];
     let pendingAttachments: File[] = [];
 
-    this.titleInput = form.createEl("input", {
+    this.titleInput = form.createEl("textarea", {
       cls: "belki-composer-title",
       attr: {
-        type: "text",
-        placeholder: "Task title"
+        placeholder: "Task title",
+        rows: "1"
       }
     });
+    const resizeTitleInput = () => {
+      if (!this.titleInput) return;
+      const ownerWindow = this.titleInput.ownerDocument.defaultView || window;
+      const styles = ownerWindow.getComputedStyle(this.titleInput);
+      const lineHeight = Number.parseFloat(styles.lineHeight) || 22;
+      const paddingY =
+        (Number.parseFloat(styles.paddingTop) || 0) +
+        (Number.parseFloat(styles.paddingBottom) || 0);
+      const maxHeight = Math.ceil(lineHeight * 2 + paddingY);
+      this.titleInput.setCssStyles({
+        height: "auto",
+        overflowY: "hidden"
+      });
+      this.titleInput.setCssStyles({
+        height: `${Math.min(this.titleInput.scrollHeight, maxHeight)}px`,
+        overflowY: this.titleInput.scrollHeight > maxHeight ? "auto" : "hidden"
+      });
+    };
+    this.titleInput.addEventListener("input", resizeTitleInput);
+    resizeTitleInput();
 
     const descriptionInput = form.createEl("textarea", {
       cls: "belki-composer-description",
@@ -57,6 +80,21 @@ export class AddTaskComposer {
       () => options.labels,
       () => options.projects
     );
+    this.titleInput.addEventListener("keydown", (event) => {
+      if (
+        event.defaultPrevented ||
+        event.key !== "Enter" ||
+        event.shiftKey ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      form.requestSubmit();
+    });
 
     const chipRow = form.createDiv({ cls: "belki-composer-chip-row" });
     const dueDateWrap = chipRow.createDiv({ cls: "belki-date-picker-wrap" });
@@ -102,6 +140,7 @@ export class AddTaskComposer {
     const pendingAttachmentsEl = form.createDiv({
       cls: "belki-composer-attachments is-hidden"
     });
+
     const renderPendingAttachments = () => {
       pendingAttachmentsEl.empty();
       pendingAttachmentsEl.toggleClass("is-hidden", pendingAttachments.length === 0);
@@ -803,8 +842,10 @@ export class AddTaskComposer {
         closeComposerPopovers();
         if (shouldOpen) {
           const popover = dueDateWrap.querySelector<HTMLElement>(".belki-date-popover");
-          popover?.removeClass("is-hidden");
-          if (popover) watchLocalPopover(dueDateWrap, popover, { preferredSide: mobilePanelSide });
+          if (popover) {
+            popover.removeClass("is-hidden");
+            watchLocalPopover(dueDateWrap, popover, { preferredSide: mobilePanelSide });
+          }
         }
       });
       const clearRepeat = repeatChipWrap.createEl("button", {
@@ -825,8 +866,8 @@ export class AddTaskComposer {
     return cleanup;
   }
 
-  focus(): void {
-    this.titleInput?.focus();
+  focus(options?: FocusOptions): void {
+    this.titleInput?.focus(options);
   }
 
   private readProject(): string | undefined {
@@ -888,6 +929,7 @@ function alignLocalPopover(
   popover.removeClass("is-align-right");
   popover.removeClass("is-open-up");
   popover.removeClass("is-open-down");
+  popover.style.removeProperty("--belki-popover-shift-x");
 
   const wrapperRect = wrapper.getBoundingClientRect();
 
@@ -925,11 +967,17 @@ function alignLocalPopover(
   const popoverHeight = popoverRect.height || 220;
   const ownerWindow = wrapper.ownerDocument.defaultView || window;
 
-  if (
-    wrapperRect.left + popoverWidth > ownerWindow.innerWidth - margin &&
-    wrapperRect.right - popoverWidth >= margin
-  ) {
-    popover.addClass("is-align-right");
+  let shiftX = 0;
+  const rightOverflow = wrapperRect.left + popoverWidth - (ownerWindow.innerWidth - margin);
+  if (rightOverflow > 0) {
+    shiftX -= rightOverflow;
+  }
+  const shiftedLeft = wrapperRect.left + shiftX;
+  if (shiftedLeft < margin) {
+    shiftX += margin - shiftedLeft;
+  }
+  if (shiftX !== 0) {
+    popover.style.setProperty("--belki-popover-shift-x", `${Math.round(shiftX)}px`);
   }
 
   const fitsBelow = wrapperRect.bottom + popoverHeight + margin <= ownerWindow.innerHeight;
@@ -1057,8 +1105,33 @@ function renderComposerCustomDatePicker(
     calendarWrap.toggleClass("is-hidden", !opening);
     if (opening) {
       renderCalendar();
+      const ownerWindow = parent.ownerDocument.defaultView || window;
+      ownerWindow.requestAnimationFrame(() => clampPopoverToViewport(parent));
     }
   });
+}
+
+function clampPopoverToViewport(popover: HTMLElement): void {
+  const ownerWindow = popover.ownerDocument.defaultView || window;
+  const margin = 12;
+  const currentShift = Number.parseFloat(
+    popover.style.getPropertyValue("--belki-popover-shift-x") || "0"
+  ) || 0;
+  const rect = popover.getBoundingClientRect();
+  let nextShift = currentShift;
+
+  if (rect.right > ownerWindow.innerWidth - margin) {
+    nextShift -= rect.right - (ownerWindow.innerWidth - margin);
+  }
+
+  const adjustedLeft = rect.left + (nextShift - currentShift);
+  if (adjustedLeft < margin) {
+    nextShift += margin - adjustedLeft;
+  }
+
+  if (nextShift !== currentShift) {
+    popover.style.setProperty("--belki-popover-shift-x", `${Math.round(nextShift)}px`);
+  }
 }
 
 function isImageFile(file: File): boolean {

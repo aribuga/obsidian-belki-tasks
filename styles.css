@@ -19,6 +19,7 @@
   --belki-font-task-description: var(--belki-font-ui);
   --belki-font-label: var(--belki-font-ui);
   --belki-mobile-safe-top: max(24px, env(safe-area-inset-top, 0px));
+  --belki-mobile-bottom-toolbar: 88px;
   color: var(--belki-text);
   font-family: var(--belki-font-ui);
   height: 100%;
@@ -903,6 +904,10 @@ button.belki-add-inline {
   font-family: var(--belki-font-task-title);
   font-size: 15px;
   font-weight: 650;
+  line-height: 1.35;
+  min-height: 34px;
+  overflow: hidden;
+  resize: none;
 }
 
 .belki-composer-title:focus,
@@ -950,6 +955,7 @@ button.belki-add-inline {
   position: absolute;
   left: 0;
   top: calc(100% + 8px);
+  transform: translateX(var(--belki-popover-shift-x, 0));
   z-index: 1000;
 }
 
@@ -1002,6 +1008,7 @@ button.belki-add-inline {
   position: absolute;
   left: 0;
   top: calc(100% + 8px);
+  transform: translateX(var(--belki-popover-shift-x, 0));
   z-index: 1000;
 }
 
@@ -3219,6 +3226,211 @@ button.belki-search-result.is-selected {
   align-items: center;
   display: flex;
   gap: 10px;
+}
+
+.belki-mobile-quick-add-button,
+.belki-mobile-quick-add-screen {
+  display: none;
+}
+
+.belki-mobile-quick-add-button {
+  align-items: center;
+  appearance: none;
+  background: var(--interactive-accent, var(--belki-accent));
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+  color: var(--text-on-accent, #ffffff);
+  cursor: pointer;
+  height: 56px;
+  justify-content: center;
+  padding: 0;
+  position: fixed;
+  right: 18px;
+  width: 56px;
+  z-index: 850;
+}
+
+.belki-mobile-quick-add-button:hover,
+.belki-mobile-quick-add-button:focus-visible {
+  background: var(--interactive-accent-hover, var(--interactive-accent, var(--belki-accent-hover)));
+  color: var(--text-on-accent, #ffffff);
+  outline: none;
+}
+
+.belki-mobile-quick-add-button svg {
+  height: 26px;
+  width: 26px;
+}
+
+.belki-mobile-quick-add-screen {
+  background: var(--belki-bg);
+  color: var(--belki-text);
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100dvh;
+  inset: 0;
+  overflow: hidden;
+  position: fixed;
+  width: 100vw;
+  z-index: 900;
+}
+
+.belki-mobile-quick-add-screen-header {
+  align-items: center;
+  display: grid;
+  background: var(--belki-bg);
+  border-bottom: 1px solid var(--belki-border-soft);
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  min-height: calc(56px + var(--belki-mobile-safe-top));
+  padding: calc(8px + var(--belki-mobile-safe-top)) 10px 8px;
+}
+
+.belki-mobile-quick-add-back,
+.belki-mobile-quick-add-close {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+  color: var(--belki-muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: 40px;
+  justify-content: center;
+  padding: 0;
+  width: 40px;
+}
+
+.belki-mobile-quick-add-back:hover,
+.belki-mobile-quick-add-back:focus-visible,
+.belki-mobile-quick-add-close:hover,
+.belki-mobile-quick-add-close:focus-visible {
+  background: var(--belki-hover);
+  color: var(--belki-text);
+  outline: none;
+}
+
+.belki-mobile-quick-add-title {
+  color: var(--belki-text);
+  font-size: 16px;
+  font-weight: 650;
+  min-width: 0;
+  text-align: center;
+}
+
+.belki-mobile-quick-add-close {
+  justify-self: end;
+}
+
+.belki-mobile-quick-add-body {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 16px 16px 0;
+  scroll-padding-bottom: calc(160px + var(--belki-mobile-bottom-toolbar) + env(safe-area-inset-bottom, 0px));
+  -webkit-overflow-scrolling: touch;
+}
+
+.belki-root.is-mobile .belki-add-area {
+  display: none;
+}
+
+.belki-root.is-mobile .belki-mobile-quick-add-button {
+  bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  display: inline-flex;
+}
+
+.belki-root.is-mobile .belki-mobile-quick-add-screen {
+  display: grid;
+}
+
+.belki-root.is-mobile .belki-mobile-quick-add-screen .belki-composer {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  gap: 12px;
+  min-height: 100%;
+  padding: 0;
+}
+
+.belki-root.is-mobile .belki-mobile-quick-add-screen .belki-composer-title {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  font-size: 16px;
+  line-height: 1.35;
+  min-height: 34px;
+  outline: none;
+  padding: 4px 2px;
+  resize: none;
+  width: 100%;
+}
+
+.belki-root.is-mobile .belki-mobile-quick-add-screen .belki-composer-title:focus {
+  border: 0;
+  box-shadow: none;
+  outline: none;
+}
+
+.belki-root.is-mobile .belki-mobile-quick-add-screen .belki-composer-description {
+  background: var(--belki-hover);
+  border-color: transparent;
+  border-radius: 10px;
+  min-height: clamp(168px, 32dvh, 300px);
+  padding: 10px 12px;
+}
+
+.belki-root.is-mobile .belki-mobile-quick-add-screen .belki-composer-chip-row {
+  gap: 7px;
+  max-height: none;
+  overflow: visible;
+  padding: 2px 0;
+}
+
+.belki-root.is-mobile .belki-mobile-quick-add-screen .belki-composer-labels-wrap,
+.belki-root.is-mobile .belki-mobile-quick-add-screen .belki-composer-deadline-wrap {
+  display: inline-flex;
+}
+
+.belki-root.is-mobile .belki-mobile-quick-add-screen .belki-chip-button,
+.belki-root.is-mobile .belki-mobile-quick-add-screen .belki-chip-select-wrap,
+.belki-root.is-mobile .belki-mobile-quick-add-screen .belki-project-picker,
+.belki-root.is-mobile .belki-mobile-quick-add-screen .belki-button {
+  min-height: 42px;
+}
+
+.belki-root.is-mobile .belki-mobile-quick-add-screen .belki-composer-footer {
+  background: var(--belki-bg);
+  border-top: 1px solid var(--belki-border-soft);
+  bottom: 0;
+  margin: auto -16px 0;
+  padding: 10px 16px calc(12px + var(--belki-mobile-bottom-toolbar) + env(safe-area-inset-bottom, 0px));
+  position: sticky;
+  z-index: 1;
+}
+
+.belki-root.is-mobile .belki-mobile-quick-add-screen .belki-date-popover.is-calendar-open {
+  bottom: auto;
+  left: 12px;
+  max-height: calc(100dvh - var(--belki-mobile-safe-top) - var(--belki-mobile-bottom-toolbar) - 108px);
+  max-width: none;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  position: fixed;
+  right: 12px;
+  top: calc(var(--belki-mobile-safe-top) + 72px);
+  transform: none;
+  width: auto;
+  z-index: 1200;
+}
+
+.belki-root.is-mobile .belki-mobile-quick-add-screen .belki-date-popover.is-calendar-open .belki-cal-wrap {
+  max-width: 100%;
 }
 
 @media (max-width: 700px) {

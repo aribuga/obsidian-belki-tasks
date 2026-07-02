@@ -2497,18 +2497,38 @@ var AddTaskComposer = class {
   }
   render(parent, options) {
     const form = parent.createEl("form", { cls: "belki-composer" });
+    const isMobileScreen = options.presentation === "mobile-screen";
+    form.toggleClass("is-mobile-screen", isMobileScreen);
     let selectedDue = options.defaultDue || "";
     let selectedRepeat;
     let selectedDeadline = "";
     let selectedLabels = [];
     let pendingAttachments = [];
-    this.titleInput = form.createEl("input", {
+    this.titleInput = form.createEl("textarea", {
       cls: "belki-composer-title",
       attr: {
-        type: "text",
-        placeholder: "Task title"
+        placeholder: "Task title",
+        rows: "1"
       }
     });
+    const resizeTitleInput = () => {
+      if (!this.titleInput) return;
+      const ownerWindow = this.titleInput.ownerDocument.defaultView || window;
+      const styles = ownerWindow.getComputedStyle(this.titleInput);
+      const lineHeight = Number.parseFloat(styles.lineHeight) || 22;
+      const paddingY = (Number.parseFloat(styles.paddingTop) || 0) + (Number.parseFloat(styles.paddingBottom) || 0);
+      const maxHeight = Math.ceil(lineHeight * 2 + paddingY);
+      this.titleInput.setCssStyles({
+        height: "auto",
+        overflowY: "hidden"
+      });
+      this.titleInput.setCssStyles({
+        height: `${Math.min(this.titleInput.scrollHeight, maxHeight)}px`,
+        overflowY: this.titleInput.scrollHeight > maxHeight ? "auto" : "hidden"
+      });
+    };
+    this.titleInput.addEventListener("input", resizeTitleInput);
+    resizeTitleInput();
     const descriptionInput = form.createEl("textarea", {
       cls: "belki-composer-description",
       attr: {
@@ -2521,6 +2541,13 @@ var AddTaskComposer = class {
       () => options.labels,
       () => options.projects
     );
+    this.titleInput.addEventListener("keydown", (event) => {
+      if (event.defaultPrevented || event.key !== "Enter" || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+      event.preventDefault();
+      form.requestSubmit();
+    });
     const chipRow = form.createDiv({ cls: "belki-composer-chip-row" });
     const dueDateWrap = chipRow.createDiv({ cls: "belki-date-picker-wrap" });
     const repeatChipWrap = chipRow.createDiv({ cls: "belki-repeat-chip-wrap" });
@@ -3190,8 +3217,10 @@ var AddTaskComposer = class {
         closeComposerPopovers();
         if (shouldOpen) {
           const popover = dueDateWrap.querySelector(".belki-date-popover");
-          popover == null ? void 0 : popover.removeClass("is-hidden");
-          if (popover) watchLocalPopover(dueDateWrap, popover, { preferredSide: mobilePanelSide });
+          if (popover) {
+            popover.removeClass("is-hidden");
+            watchLocalPopover(dueDateWrap, popover, { preferredSide: mobilePanelSide });
+          }
         }
       });
       const clearRepeat = repeatChipWrap.createEl("button", {
@@ -3210,9 +3239,9 @@ var AddTaskComposer = class {
     renderRepeatChip();
     return cleanup;
   }
-  focus() {
+  focus(options) {
     var _a;
-    (_a = this.titleInput) == null ? void 0 : _a.focus();
+    (_a = this.titleInput) == null ? void 0 : _a.focus(options);
   }
   readProject() {
     return normalizeTaskProject(this.selectedProjectValue);
@@ -3248,6 +3277,7 @@ function alignLocalPopover(wrapper, popover, options = {}) {
   popover.removeClass("is-align-right");
   popover.removeClass("is-open-up");
   popover.removeClass("is-open-down");
+  popover.style.removeProperty("--belki-popover-shift-x");
   const wrapperRect = wrapper.getBoundingClientRect();
   if (options.useFixed) {
     popover.style.removeProperty("top");
@@ -3276,8 +3306,17 @@ function alignLocalPopover(wrapper, popover, options = {}) {
   const popoverWidth = popoverRect.width || 240;
   const popoverHeight = popoverRect.height || 220;
   const ownerWindow = wrapper.ownerDocument.defaultView || window;
-  if (wrapperRect.left + popoverWidth > ownerWindow.innerWidth - margin && wrapperRect.right - popoverWidth >= margin) {
-    popover.addClass("is-align-right");
+  let shiftX = 0;
+  const rightOverflow = wrapperRect.left + popoverWidth - (ownerWindow.innerWidth - margin);
+  if (rightOverflow > 0) {
+    shiftX -= rightOverflow;
+  }
+  const shiftedLeft = wrapperRect.left + shiftX;
+  if (shiftedLeft < margin) {
+    shiftX += margin - shiftedLeft;
+  }
+  if (shiftX !== 0) {
+    popover.style.setProperty("--belki-popover-shift-x", `${Math.round(shiftX)}px`);
   }
   const fitsBelow = wrapperRect.bottom + popoverHeight + margin <= ownerWindow.innerHeight;
   const fitsAbove = wrapperRect.top - popoverHeight - margin >= 0;
@@ -3388,8 +3427,29 @@ function renderComposerCustomDatePicker(parent, currentValue, onSelect) {
     calendarWrap.toggleClass("is-hidden", !opening);
     if (opening) {
       renderCalendar();
+      const ownerWindow = parent.ownerDocument.defaultView || window;
+      ownerWindow.requestAnimationFrame(() => clampPopoverToViewport(parent));
     }
   });
+}
+function clampPopoverToViewport(popover) {
+  const ownerWindow = popover.ownerDocument.defaultView || window;
+  const margin = 12;
+  const currentShift = Number.parseFloat(
+    popover.style.getPropertyValue("--belki-popover-shift-x") || "0"
+  ) || 0;
+  const rect = popover.getBoundingClientRect();
+  let nextShift = currentShift;
+  if (rect.right > ownerWindow.innerWidth - margin) {
+    nextShift -= rect.right - (ownerWindow.innerWidth - margin);
+  }
+  const adjustedLeft = rect.left + (nextShift - currentShift);
+  if (adjustedLeft < margin) {
+    nextShift += margin - adjustedLeft;
+  }
+  if (nextShift !== currentShift) {
+    popover.style.setProperty("--belki-popover-shift-x", `${Math.round(nextShift)}px`);
+  }
 }
 function isImageFile(file) {
   return file.type.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
@@ -5110,6 +5170,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     this.searchQuery = "";
     this.searchOpen = false;
     this.composerOpen = false;
+    this.mobileComposerOpen = false;
     this.highlightedTaskId = null;
     this.activeFilter = null;
     this.activeLabel = null;
@@ -5119,6 +5180,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     this.projectMenuEl = null;
     this.sidebarScrollLeft = 0;
     this.pendingScrollSnapshot = null;
+    this.mobileComposerReturnScroll = null;
     this.composerCleanup = null;
     this.renderScheduled = false;
     this.handleRootKeyDown = (event) => {
@@ -5159,6 +5221,11 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
         this.stopEscape(event);
         this.composerOpen = false;
         this.render();
+        return;
+      }
+      if (this.mobileComposerOpen) {
+        this.stopEscape(event);
+        this.closeMobileComposer();
         return;
       }
       if (this.sortPopoverOpen) {
@@ -5214,6 +5281,8 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     this.searchOpen = false;
     this.searchQuery = "";
     this.composerOpen = false;
+    this.mobileComposerOpen = false;
+    this.mobileComposerReturnScroll = null;
     this.sortPopoverOpen = false;
     this.projectActionsOpen = null;
     this.render();
@@ -5228,6 +5297,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     containerEl.empty();
     containerEl.addClass("belki-root");
     containerEl.addClass("belki-view");
+    containerEl.toggleClass("is-mobile", import_obsidian8.Platform.isMobile);
     applyBelkiFontSettings(containerEl, this.settings);
     containerEl.addEventListener("keydown", this.handleRootKeyDown, true);
     const shell = containerEl.createDiv({ cls: "belki-shell" });
@@ -5236,6 +5306,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     if (this.searchOpen) {
       this.renderSearchOverlay(containerEl);
     }
+    this.renderMobileQuickAdd(containerEl);
     this.restoreSidebarScroll(sidebarScrollLeft);
   }
   getMainScrollSnapshot() {
@@ -5260,13 +5331,21 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
       this.pendingScrollSnapshot = null;
       this.render();
       if (!snapshot) return;
-      window.requestAnimationFrame(() => {
-        const main = this.containerEl.querySelector(".belki-main");
-        if (main) {
-          main.scrollTop = snapshot.top;
-          main.scrollLeft = snapshot.left;
-        }
-      });
+      this.restoreMainScrollSnapshot(snapshot);
+    });
+  }
+  restoreMainScrollSnapshot(snapshot) {
+    const ownerWindow = this.containerEl.ownerDocument.defaultView || window;
+    const restore = () => {
+      const main = this.containerEl.querySelector(".belki-main");
+      if (main) {
+        main.scrollTop = snapshot.top;
+        main.scrollLeft = snapshot.left;
+      }
+    };
+    ownerWindow.requestAnimationFrame(() => {
+      restore();
+      ownerWindow.requestAnimationFrame(restore);
     });
   }
   restoreSidebarScroll(scrollLeft) {
@@ -5289,9 +5368,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     sidebarAdd.createSpan({ cls: "belki-add-plus", text: "+" });
     sidebarAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
     sidebarAdd.addEventListener("click", () => {
-      this.composerOpen = true;
-      this.sortPopoverOpen = false;
-      this.render();
+      this.openAddComposer();
     });
     const tasks = this.store.getTasks();
     const active = tasks.filter((task) => !task.completed);
@@ -5343,6 +5420,8 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
         this.mode = "projects";
         this.selectedProject = cleanProject;
         this.composerOpen = false;
+        this.mobileComposerOpen = false;
+        this.mobileComposerReturnScroll = null;
         this.render();
       });
     }
@@ -5358,6 +5437,8 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
         this.mode = "archived";
         this.selectedProject = null;
         this.composerOpen = false;
+        this.mobileComposerOpen = false;
+        this.mobileComposerReturnScroll = null;
         this.render();
       });
     }
@@ -5394,6 +5475,8 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
       this.activeFilter = null;
       this.activeLabel = null;
       this.composerOpen = false;
+      this.mobileComposerOpen = false;
+      this.mobileComposerReturnScroll = null;
       this.searchOpen = false;
       this.sortPopoverOpen = false;
       this.render();
@@ -5413,41 +5496,16 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     this.renderTaskSections(sections, tasks);
     const addArea = main.createDiv({ cls: "belki-add-area" });
     if (this.composerOpen) {
-      const composer = new AddTaskComposer();
-      this.composerCleanup = composer.render(addArea, {
-        app: this.app,
-        projects: this.getActiveProjects(),
-        labels: this.getAllLabels(),
-        labelColors: this.settings.labelColors,
-        projectColors: this.settings.projectColors,
-        defaultProject: this.selectedProject || "",
-        defaultDue: this.mode === "today" ? todayIso() : void 0,
-        onCancel: () => {
-          this.composerOpen = false;
-          this.render();
-        },
-        onEnsureLabel: (label) => {
-          this.ensureLabelColor(label);
-        },
-        onSubmit: async (input) => {
-          await this.store.createTask(input);
-          if (input.project) {
-            this.ensureProjectInRegistry(input.project);
-            await this.saveSettings();
-          }
-          this.composerOpen = false;
-          this.render();
-        }
+      this.renderAddTaskComposer(addArea, () => {
+        this.composerOpen = false;
+        this.render();
       });
-      composer.focus();
     } else {
       const inlineAdd = addArea.createEl("button", { cls: "belki-add-inline" });
       inlineAdd.createSpan({ cls: "belki-add-plus", text: "+" });
       inlineAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
       inlineAdd.addEventListener("click", () => {
-        this.composerOpen = true;
-        this.sortPopoverOpen = false;
-        this.render();
+        this.openAddComposer();
       });
     }
     if (active.length === 0 && tasks.length === 0) {
@@ -5456,6 +5514,96 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
         text: `No tasks yet. Add one and belki will write it to ${this.store.dataDir}/YYYY-MM.md.`
       });
     }
+  }
+  openAddComposer() {
+    this.sortPopoverOpen = false;
+    this.projectActionsOpen = null;
+    this.searchOpen = false;
+    this.searchQuery = "";
+    if (import_obsidian8.Platform.isMobile) {
+      this.mobileComposerReturnScroll = this.getMainScrollSnapshot();
+      this.mobileComposerOpen = true;
+      this.composerOpen = false;
+    } else {
+      this.composerOpen = true;
+      this.mobileComposerOpen = false;
+      this.mobileComposerReturnScroll = null;
+    }
+    this.render();
+  }
+  closeMobileComposer() {
+    const snapshot = this.mobileComposerReturnScroll;
+    this.mobileComposerReturnScroll = null;
+    this.mobileComposerOpen = false;
+    this.render();
+    if (snapshot) {
+      this.restoreMainScrollSnapshot(snapshot);
+    }
+  }
+  renderAddTaskComposer(parent, onClose) {
+    const composer = new AddTaskComposer();
+    this.composerCleanup = composer.render(parent, {
+      app: this.app,
+      projects: this.getActiveProjects(),
+      labels: this.getAllLabels(),
+      labelColors: this.settings.labelColors,
+      projectColors: this.settings.projectColors,
+      defaultProject: this.selectedProject || "",
+      defaultDue: this.mode === "today" ? todayIso() : void 0,
+      onCancel: onClose,
+      onEnsureLabel: (label) => {
+        this.ensureLabelColor(label);
+      },
+      onSubmit: async (input) => {
+        await this.createTaskFromComposer(input);
+        onClose();
+      },
+      presentation: import_obsidian8.Platform.isMobile ? "mobile-screen" : "default"
+    });
+    const ownerWindow = parent.ownerDocument.defaultView || window;
+    ownerWindow.requestAnimationFrame(() => {
+      composer.focus({ preventScroll: import_obsidian8.Platform.isMobile });
+    });
+  }
+  async createTaskFromComposer(input) {
+    await this.store.createTask(input);
+    if (input.project) {
+      this.ensureProjectInRegistry(input.project);
+      await this.saveSettings();
+    }
+  }
+  renderMobileQuickAdd(parent) {
+    if (this.searchOpen) {
+      return;
+    }
+    if (this.mobileComposerOpen) {
+      const screen = parent.createDiv({ cls: "belki-mobile-quick-add-screen" });
+      const header = screen.createDiv({ cls: "belki-mobile-quick-add-screen-header" });
+      const backButton = header.createEl("button", {
+        cls: "belki-mobile-quick-add-back",
+        attr: { type: "button", "aria-label": "Back to tasks" }
+      });
+      (0, import_obsidian8.setIcon)(backButton, "arrow-left");
+      backButton.addEventListener("click", () => this.closeMobileComposer());
+      header.createDiv({ cls: "belki-mobile-quick-add-title", text: "Add task" });
+      const closeButton = header.createEl("button", {
+        cls: "belki-mobile-quick-add-close",
+        attr: { type: "button", "aria-label": "Close add task" }
+      });
+      (0, import_obsidian8.setIcon)(closeButton, "x");
+      closeButton.addEventListener("click", () => this.closeMobileComposer());
+      const body = screen.createDiv({ cls: "belki-mobile-quick-add-body" });
+      this.renderAddTaskComposer(body, () => {
+        this.closeMobileComposer();
+      });
+      return;
+    }
+    const button = parent.createEl("button", {
+      cls: "belki-mobile-quick-add-button",
+      attr: { type: "button", "aria-label": "Add task" }
+    });
+    (0, import_obsidian8.setIcon)(button, "plus");
+    button.addEventListener("click", () => this.openAddComposer());
   }
   groupTasks(tasks) {
     const result = /* @__PURE__ */ new Map();
@@ -6552,6 +6700,8 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     this.searchOpen = false;
     this.searchQuery = "";
     this.composerOpen = false;
+    this.mobileComposerOpen = false;
+    this.mobileComposerReturnScroll = null;
     this.highlightedTaskId = task.id;
     if (task.completed) {
       this.mode = "completed";
