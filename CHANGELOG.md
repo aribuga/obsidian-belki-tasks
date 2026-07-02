@@ -4,6 +4,41 @@ All notable changes to belki are documented here.
 
 ---
 
+## 0.3.0 — 2026-07-02
+
+This release focuses on mobile capture, richer task descriptions, more flexible recurring tasks, and better sub-task control.
+
+### Added
+
+- **Full-screen mobile task composer** — On mobile, the quick add flow now opens as a dedicated full-screen composer instead of a cramped bottom sheet. It keeps the title compact, gives more room to the description, respects safe areas, and returns to the previous view after creating a task.
+- **Markdown formatting toolbar for descriptions** — Selecting text in a task description now shows a small Belki-owned formatting toolbar for Markdown actions such as bold, italic, strikethrough, quote, inline code, code block, bullet list, numbered list, and link.
+- **Multi-day weekly repeats** — Weekly scheduled-date repeats can now target more than one weekday, such as Tuesday and Thursday. The selection is saved, restored after reload, and used when calculating the next occurrence.
+- **Manual sub-task ordering** — Sub-tasks can now be reordered inside the task detail view using a drag handle. The custom order is persisted by updating the underlying Markdown task block order.
+
+### Improved
+
+- Task list descriptions now show cleaner preview text for Markdown-formatted descriptions.
+- The mobile composer exposes Labels and Deadline as direct chips instead of hiding them behind the overflow menu.
+- Date, deadline, repeat, project, and overflow popovers in the mobile composer now stay better anchored and avoid being covered by the keyboard or Obsidian mobile toolbar.
+- The Custom Repeat modal now keeps the weekly weekday selector visible on mobile when it is relevant.
+- The Custom Repeat `Every` row now aligns the number input and unit selector as one control group.
+- Long repeat labels now truncate instead of overflowing task detail or mobile composer layouts.
+- Repeat chips in task detail now reopen the repeat editor directly.
+- Completed sub-tasks now stay in the user-defined order instead of being forced to the bottom.
+
+### Fixed
+
+- Fixed mobile quick add layout instability caused by the bottom-sheet composer interacting poorly with the keyboard.
+- Fixed Custom Repeat calendar and repeat popovers drifting outside the mobile viewport.
+- Fixed long multi-day repeat labels overflowing task detail controls.
+- Fixed sub-task reordering appearing to drag but snapping back after drop because the Markdown block order was still being serialized in the old order.
+
+### Notes
+
+- Sub-task drag-and-drop is currently optimized for desktop. Mobile/tablet behavior may need a future touch-specific fallback if native drag-and-drop is inconsistent in Obsidian mobile.
+
+---
+
 ## 0.2.3 — 2026-06-30
 
 ### Fixed
