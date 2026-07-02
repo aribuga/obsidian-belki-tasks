@@ -20,7 +20,12 @@ import { BelkiSortMode, BelkiTask, BoardViewMode, CreateTaskInput, OVERDUE_RANGE
 import { AddTaskComposer } from "./AddTaskComposer";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
 import { TaskDetailModal } from "./TaskDetailModal";
-import { getPriorityClass, getPriorityColor, getPriorityLabel } from "../priority";
+import {
+  getPriorityClass,
+  getPriorityColor,
+  getPriorityLabel,
+  isDefaultPriority
+} from "../priority";
 import {
   isReservedInboxProject,
   normalizeTaskProject,
@@ -659,16 +664,16 @@ export class TaskBoardView extends ItemView {
       }
       if (noLabel.length > 0) result.set("No label", noLabel);
     } else if (this.settings.groupBy === "priority") {
-      const order: Priority[] = ["P1", "P2", "P3", "P4", "none"];
+      const order: Priority[] = ["P1", "P2", "P3", "P4"];
       const buckets = new Map<Priority, BelkiTask[]>();
       for (const task of tasks) {
-        const p = task.priority || "none";
+        const p = isDefaultPriority(task.priority) ? "P4" : task.priority;
         if (!buckets.has(p)) buckets.set(p, []);
         buckets.get(p)!.push(task);
       }
       for (const p of order) {
         if (buckets.has(p) && buckets.get(p)!.length > 0) {
-          const label = p === "none" ? "No priority" : getPriorityLabel(p);
+          const label = p === "P4" ? "Priority" : getPriorityLabel(p);
           result.set(label, buckets.get(p)!);
         }
       }
@@ -1771,9 +1776,9 @@ export class TaskBoardView extends ItemView {
       },
       {
         id: "p4",
-        name: "Priority 4",
+        name: "Priority",
         icon: "4",
-        tasks: active.filter((task) => task.priority === "P4")
+        tasks: active.filter((task) => isDefaultPriority(task.priority))
       },
       {
         id: "all",
@@ -2238,10 +2243,7 @@ function priorityRank(priority: BelkiTask["priority"]): number {
   if (priority === "P3") {
     return 2;
   }
-  if (priority === "P4") {
-    return 3;
-  }
-  return 4;
+  return 3;
 }
 
 function compareOptionalDateAsc(

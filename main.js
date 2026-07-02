@@ -1602,7 +1602,7 @@ var TaskStore = class {
       due: normalizeOptional(input.due),
       deadline: normalizeOptional(input.deadline),
       project: normalizeTaskProject(input.project),
-      priority: input.priority || "none",
+      priority: input.priority || "P4",
       description: normalizeOptional(input.description),
       labels: normalizeLabels(input.labels || []),
       attachments: normalizeAttachments(attachments),
@@ -2156,7 +2156,11 @@ var PRIORITY_COLORS = {
   P1: { name: "Priority 1", color: "#E03E3E", light: "#FBE4E3" },
   P2: { name: "Priority 2", color: "#D9730D", light: "#FAEBDD" },
   P3: { name: "Priority 3", color: "#0C6E99", light: "#DDEBF1" },
-  P4: { name: "Priority 4", color: "#878B82", light: "#EBECED" },
+  P4: {
+    name: "Priority 4",
+    color: "var(--belki-muted)",
+    light: "transparent"
+  },
   none: {
     name: "Priority",
     color: "var(--belki-muted)",
@@ -2169,7 +2173,22 @@ function getPriorityColor(priority) {
 function getPriorityLabel(priority) {
   return getPriorityColor(priority).name;
 }
+function isDefaultPriority(priority) {
+  return !priority || priority === "P4" || priority === "none";
+}
+function hasVisiblePriority(priority) {
+  return !isDefaultPriority(priority);
+}
+function getPriorityDropdownLabel(priority) {
+  if (priority === "none") return "Priority 4";
+  return getPriorityColor(priority).name;
+}
+function getPriorityDisplayLabel(priority) {
+  if (isDefaultPriority(priority)) return "Priority";
+  return priority || "Priority";
+}
 function getPriorityClass(priority) {
+  if (isDefaultPriority(priority)) return "";
   return `priority-${priority.toLowerCase()}`;
 }
 
@@ -2777,18 +2796,20 @@ var AddTaskComposer = class {
     const priorityWrap = chipRow.createDiv({ cls: "belki-chip-select-wrap" });
     createIcon(priorityWrap, "flag");
     const priorityIndicator = priorityWrap.createSpan({ cls: "belki-priority-indicator" });
+    const priorityDisplay = priorityWrap.createSpan({ cls: "belki-priority-display" });
     const prioritySelect = priorityWrap.createEl("select", {
       cls: "belki-chip-select",
       attr: {
         "aria-label": "Priority"
       }
     });
-    for (const priority of PRIORITIES) {
+    for (const priority of PRIORITIES.filter((priority2) => priority2 !== "none")) {
       prioritySelect.createEl("option", {
-        text: getPriorityLabel(priority),
+        text: getPriorityDropdownLabel(priority),
         value: priority
       });
     }
+    prioritySelect.value = "P4";
     const updatePriorityStyle = () => {
       const priority = prioritySelect.value;
       const color = getPriorityColor(priority);
@@ -2797,8 +2818,9 @@ var AddTaskComposer = class {
         "--belki-priority-bg": color.light,
         "--belki-priority-border": color.color
       });
-      priorityWrap.toggleClass("has-priority", priority !== "none");
+      priorityWrap.toggleClass("has-priority", hasVisiblePriority(priority));
       priorityIndicator.setCssStyles({ backgroundColor: color.color });
+      priorityDisplay.setText(getPriorityDisplayLabel(priority));
     };
     prioritySelect.addEventListener("change", updatePriorityStyle);
     updatePriorityStyle();
@@ -4513,9 +4535,9 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
         if (sub.due) {
           meta.createSpan({ cls: "belki-subtask-due", text: formatDueDateChip(sub.due) });
         }
-        if (sub.priority && sub.priority !== "none") {
+        if (hasVisiblePriority(sub.priority)) {
           const pc = getPriorityColor(sub.priority);
-          const badge = meta.createSpan({ cls: "belki-subtask-priority", text: getPriorityLabel(sub.priority) });
+          const badge = meta.createSpan({ cls: "belki-subtask-priority", text: getPriorityDisplayLabel(sub.priority) });
           badge.setCssStyles({ color: pc.color });
         }
       });
@@ -4530,7 +4552,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
     const showComposer = () => {
       addRow.empty();
       let composerDue = "";
-      let composerPriority = "none";
+      let composerPriority = "P4";
       let expandedPanel = null;
       const input = addRow.createEl("input", {
         cls: "belki-subtask-input",
@@ -4581,13 +4603,13 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
         expandedPanel = "priority";
         expandPanel.empty();
         expandPanel.removeClass("is-hidden");
-        for (const p of PRIORITIES) {
+        for (const p of PRIORITIES.filter((priority) => priority !== "none")) {
           const btn = expandPanel.createEl("button", {
             cls: "belki-subtask-preset" + (p === composerPriority ? " is-active" : ""),
-            text: getPriorityLabel(p),
+            text: getPriorityDropdownLabel(p),
             attr: { type: "button" }
           });
-          if (p !== "none") btn.setCssStyles({ color: getPriorityColor(p).color });
+          if (hasVisiblePriority(p)) btn.setCssStyles({ color: getPriorityColor(p).color });
           btn.addEventListener("click", () => {
             composerPriority = p;
             closePanel();
@@ -4621,15 +4643,15 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
           }
         });
         const priChip = chipsRow.createEl("button", {
-          cls: "belki-subtask-chip" + (composerPriority !== "none" ? " is-active" : "") + (expandedPanel === "priority" ? " is-open" : ""),
+          cls: "belki-subtask-chip" + (hasVisiblePriority(composerPriority) ? " is-active" : "") + (expandedPanel === "priority" ? " is-open" : ""),
           attr: { type: "button" }
         });
-        if (composerPriority !== "none") {
+        if (hasVisiblePriority(composerPriority)) {
           priChip.setCssStyles({ color: getPriorityColor(composerPriority).color });
         }
         const flagIcon = priChip.createSpan({ cls: "belki-chip-icon" });
         (0, import_obsidian8.setIcon)(flagIcon, "flag");
-        priChip.createSpan({ text: composerPriority !== "none" ? getPriorityLabel(composerPriority) : "Priority" });
+        priChip.createSpan({ text: getPriorityDisplayLabel(composerPriority) });
         priChip.addEventListener("click", () => {
           if (expandedPanel === "priority") {
             closePanel();
@@ -4665,7 +4687,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
           updateHeader();
           input.value = "";
           composerDue = "";
-          composerPriority = "none";
+          composerPriority = "P4";
           expandedPanel = null;
           expandPanel.addClass("is-hidden");
           expandPanel.empty();
@@ -5035,11 +5057,15 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
     const field = this.createField(parent, "Priority");
     const priorityWrap = field.createDiv({ cls: "belki-priority-select-wrap belki-detail-priority-wrap" });
     const indicator = priorityWrap.createSpan({ cls: "belki-priority-indicator" });
-    const select = priorityWrap.createEl("select", { cls: "belki-detail-input belki-priority-select" });
-    for (const priority of PRIORITIES) {
-      select.createEl("option", { text: getPriorityLabel(priority), value: priority });
+    const display = priorityWrap.createSpan({ cls: "belki-priority-display" });
+    const select = priorityWrap.createEl("select", {
+      cls: "belki-detail-input belki-priority-select",
+      attr: { "aria-label": "Priority" }
+    });
+    for (const priority of PRIORITIES.filter((priority2) => priority2 !== "none")) {
+      select.createEl("option", { text: getPriorityDropdownLabel(priority), value: priority });
     }
-    select.value = this.draft.priority;
+    select.value = isDefaultPriority(this.draft.priority) ? "P4" : this.draft.priority;
     const updatePriorityStyle = () => {
       const color = getPriorityColor(this.draft.priority);
       priorityWrap.setCssProps({
@@ -5047,7 +5073,9 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
         "--belki-priority-bg": color.light,
         "--belki-priority-border": color.color
       });
+      priorityWrap.toggleClass("has-priority", hasVisiblePriority(this.draft.priority));
       indicator.setCssStyles({ backgroundColor: color.color });
+      display.setText(getPriorityDisplayLabel(this.draft.priority));
     };
     select.addEventListener("change", () => {
       this.draft.priority = select.value;
@@ -5954,16 +5982,16 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
       }
       if (noLabel.length > 0) result.set("No label", noLabel);
     } else if (this.settings.groupBy === "priority") {
-      const order = ["P1", "P2", "P3", "P4", "none"];
+      const order = ["P1", "P2", "P3", "P4"];
       const buckets = /* @__PURE__ */ new Map();
       for (const task of tasks) {
-        const p = task.priority || "none";
+        const p = isDefaultPriority(task.priority) ? "P4" : task.priority;
         if (!buckets.has(p)) buckets.set(p, []);
         buckets.get(p).push(task);
       }
       for (const p of order) {
         if (buckets.has(p) && buckets.get(p).length > 0) {
-          const label = p === "none" ? "No priority" : getPriorityLabel(p);
+          const label = p === "P4" ? "Priority" : getPriorityLabel(p);
           result.set(label, buckets.get(p));
         }
       }
@@ -6882,9 +6910,9 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
       },
       {
         id: "p4",
-        name: "Priority 4",
+        name: "Priority",
         icon: "4",
-        tasks: active.filter((task) => task.priority === "P4")
+        tasks: active.filter((task) => isDefaultPriority(task.priority))
       },
       {
         id: "all",
@@ -7266,10 +7294,7 @@ function priorityRank(priority) {
   if (priority === "P3") {
     return 2;
   }
-  if (priority === "P4") {
-    return 3;
-  }
-  return 4;
+  return 3;
 }
 function compareOptionalDateAsc(a, b) {
   if (a && b) {

@@ -153,7 +153,7 @@ export class TaskStore {
       due: normalizeOptional(input.due),
       deadline: normalizeOptional(input.deadline),
       project: normalizeTaskProject(input.project),
-      priority: input.priority || "none",
+      priority: input.priority || "P4",
       description: normalizeOptional(input.description),
       labels: normalizeLabels(input.labels || []),
       attachments: normalizeAttachments(attachments),

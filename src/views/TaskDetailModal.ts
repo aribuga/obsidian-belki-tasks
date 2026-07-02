@@ -8,7 +8,13 @@ import { applyBelkiFontSettings, BelkiSettings } from "../settings";
 import { TaskStore } from "../taskStore";
 import { BelkiTask, PRIORITIES, Priority } from "../types";
 import { ImagePreviewModal } from "./ImagePreviewModal";
-import { getPriorityColor, getPriorityLabel } from "../priority";
+import {
+  getPriorityColor,
+  getPriorityDisplayLabel,
+  getPriorityDropdownLabel,
+  hasVisiblePriority,
+  isDefaultPriority
+} from "../priority";
 import { normalizeTaskProject, uniqueRealProjects } from "../projects";
 import { attachWikilinkAutocomplete } from "./wikilinkAutocomplete";
 import { attachQuickAddAutocomplete, parseQuickAddTokens } from "./quickAddAutocomplete";
@@ -921,9 +927,9 @@ export class TaskDetailModal extends Modal {
         if (sub.due) {
           meta.createSpan({ cls: "belki-subtask-due", text: formatDueDateChip(sub.due) });
         }
-        if (sub.priority && sub.priority !== "none") {
+        if (hasVisiblePriority(sub.priority)) {
           const pc = getPriorityColor(sub.priority);
-          const badge = meta.createSpan({ cls: "belki-subtask-priority", text: getPriorityLabel(sub.priority) });
+          const badge = meta.createSpan({ cls: "belki-subtask-priority", text: getPriorityDisplayLabel(sub.priority) });
           badge.setCssStyles({ color: pc.color });
         }
       });
@@ -943,7 +949,7 @@ export class TaskDetailModal extends Modal {
       addRow.empty();
 
       let composerDue = "";
-      let composerPriority: Priority = "none";
+      let composerPriority: Priority = "P4";
       type ExpandedPanel = "date" | "priority" | null;
       let expandedPanel: ExpandedPanel = null;
 
@@ -999,13 +1005,13 @@ export class TaskDetailModal extends Modal {
         expandPanel.empty();
         expandPanel.removeClass("is-hidden");
 
-        for (const p of PRIORITIES) {
+        for (const p of PRIORITIES.filter((priority) => priority !== "none")) {
           const btn = expandPanel.createEl("button", {
             cls: "belki-subtask-preset" + (p === composerPriority ? " is-active" : ""),
-            text: getPriorityLabel(p),
+            text: getPriorityDropdownLabel(p),
             attr: { type: "button" }
           });
-          if (p !== "none") btn.setCssStyles({ color: getPriorityColor(p).color });
+          if (hasVisiblePriority(p)) btn.setCssStyles({ color: getPriorityColor(p).color });
           btn.addEventListener("click", () => { composerPriority = p; closePanel(); });
         }
       };
@@ -1032,15 +1038,15 @@ export class TaskDetailModal extends Modal {
 
         // priority chip
         const priChip = chipsRow.createEl("button", {
-          cls: "belki-subtask-chip" + (composerPriority !== "none" ? " is-active" : "") + (expandedPanel === "priority" ? " is-open" : ""),
+          cls: "belki-subtask-chip" + (hasVisiblePriority(composerPriority) ? " is-active" : "") + (expandedPanel === "priority" ? " is-open" : ""),
           attr: { type: "button" }
         });
-        if (composerPriority !== "none") {
+        if (hasVisiblePriority(composerPriority)) {
           priChip.setCssStyles({ color: getPriorityColor(composerPriority).color });
         }
         const flagIcon = priChip.createSpan({ cls: "belki-chip-icon" });
         setIcon(flagIcon, "flag");
-        priChip.createSpan({ text: composerPriority !== "none" ? getPriorityLabel(composerPriority) : "Priority" });
+        priChip.createSpan({ text: getPriorityDisplayLabel(composerPriority) });
         priChip.addEventListener("click", () => {
           if (expandedPanel === "priority") { closePanel(); } else { openPriorityPanel(); renderChips(); }
         });
@@ -1075,7 +1081,7 @@ export class TaskDetailModal extends Modal {
           updateHeader();
           input.value = "";
           composerDue = "";
-          composerPriority = "none";
+          composerPriority = "P4";
           expandedPanel = null;
           expandPanel.addClass("is-hidden");
           expandPanel.empty();
@@ -1485,11 +1491,15 @@ export class TaskDetailModal extends Modal {
     const field = this.createField(parent, "Priority");
     const priorityWrap = field.createDiv({ cls: "belki-priority-select-wrap belki-detail-priority-wrap" });
     const indicator = priorityWrap.createSpan({ cls: "belki-priority-indicator" });
-    const select = priorityWrap.createEl("select", { cls: "belki-detail-input belki-priority-select" });
-    for (const priority of PRIORITIES) {
-      select.createEl("option", { text: getPriorityLabel(priority), value: priority });
+    const display = priorityWrap.createSpan({ cls: "belki-priority-display" });
+    const select = priorityWrap.createEl("select", {
+      cls: "belki-detail-input belki-priority-select",
+      attr: { "aria-label": "Priority" }
+    });
+    for (const priority of PRIORITIES.filter((priority) => priority !== "none")) {
+      select.createEl("option", { text: getPriorityDropdownLabel(priority), value: priority });
     }
-    select.value = this.draft.priority;
+    select.value = isDefaultPriority(this.draft.priority) ? "P4" : this.draft.priority;
     const updatePriorityStyle = () => {
       const color = getPriorityColor(this.draft.priority);
       priorityWrap.setCssProps({
@@ -1497,7 +1507,9 @@ export class TaskDetailModal extends Modal {
         "--belki-priority-bg": color.light,
         "--belki-priority-border": color.color
       });
+      priorityWrap.toggleClass("has-priority", hasVisiblePriority(this.draft.priority));
       indicator.setCssStyles({ backgroundColor: color.color });
+      display.setText(getPriorityDisplayLabel(this.draft.priority));
     };
     select.addEventListener("change", () => {
       this.draft.priority = select.value as Priority;

@@ -2,7 +2,12 @@ import { App, Notice, Platform, setIcon } from "obsidian";
 import { CreateTaskInput, PRIORITIES, Priority, RepeatRule } from "../types";
 import { getLabelColor, getProjectColor } from "../colors";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
-import { getPriorityColor, getPriorityLabel } from "../priority";
+import {
+  getPriorityColor,
+  getPriorityDisplayLabel,
+  getPriorityDropdownLabel,
+  hasVisiblePriority
+} from "../priority";
 import { normalizeTaskProject, uniqueRealProjects } from "../projects";
 import { addDaysIso, formatDueDateChip, nextWeekdayIso, todayIso } from "../dateUtils";
 import { getRepeatLabel, getRepeatPresets, repeatRulesEqual } from "../repeatUtils";
@@ -104,18 +109,20 @@ export class AddTaskComposer {
     const priorityWrap = chipRow.createDiv({ cls: "belki-chip-select-wrap" });
     createIcon(priorityWrap, "flag");
     const priorityIndicator = priorityWrap.createSpan({ cls: "belki-priority-indicator" });
+    const priorityDisplay = priorityWrap.createSpan({ cls: "belki-priority-display" });
     const prioritySelect = priorityWrap.createEl("select", {
       cls: "belki-chip-select",
       attr: {
         "aria-label": "Priority"
       }
     });
-    for (const priority of PRIORITIES) {
+    for (const priority of PRIORITIES.filter((priority) => priority !== "none")) {
       prioritySelect.createEl("option", {
-        text: getPriorityLabel(priority),
+        text: getPriorityDropdownLabel(priority),
         value: priority
       });
     }
+    prioritySelect.value = "P4";
     const updatePriorityStyle = () => {
       const priority = prioritySelect.value as Priority;
       const color = getPriorityColor(priority);
@@ -124,8 +131,9 @@ export class AddTaskComposer {
         "--belki-priority-bg": color.light,
         "--belki-priority-border": color.color
       });
-      priorityWrap.toggleClass("has-priority", priority !== "none");
+      priorityWrap.toggleClass("has-priority", hasVisiblePriority(priority));
       priorityIndicator.setCssStyles({ backgroundColor: color.color });
+      priorityDisplay.setText(getPriorityDisplayLabel(priority));
     };
     prioritySelect.addEventListener("change", updatePriorityStyle);
     updatePriorityStyle();

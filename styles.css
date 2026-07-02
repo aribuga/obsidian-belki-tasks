@@ -1500,6 +1500,10 @@ button.belki-add-inline {
   min-width: 0;
 }
 
+.belki-repeat-chip-wrap:empty {
+  display: none;
+}
+
 .belki-repeat-chip {
   flex: 1 1 auto;
   justify-content: flex-start;
@@ -1620,6 +1624,7 @@ button.belki-add-inline {
   gap: 6px;
   height: 32px;
   padding: 0 10px;
+  position: relative;
 }
 
 .belki-chip-select-wrap:not(.has-priority) {
@@ -1639,17 +1644,35 @@ button.belki-add-inline {
   color: var(--belki-priority-text, var(--belki-accent));
 }
 
-.belki-chip-select-wrap .belki-chip-select {
+.belki-chip-select-wrap > .belki-chip-select {
+  -webkit-appearance: none;
   appearance: none;
   background: transparent;
   border: 0;
+  border-radius: 0;
   box-shadow: none;
   color: inherit;
   cursor: pointer;
   font-size: 13px;
+  height: 100%;
+  inset: 0;
   line-height: 1;
-  min-height: auto;
+  min-height: 0;
+  opacity: 0;
+  outline: none;
   padding: 0;
+  position: absolute;
+  width: 100%;
+}
+
+.belki-chip-select-wrap > .belki-chip-select:hover,
+.belki-chip-select-wrap > .belki-chip-select:focus,
+.belki-chip-select-wrap > .belki-chip-select:focus-visible {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: inherit;
+  outline: none;
 }
 
 .belki-priority-indicator {
@@ -1659,6 +1682,14 @@ button.belki-add-inline {
   flex: 0 0 auto;
   height: 8px;
   width: 8px;
+}
+
+.belki-priority-display {
+  color: inherit;
+  font-size: 13px;
+  line-height: 1;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 .belki-priority-select-wrap {
@@ -1671,20 +1702,45 @@ button.belki-add-inline {
   gap: 8px;
   min-height: 32px;
   padding: 0 8px;
+  position: relative;
+}
+
+.belki-priority-select-wrap:not(.has-priority) {
+  background: var(--belki-surface);
+  border-color: var(--belki-border);
+  color: var(--belki-muted);
 }
 
 .belki-detail-priority-wrap {
   width: 100%;
 }
 
-.belki-priority-select {
+.belki-priority-select-wrap > .belki-priority-select {
+  -webkit-appearance: none;
+  appearance: none;
   background: transparent;
   border: 0;
+  border-radius: 0;
+  box-shadow: none;
   color: inherit;
-  flex: 1 1 auto;
-  min-height: 30px;
+  height: 100%;
+  inset: 0;
+  min-height: 0;
+  opacity: 0;
+  outline: none;
   padding: 0;
-  width: auto;
+  position: absolute;
+  width: 100%;
+}
+
+.belki-priority-select-wrap > .belki-priority-select:hover,
+.belki-priority-select-wrap > .belki-priority-select:focus,
+.belki-priority-select-wrap > .belki-priority-select:focus-visible {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: inherit;
+  outline: none;
 }
 
 .belki-composer-footer {
