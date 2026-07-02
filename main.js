@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => BelkiPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian9 = require("obsidian");
+var import_obsidian10 = require("obsidian");
 
 // src/settings.ts
 var import_obsidian = require("obsidian");
@@ -2146,10 +2146,10 @@ function cloneTask(task) {
 }
 
 // src/views/TaskBoardView.ts
-var import_obsidian8 = require("obsidian");
+var import_obsidian9 = require("obsidian");
 
 // src/views/AddTaskComposer.ts
-var import_obsidian5 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/priority.ts
 var PRIORITY_COLORS = {
@@ -2174,7 +2174,61 @@ function getPriorityClass(priority) {
 }
 
 // src/views/CustomRepeatModal.ts
+var import_obsidian5 = require("obsidian");
+
+// src/ui.ts
 var import_obsidian4 = require("obsidian");
+var BUTTON_VARIANTS = {
+  default: "",
+  primary: "belki-ui-button-primary belki-button-primary",
+  danger: "belki-ui-button-danger belki-button-danger",
+  destructive: "belki-ui-button-destructive belki-button-destructive",
+  ghost: "belki-ui-button-ghost"
+};
+var BUTTON_SIZES = {
+  sm: "belki-ui-button-sm",
+  md: "belki-ui-button-md"
+};
+function createBelkiButton(parent, options = {}) {
+  const button = parent.createEl("button", {
+    cls: classNames(
+      "belki-ui-button",
+      "belki-button",
+      BUTTON_VARIANTS[options.variant || "default"],
+      BUTTON_SIZES[options.size || "md"],
+      options.className
+    ),
+    attr: {
+      type: "button",
+      ...options.attr || {}
+    }
+  });
+  if (options.icon) {
+    createBelkiIcon(button, options.icon);
+  }
+  if (options.text) {
+    button.createSpan({ cls: "belki-ui-button-label", text: options.text });
+  }
+  if (options.disabled) {
+    button.setAttr("disabled", "true");
+  }
+  return button;
+}
+function createBelkiActionRow(parent, options = {}) {
+  return parent.createDiv({
+    cls: classNames("belki-ui-actions", options.className)
+  });
+}
+function createBelkiIcon(parent, iconName) {
+  const icon = parent.createSpan({ cls: "belki-ui-icon" });
+  (0, import_obsidian4.setIcon)(icon, iconName);
+  return icon;
+}
+function classNames(...parts) {
+  return parts.filter(Boolean).join(" ");
+}
+
+// src/views/CustomRepeatModal.ts
 var FREQ_LABELS = {
   daily: "Day",
   weekly: "Week",
@@ -2191,7 +2245,7 @@ var DISPLAY_DAYS = [
   { label: "Sat", value: 6 },
   { label: "Sun", value: 0 }
 ];
-var CustomRepeatModal = class extends import_obsidian4.Modal {
+var CustomRepeatModal = class extends import_obsidian5.Modal {
   constructor(app, current, onSave) {
     super(app);
     this.onSave = onSave;
@@ -2310,17 +2364,17 @@ var CustomRepeatModal = class extends import_obsidian4.Modal {
     }
     const preview = contentEl.createDiv({ cls: "belki-repeat-preview" });
     const previewIcon = preview.createSpan({ cls: "belki-chip-icon" });
-    (0, import_obsidian4.setIcon)(previewIcon, "repeat");
+    (0, import_obsidian5.setIcon)(previewIcon, "repeat");
     preview.createSpan({ text: getRepeatLabel(this.draft) });
-    const actions = contentEl.createDiv({ cls: "belki-repeat-modal-actions" });
-    const cancelBtn = actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } });
-    const saveBtn = actions.createEl("button", { cls: "belki-button belki-button-primary", text: "Save", attr: { type: "button" } });
+    const actions = createBelkiActionRow(contentEl, { className: "belki-repeat-modal-actions" });
+    const cancelBtn = createBelkiButton(actions, { text: "Cancel" });
+    const saveBtn = createBelkiButton(actions, { text: "Save", variant: "primary" });
     const requiresWeekdays = this.requiresWeekdays();
     saveBtn.toggleAttribute("disabled", requiresWeekdays && getRepeatWeekdays(this.draft).length === 0);
     cancelBtn.addEventListener("click", () => this.close());
     saveBtn.addEventListener("click", () => {
       if (this.requiresWeekdays() && getRepeatWeekdays(this.draft).length === 0) {
-        new import_obsidian4.Notice("Choose at least one weekday.");
+        new import_obsidian5.Notice("Choose at least one weekday.");
         return;
       }
       const v = parseInt(intervalInput.value);
@@ -2793,7 +2847,7 @@ var AddTaskComposer = class {
       attachmentInput.value = "";
       renderPendingAttachments();
     });
-    const mobilePanelSide = import_obsidian5.Platform.isMobile ? "above" : "below";
+    const mobilePanelSide = import_obsidian6.Platform.isMobile ? "above" : "below";
     const labelsWrap = chipRow.createDiv({ cls: "belki-composer-labels-wrap" });
     const labelsButton = createChipButton(labelsWrap, "Labels", "tag");
     const deadlineWrap = chipRow.createDiv({ cls: "belki-composer-deadline-wrap" });
@@ -2891,7 +2945,7 @@ var AddTaskComposer = class {
         panel.addClass("is-hidden");
         panel.removeClass("is-calendar-open");
       };
-      let canSelectDeadline = !import_obsidian5.Platform.isMobile;
+      let canSelectDeadline = !import_obsidian6.Platform.isMobile;
       const selectDeadline = (value) => {
         if (!canSelectDeadline) {
           return;
@@ -2924,12 +2978,12 @@ var AddTaskComposer = class {
         const shouldOpen = panel.hasClass("is-hidden");
         closeComposerPopovers();
         if (shouldOpen) {
-          canSelectDeadline = !import_obsidian5.Platform.isMobile;
+          canSelectDeadline = !import_obsidian6.Platform.isMobile;
           const ownerWindow = btn.ownerDocument.defaultView || window;
           ownerWindow.setTimeout(() => {
             panel.removeClass("is-hidden");
             watchLocalPopover(deadlineWrap, panel, { preferredSide: mobilePanelSide });
-            if (import_obsidian5.Platform.isMobile) {
+            if (import_obsidian6.Platform.isMobile) {
               ownerWindow.setTimeout(() => {
                 canSelectDeadline = true;
               }, 250);
@@ -3064,12 +3118,12 @@ var AddTaskComposer = class {
       cls: "belki-custom-project-confirm",
       attr: { type: "button", "aria-label": "Confirm project" }
     });
-    (0, import_obsidian5.setIcon)(confirmProjectBtn, "check");
+    (0, import_obsidian6.setIcon)(confirmProjectBtn, "check");
     const cancelProjectBtn = customProjectWrap.createEl("button", {
       cls: "belki-custom-project-cancel",
       attr: { type: "button", "aria-label": "Cancel" }
     });
-    (0, import_obsidian5.setIcon)(cancelProjectBtn, "x");
+    (0, import_obsidian6.setIcon)(cancelProjectBtn, "x");
     let previousProjectValue = "";
     const confirmProject = () => {
       var _a;
@@ -3211,17 +3265,11 @@ var AddTaskComposer = class {
     });
     renderProjectMenu();
     updateProjectDot();
-    const actions = footer.createDiv({ cls: "belki-composer-actions" });
-    const cancelButton = actions.createEl("button", {
-      cls: "belki-button",
-      text: "Cancel",
-      attr: {
-        type: "button"
-      }
-    });
-    const addButton = actions.createEl("button", {
-      cls: "belki-button belki-button-primary",
+    const actions = createBelkiActionRow(footer, { className: "belki-composer-actions" });
+    const cancelButton = createBelkiButton(actions, { text: "Cancel" });
+    const addButton = createBelkiButton(actions, {
       text: "Add task",
+      variant: "primary",
       attr: {
         type: "submit"
       }
@@ -3273,7 +3321,7 @@ var AddTaskComposer = class {
         attr: { type: "button", "aria-label": "Set due date" }
       });
       const iconSpan = dueDateButton.createSpan({ cls: "belki-chip-icon" });
-      (0, import_obsidian5.setIcon)(iconSpan, "calendar");
+      (0, import_obsidian6.setIcon)(iconSpan, "calendar");
       dueDateButton.createSpan({ cls: "belki-chip-label", text: formatDueDateChip(selectedDue) });
       if (hasDate) {
         const clearBtn = dueDateWrap.createEl("button", {
@@ -3283,7 +3331,7 @@ var AddTaskComposer = class {
         });
         clearBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          if (selectedRepeat) new import_obsidian5.Notice("Date and repeat rule removed.");
+          if (selectedRepeat) new import_obsidian6.Notice("Date and repeat rule removed.");
           selectedDue = "";
           selectedRepeat = void 0;
           closeDueDatePopover();
@@ -3323,7 +3371,7 @@ var AddTaskComposer = class {
       datePopover.createDiv({ cls: "belki-date-divider" });
       const repeatHeader = datePopover.createDiv({ cls: "belki-repeat-header" });
       const repeatIcon = repeatHeader.createSpan({ cls: "belki-chip-icon" });
-      (0, import_obsidian5.setIcon)(repeatIcon, "repeat");
+      (0, import_obsidian6.setIcon)(repeatIcon, "repeat");
       repeatHeader.createSpan({ text: "Repeat" });
       const presetDue = selectedDue || todayIso();
       const presets = getRepeatPresets(presetDue);
@@ -3333,7 +3381,7 @@ var AddTaskComposer = class {
           attr: { type: "button" }
         });
         const ri = btn.createSpan({ cls: "belki-chip-icon" });
-        (0, import_obsidian5.setIcon)(ri, "repeat");
+        (0, import_obsidian6.setIcon)(ri, "repeat");
         btn.createSpan({ text: preset.label });
         btn.toggleClass("is-active", repeatRulesEqual(preset.rule, selectedRepeat));
         btn.addEventListener("click", (e) => {
@@ -3379,7 +3427,7 @@ var AddTaskComposer = class {
         attr: { type: "button" }
       });
       const ri = chip.createSpan({ cls: "belki-chip-icon" });
-      (0, import_obsidian5.setIcon)(ri, "repeat");
+      (0, import_obsidian6.setIcon)(ri, "repeat");
       chip.createSpan({ cls: "belki-chip-label", text: getRepeatLabel(selectedRepeat) });
       chip.addEventListener("click", () => {
         const shouldOpen = dueDateWrap.querySelector(".belki-date-popover:not(.is-hidden)") === null;
@@ -3412,6 +3460,16 @@ var AddTaskComposer = class {
     var _a;
     (_a = this.titleInput) == null ? void 0 : _a.focus(options);
   }
+  focusTitleForMobileCapture() {
+    const input = this.titleInput;
+    if (!input) return;
+    const ownerWindow = input.ownerDocument.defaultView || window;
+    input.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+    input.focus();
+    ownerWindow.setTimeout(() => {
+      input.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+    }, 250);
+  }
   readProject() {
     return normalizeTaskProject(this.selectedProjectValue);
   }
@@ -3437,7 +3495,7 @@ function createChipButton(parent, label, iconName, ariaLabel) {
 }
 function createIcon(parent, iconName, className = "belki-chip-icon") {
   const icon = parent.createSpan({ cls: className });
-  (0, import_obsidian5.setIcon)(icon, iconName);
+  (0, import_obsidian6.setIcon)(icon, iconName);
   return icon;
 }
 function alignLocalPopover(wrapper, popover, options = {}) {
@@ -3630,11 +3688,11 @@ function isImageFile(file) {
 }
 
 // src/views/TaskDetailModal.ts
-var import_obsidian7 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // src/views/ImagePreviewModal.ts
-var import_obsidian6 = require("obsidian");
-var ImagePreviewModal = class extends import_obsidian6.Modal {
+var import_obsidian7 = require("obsidian");
+var ImagePreviewModal = class extends import_obsidian7.Modal {
   constructor(app, file, label) {
     super(app);
     this.file = file;
@@ -3705,7 +3763,7 @@ var DESCRIPTION_FORMAT_ACTIONS = [
   { id: "numbered-list", label: "1.", title: "Numbered list" },
   { id: "link", label: "\u2197", title: "Link" }
 ];
-var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
+var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
   constructor(app, options) {
     super(app);
     this.options = options;
@@ -3751,7 +3809,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     this.modalEl.addClass("belki-modal-detail");
     this.containerEl.addClass("belki-modal-detail-container");
     (_a = this.markdownRenderComponent) == null ? void 0 : _a.unload();
-    this.markdownRenderComponent = new import_obsidian7.Component();
+    this.markdownRenderComponent = new import_obsidian8.Component();
     this.markdownRenderComponent.load();
     applyBelkiFontSettings(contentEl, this.options.settings);
     this.modalEl.addEventListener("keydown", this.handleEscape, true);
@@ -3856,7 +3914,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
       }
       const renderTarget = descRendered.createDiv({ cls: "belki-detail-description-content" });
       try {
-        await import_obsidian7.MarkdownRenderer.render(
+        await import_obsidian8.MarkdownRenderer.render(
           this.app,
           markdown,
           renderTarget,
@@ -3922,10 +3980,10 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
       })();
     });
     if (this.draft.repeat && !this.draft.completed) {
-      footer.createEl("button", {
-        cls: "belki-button belki-button-danger belki-detail-complete-perm",
+      createBelkiButton(footer, {
         text: "Complete permanently",
-        attr: { type: "button" }
+        variant: "danger",
+        className: "belki-detail-complete-perm"
       }).addEventListener("click", () => {
         void (async () => {
           await this.options.store.updateTask(this.draft.id, {
@@ -3939,16 +3997,12 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
         })();
       });
     }
-    const footerActions = footer.createDiv({ cls: "belki-detail-actions" });
-    footerActions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } }).addEventListener("click", () => this.close());
-    footerActions.createEl("button", {
-      cls: "belki-button belki-button-primary",
-      text: "Save",
-      attr: { type: "button" }
-    }).addEventListener("click", () => {
+    const footerActions = createBelkiActionRow(footer, { className: "belki-detail-actions" });
+    createBelkiButton(footerActions, { text: "Cancel" }).addEventListener("click", () => this.close());
+    createBelkiButton(footerActions, { text: "Save", variant: "primary" }).addEventListener("click", () => {
       void this.save();
     });
-    if (!import_obsidian7.Platform.isMobile) {
+    if (!import_obsidian8.Platform.isMobile) {
       titleInput.focus();
     }
   }
@@ -4054,7 +4108,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     const toolbarWidth = toolbar.offsetWidth;
     const toolbarHeight = toolbar.offsetHeight;
     const textareaRect = textarea.getBoundingClientRect();
-    const anchor = import_obsidian7.Platform.isMobile ? {
+    const anchor = import_obsidian8.Platform.isMobile ? {
       left: textareaRect.left + 8,
       top: textareaRect.top,
       bottom: textareaRect.bottom
@@ -4124,7 +4178,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
       list.empty();
       const imagePaths = this.draft.attachments.filter((path) => {
         const file = this.app.vault.getAbstractFileByPath(path);
-        return isImagePath(path) && file instanceof import_obsidian7.TFile;
+        return isImagePath(path) && file instanceof import_obsidian8.TFile;
       });
       if (this.draft.attachments.length === 0) {
         list.createDiv({
@@ -4143,7 +4197,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
         item.setAttr("tabindex", "0");
         const openAttachment = () => {
           const file = this.app.vault.getAbstractFileByPath(path);
-          if (isImagePath(path) && file instanceof import_obsidian7.TFile) {
+          if (isImagePath(path) && file instanceof import_obsidian8.TFile) {
             new ImagePreviewModal(this.app, file, attachmentName(path)).open();
             return;
           }
@@ -4170,7 +4224,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
             "aria-label": `Download ${attachmentName(path)}`
           }
         });
-        (0, import_obsidian7.setIcon)(downloadButton, "download");
+        (0, import_obsidian8.setIcon)(downloadButton, "download");
         downloadButton.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -4183,7 +4237,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
             "aria-label": `Remove ${attachmentName(path)}`
           }
         });
-        (0, import_obsidian7.setIcon)(removeButton, "x");
+        (0, import_obsidian8.setIcon)(removeButton, "x");
         removeButton.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -4230,7 +4284,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     });
     for (const path of imagePaths) {
       const file = this.app.vault.getAbstractFileByPath(path);
-      if (!(file instanceof import_obsidian7.TFile)) {
+      if (!(file instanceof import_obsidian8.TFile)) {
         continue;
       }
       const preview = gallery.createDiv({ cls: "belki-image-attachment-card" });
@@ -4255,7 +4309,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
           "aria-label": `Download ${attachmentName(path)}`
         }
       });
-      (0, import_obsidian7.setIcon)(downloadButton, "download");
+      (0, import_obsidian8.setIcon)(downloadButton, "download");
       downloadButton.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -4268,7 +4322,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
           "aria-label": `Remove ${attachmentName(path)}`
         }
       });
-      (0, import_obsidian7.setIcon)(removeButton, "x");
+      (0, import_obsidian8.setIcon)(removeButton, "x");
       removeButton.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -4296,7 +4350,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
   }
   async downloadAttachment(path) {
     const file = this.app.vault.getAbstractFileByPath(path);
-    if (!(file instanceof import_obsidian7.TFile)) {
+    if (!(file instanceof import_obsidian8.TFile)) {
       await this.app.workspace.openLinkText(path, "", false);
       return;
     }
@@ -4547,7 +4601,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
           attr: { type: "button" }
         });
         const calIcon = dateChip.createSpan({ cls: "belki-chip-icon" });
-        (0, import_obsidian7.setIcon)(calIcon, "calendar");
+        (0, import_obsidian8.setIcon)(calIcon, "calendar");
         dateChip.createSpan({ text: composerDue ? formatDueDateChip(composerDue) : "Date" });
         if (composerDue) {
           const clr = dateChip.createSpan({ cls: "belki-subtask-chip-clear", text: "\xD7" });
@@ -4574,7 +4628,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
           priChip.setCssStyles({ color: getPriorityColor(composerPriority).color });
         }
         const flagIcon = priChip.createSpan({ cls: "belki-chip-icon" });
-        (0, import_obsidian7.setIcon)(flagIcon, "flag");
+        (0, import_obsidian8.setIcon)(flagIcon, "flag");
         priChip.createSpan({ text: composerPriority !== "none" ? getPriorityLabel(composerPriority) : "Priority" });
         priChip.addEventListener("click", () => {
           if (expandedPanel === "priority") {
@@ -4780,7 +4834,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
         attr: { type: "button" }
       });
       const iconSpan = btn.createSpan({ cls: "belki-chip-icon" });
-      (0, import_obsidian7.setIcon)(iconSpan, "calendar");
+      (0, import_obsidian8.setIcon)(iconSpan, "calendar");
       btn.createSpan({ text: formatDueDateChip(this.draft.due) });
       if (hasDate) {
         const clearBtn = btnRow.createEl("button", {
@@ -4790,7 +4844,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
         clearBtn.setText("\xD7");
         clearBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          if (this.draft.repeat) new import_obsidian7.Notice("Date and repeat rule removed.");
+          if (this.draft.repeat) new import_obsidian8.Notice("Date and repeat rule removed.");
           this.draft.due = void 0;
           this.draft.repeat = void 0;
           closePopover();
@@ -4824,7 +4878,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
       popover.createDiv({ cls: "belki-date-divider" });
       const repeatHeader = popover.createDiv({ cls: "belki-repeat-header" });
       const repeatIcon = repeatHeader.createSpan({ cls: "belki-chip-icon" });
-      (0, import_obsidian7.setIcon)(repeatIcon, "repeat");
+      (0, import_obsidian8.setIcon)(repeatIcon, "repeat");
       repeatHeader.createSpan({ text: "Repeat" });
       const presetDue = this.draft.due || todayIso();
       const presets = getRepeatPresets(presetDue);
@@ -4834,7 +4888,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
           attr: { type: "button" }
         });
         const ri = presetBtn.createSpan({ cls: "belki-chip-icon" });
-        (0, import_obsidian7.setIcon)(ri, "repeat");
+        (0, import_obsidian8.setIcon)(ri, "repeat");
         presetBtn.createSpan({ text: preset.label });
         presetBtn.toggleClass("is-active", repeatRulesEqual(preset.rule, this.draft.repeat));
         presetBtn.addEventListener("click", (e) => {
@@ -4880,7 +4934,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
           attr: { type: "button" }
         });
         const ri = repeatChip.createSpan({ cls: "belki-chip-icon" });
-        (0, import_obsidian7.setIcon)(ri, "repeat");
+        (0, import_obsidian8.setIcon)(ri, "repeat");
         repeatChip.createSpan({ cls: "belki-repeat-chip-label", text: getRepeatLabel(this.draft.repeat) });
         repeatChip.addEventListener("click", (e) => {
           e.preventDefault();
@@ -4925,7 +4979,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
         attr: { type: "button" }
       });
       const iconSpan = btn.createSpan({ cls: "belki-chip-icon" });
-      (0, import_obsidian7.setIcon)(iconSpan, "diamond");
+      (0, import_obsidian8.setIcon)(iconSpan, "diamond");
       btn.createSpan({ text: hasDate ? formatDueDateChip(this.draft.deadline) : "No deadline" });
       if (hasDate) {
         const clearBtn = btnRow.createEl("button", {
@@ -5431,7 +5485,7 @@ var SORT_OPTIONS = [
   { mode: "project", label: "Project" },
   { mode: "alphabetical", label: "Alphabetical" }
 ];
-var TaskBoardView = class extends import_obsidian8.ItemView {
+var TaskBoardView = class extends import_obsidian9.ItemView {
   constructor(leaf, store, settings, saveSettings) {
     super(leaf);
     this.store = store;
@@ -5569,7 +5623,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     containerEl.empty();
     containerEl.addClass("belki-root");
     containerEl.addClass("belki-view");
-    containerEl.toggleClass("is-mobile", import_obsidian8.Platform.isMobile);
+    containerEl.toggleClass("is-mobile", import_obsidian9.Platform.isMobile);
     applyBelkiFontSettings(containerEl, this.settings);
     containerEl.addEventListener("keydown", this.handleRootKeyDown, true);
     const shell = containerEl.createDiv({ cls: "belki-shell" });
@@ -5658,7 +5712,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
       cls: "belki-sidebar-add-project",
       attr: { type: "button", "aria-label": "New project" }
     });
-    (0, import_obsidian8.setIcon)(addProjectBtn, "plus");
+    (0, import_obsidian9.setIcon)(addProjectBtn, "plus");
     addProjectBtn.createSpan({ cls: "belki-sidebar-add-project-label", text: "Project" });
     addProjectBtn.addEventListener("click", () => {
       new CreateProjectModal(this.app, this.getActiveProjects(), (name) => {
@@ -5792,7 +5846,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     this.projectActionsOpen = null;
     this.searchOpen = false;
     this.searchQuery = "";
-    if (import_obsidian8.Platform.isMobile) {
+    if (import_obsidian9.Platform.isMobile) {
       this.mobileComposerReturnScroll = this.getMainScrollSnapshot();
       this.mobileComposerOpen = true;
       this.composerOpen = false;
@@ -5830,11 +5884,15 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
         await this.createTaskFromComposer(input);
         onClose();
       },
-      presentation: import_obsidian8.Platform.isMobile ? "mobile-screen" : "default"
+      presentation: import_obsidian9.Platform.isMobile ? "mobile-screen" : "default"
     });
     const ownerWindow = parent.ownerDocument.defaultView || window;
     ownerWindow.requestAnimationFrame(() => {
-      composer.focus({ preventScroll: import_obsidian8.Platform.isMobile });
+      if (import_obsidian9.Platform.isMobile) {
+        composer.focusTitleForMobileCapture();
+      } else {
+        composer.focus();
+      }
     });
   }
   async createTaskFromComposer(input) {
@@ -5855,14 +5913,14 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
         cls: "belki-mobile-quick-add-back",
         attr: { type: "button", "aria-label": "Back to tasks" }
       });
-      (0, import_obsidian8.setIcon)(backButton, "arrow-left");
+      (0, import_obsidian9.setIcon)(backButton, "arrow-left");
       backButton.addEventListener("click", () => this.closeMobileComposer());
       header.createDiv({ cls: "belki-mobile-quick-add-title", text: "Add task" });
       const closeButton = header.createEl("button", {
         cls: "belki-mobile-quick-add-close",
         attr: { type: "button", "aria-label": "Close add task" }
       });
-      (0, import_obsidian8.setIcon)(closeButton, "x");
+      (0, import_obsidian9.setIcon)(closeButton, "x");
       closeButton.addEventListener("click", () => this.closeMobileComposer());
       const body = screen.createDiv({ cls: "belki-mobile-quick-add-body" });
       this.renderAddTaskComposer(body, () => {
@@ -5874,7 +5932,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
       cls: "belki-mobile-quick-add-button",
       attr: { type: "button", "aria-label": "Add task" }
     });
-    (0, import_obsidian8.setIcon)(button, "plus");
+    (0, import_obsidian9.setIcon)(button, "plus");
     button.addEventListener("click", () => this.openAddComposer());
   }
   groupTasks(tasks) {
@@ -5919,7 +5977,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
       }
     });
     const icon = button.createSpan({ cls: "belki-sorting-icon" });
-    (0, import_obsidian8.setIcon)(icon, "arrow-up-down");
+    (0, import_obsidian9.setIcon)(icon, "arrow-up-down");
     button.createSpan({ text: "Sorting" });
     button.addEventListener("click", (event) => {
       event.preventDefault();
@@ -6580,7 +6638,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
       });
       if (task.repeat) {
         const ri = dateSpan.createSpan({ cls: "belki-task-repeat-icon" });
-        (0, import_obsidian8.setIcon)(ri, "repeat");
+        (0, import_obsidian9.setIcon)(ri, "repeat");
       }
     }
     if (task.deadline) {
@@ -6618,13 +6676,13 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     if (subTasks.length > 0) {
       const done = subTasks.filter((t) => t.completed).length;
       const counterEl = meta.createSpan({ cls: "belki-task-subtask-counter" });
-      (0, import_obsidian8.setIcon)(counterEl.createSpan({ cls: "belki-chip-icon" }), "list-checks");
+      (0, import_obsidian9.setIcon)(counterEl.createSpan({ cls: "belki-chip-icon" }), "list-checks");
       counterEl.createSpan({ text: `${done}/${subTasks.length}` });
     }
     if (!task.completed && task.completedOccurrences && task.completedOccurrences.length > 0) {
       const last = task.completedOccurrences[task.completedOccurrences.length - 1];
       const lastSpan = meta.createSpan({ cls: "belki-task-last-completed" });
-      (0, import_obsidian8.setIcon)(lastSpan.createSpan({ cls: "belki-chip-icon" }), "check");
+      (0, import_obsidian9.setIcon)(lastSpan.createSpan({ cls: "belki-chip-icon" }), "check");
       lastSpan.createSpan({ text: formatDueChip(last) });
     }
     const project = normalizeTaskProject(task.project);
@@ -7041,7 +7099,7 @@ var TaskBoardView = class extends import_obsidian8.ItemView {
     event.stopImmediatePropagation();
   }
 };
-var RenameProjectModal = class extends import_obsidian8.Modal {
+var RenameProjectModal = class extends import_obsidian9.Modal {
   constructor(app, currentName, existingProjects, onSubmit) {
     super(app);
     this.currentName = currentName;
@@ -7099,7 +7157,7 @@ var RenameProjectModal = class extends import_obsidian8.Modal {
     input.focus();
   }
 };
-var DeleteProjectModal = class extends import_obsidian8.Modal {
+var DeleteProjectModal = class extends import_obsidian9.Modal {
   constructor(app, projectName, taskCount, onConfirm) {
     super(app);
     this.projectName = projectName;
@@ -7124,7 +7182,7 @@ var DeleteProjectModal = class extends import_obsidian8.Modal {
     });
   }
 };
-var LabelPromptModal = class extends import_obsidian8.Modal {
+var LabelPromptModal = class extends import_obsidian9.Modal {
   constructor(app, onSubmit) {
     super(app);
     this.onSubmit = onSubmit;
@@ -7317,7 +7375,7 @@ function groupByDueDate(tasks) {
   }
   return [...map.entries()];
 }
-var CreateProjectModal = class extends import_obsidian8.Modal {
+var CreateProjectModal = class extends import_obsidian9.Modal {
   constructor(app, existingProjects, onSubmit) {
     super(app);
     this.existingProjects = existingProjects;
@@ -7384,7 +7442,7 @@ function searchableText(task) {
 }
 
 // src/main.ts
-var BelkiPlugin = class extends import_obsidian9.Plugin {
+var BelkiPlugin = class extends import_obsidian10.Plugin {
   constructor() {
     super(...arguments);
     this.reloadDebounceTimer = null;
@@ -7417,7 +7475,7 @@ var BelkiPlugin = class extends import_obsidian9.Plugin {
           ...Object.keys(this.settings.labelColors)
         ]);
         await this.saveSettings();
-        new import_obsidian9.Notice("belki labels normalized.");
+        new import_obsidian10.Notice("belki labels normalized.");
       }
     });
     this.addCommand({
@@ -7426,10 +7484,10 @@ var BelkiPlugin = class extends import_obsidian9.Plugin {
       callback: async () => {
         const migratedCount = await this.store.migrateOldTaskFile();
         if (migratedCount === 0) {
-          new import_obsidian9.Notice("belki found no old tasks to migrate.");
+          new import_obsidian10.Notice("belki found no old tasks to migrate.");
           return;
         }
-        new import_obsidian9.Notice(`belki migrated ${migratedCount} task${migratedCount === 1 ? "" : "s"}.`);
+        new import_obsidian10.Notice(`belki migrated ${migratedCount} task${migratedCount === 1 ? "" : "s"}.`);
       }
     });
     this.addCommand({
@@ -7444,9 +7502,9 @@ var BelkiPlugin = class extends import_obsidian9.Plugin {
           ]);
           await this.saveSettings();
           await this.activateView();
-          new import_obsidian9.Notice(`belki seeded ${taskCount} demo tasks.`);
+          new import_obsidian10.Notice(`belki seeded ${taskCount} demo tasks.`);
         } catch (error) {
-          new import_obsidian9.Notice("belki could not seed demo data.");
+          new import_obsidian10.Notice("belki could not seed demo data.");
           console.error(error);
         }
       }
@@ -7526,7 +7584,7 @@ var BelkiPlugin = class extends import_obsidian9.Plugin {
     try {
       await this.store.reloadFromDisk();
     } catch (error) {
-      new import_obsidian9.Notice("belki could not reload task data.");
+      new import_obsidian10.Notice("belki could not reload task data.");
       console.error(error);
     }
   }
@@ -7586,7 +7644,7 @@ var BelkiPlugin = class extends import_obsidian9.Plugin {
     try {
       await this.store.load();
     } catch (error) {
-      new import_obsidian9.Notice("belki could not initialize task storage. Open the developer console for details.");
+      new import_obsidian10.Notice("belki could not initialize task storage. Open the developer console for details.");
       console.error("[belki] Failed to initialize task storage.", error, {
         dataFolderPath: this.settings.dataFolderPath,
         tasksFilePath: this.settings.tasksFilePath

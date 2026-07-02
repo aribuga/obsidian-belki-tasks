@@ -12,6 +12,7 @@ import { getPriorityColor, getPriorityLabel } from "../priority";
 import { normalizeTaskProject, uniqueRealProjects } from "../projects";
 import { attachWikilinkAutocomplete } from "./wikilinkAutocomplete";
 import { attachQuickAddAutocomplete, parseQuickAddTokens } from "./quickAddAutocomplete";
+import { createBelkiActionRow, createBelkiButton } from "../ui";
 
 interface TaskDetailModalOptions {
   task: BelkiTask;
@@ -300,11 +301,10 @@ export class TaskDetailModal extends Modal {
       });
 
     if (this.draft.repeat && !this.draft.completed) {
-      footer
-        .createEl("button", {
-          cls: "belki-button belki-button-danger belki-detail-complete-perm",
+      createBelkiButton(footer, {
           text: "Complete permanently",
-          attr: { type: "button" }
+          variant: "danger",
+          className: "belki-detail-complete-perm"
         })
         .addEventListener("click", () => {
           void (async () => {
@@ -320,17 +320,11 @@ export class TaskDetailModal extends Modal {
         });
     }
 
-    const footerActions = footer.createDiv({ cls: "belki-detail-actions" });
+    const footerActions = createBelkiActionRow(footer, { className: "belki-detail-actions" });
 
-    footerActions
-      .createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } })
+    createBelkiButton(footerActions, { text: "Cancel" })
       .addEventListener("click", () => this.close());
-    footerActions
-      .createEl("button", {
-        cls: "belki-button belki-button-primary",
-        text: "Save",
-        attr: { type: "button" }
-      })
+    createBelkiButton(footerActions, { text: "Save", variant: "primary" })
       .addEventListener("click", () => {
         void this.save();
       });

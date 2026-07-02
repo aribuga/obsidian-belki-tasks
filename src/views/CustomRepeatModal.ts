@@ -1,6 +1,7 @@
 import { App, Modal, Notice, setIcon } from "obsidian";
 import { RepeatFrequency, RepeatRule } from "../types";
 import { getRepeatLabel, getRepeatWeekdays, normalizeRepeatRule } from "../repeatUtils";
+import { createBelkiActionRow, createBelkiButton } from "../ui";
 
 const FREQ_LABELS: Record<RepeatFrequency, string> = {
   daily: "Day",
@@ -167,9 +168,9 @@ export class CustomRepeatModal extends Modal {
     preview.createSpan({ text: getRepeatLabel(this.draft) });
 
     // Actions
-    const actions = contentEl.createDiv({ cls: "belki-repeat-modal-actions" });
-    const cancelBtn = actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } });
-    const saveBtn = actions.createEl("button", { cls: "belki-button belki-button-primary", text: "Save", attr: { type: "button" } });
+    const actions = createBelkiActionRow(contentEl, { className: "belki-repeat-modal-actions" });
+    const cancelBtn = createBelkiButton(actions, { text: "Cancel" });
+    const saveBtn = createBelkiButton(actions, { text: "Save", variant: "primary" });
     const requiresWeekdays = this.requiresWeekdays();
     saveBtn.toggleAttribute("disabled", requiresWeekdays && getRepeatWeekdays(this.draft).length === 0);
 
