@@ -9,6 +9,7 @@ import { getRepeatLabel, getRepeatPresets, repeatRulesEqual } from "../repeatUti
 import { CustomRepeatModal } from "./CustomRepeatModal";
 import { attachWikilinkAutocomplete } from "./wikilinkAutocomplete";
 import { attachQuickAddAutocomplete, parseQuickAddTokens } from "./quickAddAutocomplete";
+import { createBelkiActionRow, createBelkiButton } from "../ui";
 
 interface ComposerOptions {
   app: App;
@@ -661,17 +662,11 @@ export class AddTaskComposer {
     renderProjectMenu();
     updateProjectDot();
 
-    const actions = footer.createDiv({ cls: "belki-composer-actions" });
-    const cancelButton = actions.createEl("button", {
-      cls: "belki-button",
-      text: "Cancel",
-      attr: {
-        type: "button"
-      }
-    });
-    const addButton = actions.createEl("button", {
-      cls: "belki-button belki-button-primary",
+    const actions = createBelkiActionRow(footer, { className: "belki-composer-actions" });
+    const cancelButton = createBelkiButton(actions, { text: "Cancel" });
+    const addButton = createBelkiButton(actions, {
       text: "Add task",
+      variant: "primary",
       attr: {
         type: "submit"
       }
@@ -868,6 +863,19 @@ export class AddTaskComposer {
 
   focus(options?: FocusOptions): void {
     this.titleInput?.focus(options);
+  }
+
+  focusTitleForMobileCapture(): void {
+    const input = this.titleInput;
+    if (!input) return;
+
+    const ownerWindow = input.ownerDocument.defaultView || window;
+    input.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+    input.focus();
+
+    ownerWindow.setTimeout(() => {
+      input.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+    }, 250);
   }
 
   private readProject(): string | undefined {

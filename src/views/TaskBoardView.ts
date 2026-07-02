@@ -585,7 +585,11 @@ export class TaskBoardView extends ItemView {
 
     const ownerWindow = parent.ownerDocument.defaultView || window;
     ownerWindow.requestAnimationFrame(() => {
-      composer.focus({ preventScroll: Platform.isMobile });
+      if (Platform.isMobile) {
+        composer.focusTitleForMobileCapture();
+      } else {
+        composer.focus();
+      }
     });
   }
 
