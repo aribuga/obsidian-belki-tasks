@@ -1481,8 +1481,10 @@ button.belki-add-inline {
 }
 
 .belki-date-popover-inline {
+  box-sizing: border-box;
   margin-top: 8px;
   max-width: 100%;
+  min-width: 0;
   position: static;
   width: 100%;
 }
