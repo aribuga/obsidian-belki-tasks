@@ -4,6 +4,14 @@ All notable changes to belki are documented here.
 
 ---
 
+## 0.3.1 — 2026-07-02
+
+### Fixed
+
+- Replaced direct style assignments in the task detail Markdown formatting toolbar measurement code with Obsidian-safe `setCssStyles()` calls to satisfy Community Plugin review linting.
+
+---
+
 ## 0.3.0 — 2026-07-02
 
 This release focuses on mobile capture, richer task descriptions, more flexible recurring tasks, and better sub-task control.

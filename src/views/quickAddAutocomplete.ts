@@ -114,9 +114,11 @@ export function attachQuickAddAutocomplete(
     const rect = input.getBoundingClientRect();
     dropdown = activeDocument.createElement("div");
     dropdown.className = "belki-wikilink-dropdown";
-    dropdown.style.left = `${rect.left}px`;
-    dropdown.style.top = `${rect.bottom + 2}px`;
-    dropdown.style.width = `${Math.max(rect.width, 200)}px`;
+    dropdown.setCssStyles({
+      left: `${rect.left}px`,
+      top: `${rect.bottom + 2}px`,
+      width: `${Math.max(rect.width, 200)}px`
+    });
 
     renderItems = () => {
       if (!dropdown) return;

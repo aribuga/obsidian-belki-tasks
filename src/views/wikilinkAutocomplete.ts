@@ -54,13 +54,16 @@ export function attachWikilinkAutocomplete(textarea: HTMLTextAreaElement, app: A
     // Position below textarea; flip above if not enough space
     const spaceBelow = window.innerHeight - rect.bottom;
     const dropdownMaxHeight = 220;
+    const dropdownStyles: Partial<CSSStyleDeclaration> = {
+      left: `${rect.left}px`,
+      width: `${rect.width}px`
+    };
     if (spaceBelow < dropdownMaxHeight && rect.top > spaceBelow) {
-      dropdown.style.bottom = `${window.innerHeight - rect.top + 2}px`;
+      dropdownStyles.bottom = `${window.innerHeight - rect.top + 2}px`;
     } else {
-      dropdown.style.top = `${rect.bottom + 2}px`;
+      dropdownStyles.top = `${rect.bottom + 2}px`;
     }
-    dropdown.style.left = `${rect.left}px`;
-    dropdown.style.width = `${rect.width}px`;
+    dropdown.setCssStyles(dropdownStyles);
 
     renderItems = () => {
       if (!dropdown) return;

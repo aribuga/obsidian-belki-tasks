@@ -474,8 +474,10 @@ export class TaskDetailModal extends Modal {
     left = clamp(left, margin, win.innerWidth - toolbarWidth - margin);
     top = clamp(top, margin, win.innerHeight - toolbarHeight - margin);
 
-    toolbar.style.left = `${Math.round(left)}px`;
-    toolbar.style.top = `${Math.round(top)}px`;
+    toolbar.setCssStyles({
+      left: `${Math.round(left)}px`,
+      top: `${Math.round(top)}px`
+    });
   }
 
   private applyDescriptionFormatting(
@@ -928,7 +930,7 @@ export class TaskDetailModal extends Modal {
         if (sub.priority && sub.priority !== "none") {
           const pc = getPriorityColor(sub.priority);
           const badge = meta.createSpan({ cls: "belki-subtask-priority", text: getPriorityLabel(sub.priority) });
-          badge.style.color = pc.color;
+          badge.setCssStyles({ color: pc.color });
         }
       });
     };
@@ -1009,7 +1011,7 @@ export class TaskDetailModal extends Modal {
             text: getPriorityLabel(p),
             attr: { type: "button" }
           });
-          if (p !== "none") btn.style.color = getPriorityColor(p).color;
+          if (p !== "none") btn.setCssStyles({ color: getPriorityColor(p).color });
           btn.addEventListener("click", () => { composerPriority = p; closePanel(); });
         }
       };
@@ -1039,7 +1041,9 @@ export class TaskDetailModal extends Modal {
           cls: "belki-subtask-chip" + (composerPriority !== "none" ? " is-active" : "") + (expandedPanel === "priority" ? " is-open" : ""),
           attr: { type: "button" }
         });
-        if (composerPriority !== "none") priChip.style.color = getPriorityColor(composerPriority).color;
+        if (composerPriority !== "none") {
+          priChip.setCssStyles({ color: getPriorityColor(composerPriority).color });
+        }
         const flagIcon = priChip.createSpan({ cls: "belki-chip-icon" });
         setIcon(flagIcon, "flag");
         priChip.createSpan({ text: composerPriority !== "none" ? getPriorityLabel(composerPriority) : "Priority" });
@@ -1886,41 +1890,37 @@ function getTextareaSelectionAnchor(textarea: HTMLTextAreaElement): {
 
   const computed = win.getComputedStyle(textarea);
   const mirror = doc.body.createDiv({ cls: "belki-textarea-selection-mirror" });
-  const copiedProperties = [
-    "box-sizing",
-    "border-top-width",
-    "border-right-width",
-    "border-bottom-width",
-    "border-left-width",
-    "font-family",
-    "font-size",
-    "font-style",
-    "font-weight",
-    "letter-spacing",
-    "line-height",
-    "padding-top",
-    "padding-right",
-    "padding-bottom",
-    "padding-left",
-    "text-transform",
-    "text-indent",
-    "word-spacing"
-  ];
 
-  for (const property of copiedProperties) {
-    mirror.style.setProperty(property, computed.getPropertyValue(property));
-  }
-
-  mirror.style.position = "fixed";
-  mirror.style.visibility = "hidden";
-  mirror.style.pointerEvents = "none";
-  mirror.style.top = "0";
-  mirror.style.left = "-9999px";
-  mirror.style.width = `${textarea.clientWidth}px`;
-  mirror.style.minHeight = "0";
-  mirror.style.height = "auto";
-  mirror.style.whiteSpace = "pre-wrap";
-  mirror.style.overflowWrap = "break-word";
+  mirror.setCssStyles({
+    boxSizing: computed.boxSizing,
+    borderTopWidth: computed.borderTopWidth,
+    borderRightWidth: computed.borderRightWidth,
+    borderBottomWidth: computed.borderBottomWidth,
+    borderLeftWidth: computed.borderLeftWidth,
+    fontFamily: computed.fontFamily,
+    fontSize: computed.fontSize,
+    fontStyle: computed.fontStyle,
+    fontWeight: computed.fontWeight,
+    letterSpacing: computed.letterSpacing,
+    lineHeight: computed.lineHeight,
+    paddingTop: computed.paddingTop,
+    paddingRight: computed.paddingRight,
+    paddingBottom: computed.paddingBottom,
+    paddingLeft: computed.paddingLeft,
+    textTransform: computed.textTransform,
+    textIndent: computed.textIndent,
+    wordSpacing: computed.wordSpacing,
+    position: "fixed",
+    visibility: "hidden",
+    pointerEvents: "none",
+    top: "0",
+    left: "-9999px",
+    width: `${textarea.clientWidth}px`,
+    minHeight: "0",
+    height: "auto",
+    whiteSpace: "pre-wrap",
+    overflowWrap: "break-word"
+  });
 
   const position = Math.min(textarea.selectionStart, textarea.selectionEnd);
   mirror.textContent = textarea.value.slice(0, position);

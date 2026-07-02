@@ -929,17 +929,19 @@ function alignLocalPopover(
   popover.removeClass("is-align-right");
   popover.removeClass("is-open-up");
   popover.removeClass("is-open-down");
-  popover.style.removeProperty("--belki-popover-shift-x");
+  popover.setCssProps({ "--belki-popover-shift-x": "0px" });
 
   const wrapperRect = wrapper.getBoundingClientRect();
 
   if (options.useFixed) {
     // Fixed positioning — use viewport coordinates so containers with
     // overflow:hidden or transforms cannot clip the popover.
-    popover.style.removeProperty("top");
-    popover.style.removeProperty("bottom");
-    popover.style.removeProperty("left");
-    popover.style.removeProperty("right");
+    popover.setCssStyles({
+      top: "",
+      bottom: "",
+      left: "",
+      right: ""
+    });
 
     const popoverWidth = popover.offsetWidth || 240;
     const popoverHeight = popover.offsetHeight || 220;
@@ -948,17 +950,20 @@ function alignLocalPopover(
     if (left + popoverWidth > window.innerWidth - margin) {
       left = wrapperRect.right - popoverWidth;
     }
-    popover.style.left = `${Math.max(margin, left)}px`;
+    const fixedStyles: Partial<CSSStyleDeclaration> = {
+      left: `${Math.max(margin, left)}px`
+    };
 
     const fitsBelow = wrapperRect.bottom + popoverHeight + margin <= window.innerHeight;
     const fitsAbove = wrapperRect.top - popoverHeight - margin >= 0;
     if ((preferredSide === "above" && fitsAbove) || (preferredSide === "above" && !fitsBelow)) {
-      popover.style.bottom = `${window.innerHeight - wrapperRect.top + 8}px`;
+      fixedStyles.bottom = `${window.innerHeight - wrapperRect.top + 8}px`;
       popover.addClass("is-open-up");
     } else {
-      popover.style.top = `${wrapperRect.bottom + 8}px`;
+      fixedStyles.top = `${wrapperRect.bottom + 8}px`;
       popover.addClass("is-open-down");
     }
+    popover.setCssStyles(fixedStyles);
     return;
   }
 
@@ -977,7 +982,7 @@ function alignLocalPopover(
     shiftX += margin - shiftedLeft;
   }
   if (shiftX !== 0) {
-    popover.style.setProperty("--belki-popover-shift-x", `${Math.round(shiftX)}px`);
+    popover.setCssProps({ "--belki-popover-shift-x": `${Math.round(shiftX)}px` });
   }
 
   const fitsBelow = wrapperRect.bottom + popoverHeight + margin <= ownerWindow.innerHeight;
@@ -1115,7 +1120,7 @@ function clampPopoverToViewport(popover: HTMLElement): void {
   const ownerWindow = popover.ownerDocument.defaultView || window;
   const margin = 12;
   const currentShift = Number.parseFloat(
-    popover.style.getPropertyValue("--belki-popover-shift-x") || "0"
+    ownerWindow.getComputedStyle(popover).getPropertyValue("--belki-popover-shift-x") || "0"
   ) || 0;
   const rect = popover.getBoundingClientRect();
   let nextShift = currentShift;
@@ -1130,7 +1135,7 @@ function clampPopoverToViewport(popover: HTMLElement): void {
   }
 
   if (nextShift !== currentShift) {
-    popover.style.setProperty("--belki-popover-shift-x", `${Math.round(nextShift)}px`);
+    popover.setCssProps({ "--belki-popover-shift-x": `${Math.round(nextShift)}px` });
   }
 }
 
