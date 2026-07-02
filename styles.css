@@ -618,12 +618,12 @@
   border: solid white;
   border-width: 0 2px 2px 0;
   display: block;
-  height: 9px;
-  left: 7px;
+  height: 7px;
+  left: 50%;
   position: absolute;
-  top: 3px;
-  transform: rotate(45deg);
-  width: 5px;
+  top: 50%;
+  transform: translate(-50%, -55%) rotate(45deg);
+  width: 4px;
 }
 
 .belki-task-content {
@@ -3781,8 +3781,7 @@ button.belki-search-result.is-selected {
   }
 
   .belki-task-checkbox.is-checked::after {
-    left: 9px;
-    top: 4px;
+    transform: translate(-50%, -62%) rotate(45deg);
   }
 
   .belki-task-content {
