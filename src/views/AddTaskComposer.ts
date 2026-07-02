@@ -10,7 +10,7 @@ import {
 } from "../priority";
 import { normalizeTaskProject, uniqueRealProjects } from "../projects";
 import { addDaysIso, formatDueDateChip, nextWeekdayIso, todayIso } from "../dateUtils";
-import { getRepeatLabel, getRepeatPresets, repeatRulesEqual } from "../repeatUtils";
+import { getRepeatChipLabel, getRepeatLabel, getRepeatPresets, repeatRulesEqual } from "../repeatUtils";
 import { CustomRepeatModal } from "./CustomRepeatModal";
 import { attachWikilinkAutocomplete } from "./wikilinkAutocomplete";
 import { attachQuickAddAutocomplete, parseQuickAddTokens } from "./quickAddAutocomplete";
@@ -833,13 +833,14 @@ export class AddTaskComposer {
     const renderRepeatChip = () => {
       repeatChipWrap.empty();
       if (!selectedRepeat) return;
+      const fullLabel = getRepeatLabel(selectedRepeat);
       const chip = repeatChipWrap.createEl("button", {
         cls: "belki-chip-button belki-repeat-chip is-active is-selected",
-        attr: { type: "button" }
+        attr: { type: "button", title: fullLabel, "aria-label": fullLabel }
       });
       const ri = chip.createSpan({ cls: "belki-chip-icon" });
       setIcon(ri, "repeat");
-      chip.createSpan({ cls: "belki-chip-label", text: getRepeatLabel(selectedRepeat) });
+      chip.createSpan({ cls: "belki-chip-label", text: getRepeatChipLabel(selectedRepeat) });
       chip.addEventListener("click", () => {
         const shouldOpen = dueDateWrap.querySelector(".belki-date-popover:not(.is-hidden)") === null;
         closeComposerPopovers();

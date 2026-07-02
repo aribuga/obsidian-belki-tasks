@@ -1494,7 +1494,7 @@ button.belki-add-inline {
 .belki-repeat-chip-wrap {
   align-items: center;
   display: flex;
-  flex: 1 1 180px;
+  flex: 0 1 auto;
   gap: 4px;
   max-width: 100%;
   min-width: 0;
@@ -1505,9 +1505,9 @@ button.belki-add-inline {
 }
 
 .belki-repeat-chip {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   justify-content: flex-start;
-  max-width: 180px;
+  max-width: min(150px, 100%);
   min-width: 0;
 }
 
@@ -1589,8 +1589,9 @@ button.belki-add-inline {
 }
 
 .belki-repeat-active-btn {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   justify-content: flex-start;
+  max-width: min(220px, 100%);
 }
 
 .belki-repeat-active-btn .belki-repeat-chip-label {

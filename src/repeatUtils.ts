@@ -164,6 +164,43 @@ export function getRepeatLabel(rule: RepeatRule): string {
   }
 }
 
+export function getRepeatChipLabel(rule: RepeatRule): string {
+  const normalized = normalizeRepeatRule(rule);
+  const i = normalized.interval ?? 1;
+
+  switch (normalized.frequency) {
+    case "daily":
+      return i === 1 ? "Daily" : `${i}d`;
+    case "weekdays":
+      return "Weekdays";
+    case "weekly": {
+      const weekdays = getRepeatWeekdays(normalized);
+      if (weekdays.length === 1) {
+        const day = WEEKDAY_SHORT_NAMES[weekdays[0]];
+        return i === 1 ? `Weekly ${day}` : `${i}w · ${day}`;
+      }
+      if (weekdays.length > 1) {
+        if (weekdays.length > 3) {
+          return i === 1 ? `Weekly · ${weekdays.length} days` : `${i}w · ${weekdays.length} days`;
+        }
+        const days = weekdays.map((weekday) => WEEKDAY_SHORT_NAMES[weekday]).join(", ");
+        return i === 1 ? `Weekly · ${days}` : `${i}w · ${days}`;
+      }
+      return i === 1 ? "Weekly" : `${i}w`;
+    }
+    case "monthly": {
+      const ord = ordinal(normalized.dayOfMonth ?? 1);
+      return i === 1 ? `Monthly · ${ord}` : `${i}mo · ${ord}`;
+    }
+    case "yearly": {
+      const month = MONTH_NAMES[normalized.month ?? 1];
+      const shortMonth = month.slice(0, 3);
+      const day = normalized.dayOfMonth ?? 1;
+      return i === 1 ? `Yearly · ${shortMonth} ${day}` : `${i}y · ${shortMonth} ${day}`;
+    }
+  }
+}
+
 export interface RepeatPreset {
   label: string;
   rule: RepeatRule;

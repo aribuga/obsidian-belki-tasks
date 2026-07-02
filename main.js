@@ -730,6 +730,42 @@ function getRepeatLabel(rule) {
     }
   }
 }
+function getRepeatChipLabel(rule) {
+  var _a, _b, _c, _d;
+  const normalized = normalizeRepeatRule(rule);
+  const i = (_a = normalized.interval) != null ? _a : 1;
+  switch (normalized.frequency) {
+    case "daily":
+      return i === 1 ? "Daily" : `${i}d`;
+    case "weekdays":
+      return "Weekdays";
+    case "weekly": {
+      const weekdays = getRepeatWeekdays(normalized);
+      if (weekdays.length === 1) {
+        const day = WEEKDAY_SHORT_NAMES[weekdays[0]];
+        return i === 1 ? `Weekly ${day}` : `${i}w \xB7 ${day}`;
+      }
+      if (weekdays.length > 1) {
+        if (weekdays.length > 3) {
+          return i === 1 ? `Weekly \xB7 ${weekdays.length} days` : `${i}w \xB7 ${weekdays.length} days`;
+        }
+        const days = weekdays.map((weekday) => WEEKDAY_SHORT_NAMES[weekday]).join(", ");
+        return i === 1 ? `Weekly \xB7 ${days}` : `${i}w \xB7 ${days}`;
+      }
+      return i === 1 ? "Weekly" : `${i}w`;
+    }
+    case "monthly": {
+      const ord = ordinal((_b = normalized.dayOfMonth) != null ? _b : 1);
+      return i === 1 ? `Monthly \xB7 ${ord}` : `${i}mo \xB7 ${ord}`;
+    }
+    case "yearly": {
+      const month = MONTH_NAMES[(_c = normalized.month) != null ? _c : 1];
+      const shortMonth = month.slice(0, 3);
+      const day = (_d = normalized.dayOfMonth) != null ? _d : 1;
+      return i === 1 ? `Yearly \xB7 ${shortMonth} ${day}` : `${i}y \xB7 ${shortMonth} ${day}`;
+    }
+  }
+}
 var PRESET_DEFAULTS = { interval: 1, mode: "scheduledDate", ends: "never" };
 function getRepeatPresets(due) {
   if (!isIsoDate(due)) return [];
@@ -3444,13 +3480,14 @@ var AddTaskComposer = class {
     const renderRepeatChip = () => {
       repeatChipWrap.empty();
       if (!selectedRepeat) return;
+      const fullLabel = getRepeatLabel(selectedRepeat);
       const chip = repeatChipWrap.createEl("button", {
         cls: "belki-chip-button belki-repeat-chip is-active is-selected",
-        attr: { type: "button" }
+        attr: { type: "button", title: fullLabel, "aria-label": fullLabel }
       });
       const ri = chip.createSpan({ cls: "belki-chip-icon" });
       (0, import_obsidian6.setIcon)(ri, "repeat");
-      chip.createSpan({ cls: "belki-chip-label", text: getRepeatLabel(selectedRepeat) });
+      chip.createSpan({ cls: "belki-chip-label", text: getRepeatChipLabel(selectedRepeat) });
       chip.addEventListener("click", () => {
         const shouldOpen = dueDateWrap.querySelector(".belki-date-popover:not(.is-hidden)") === null;
         closeComposerPopovers();
@@ -4950,14 +4987,15 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
         }
       });
       if (this.draft.repeat) {
+        const fullRepeatLabel = getRepeatLabel(this.draft.repeat);
         const repeatRow = wrap.createDiv({ cls: "belki-date-btn-row belki-detail-repeat-row" });
         const repeatChip = repeatRow.createEl("button", {
           cls: "belki-detail-date-btn is-active belki-repeat-active-btn",
-          attr: { type: "button" }
+          attr: { type: "button", title: fullRepeatLabel, "aria-label": fullRepeatLabel }
         });
         const ri = repeatChip.createSpan({ cls: "belki-chip-icon" });
         (0, import_obsidian8.setIcon)(ri, "repeat");
-        repeatChip.createSpan({ cls: "belki-repeat-chip-label", text: getRepeatLabel(this.draft.repeat) });
+        repeatChip.createSpan({ cls: "belki-repeat-chip-label", text: getRepeatChipLabel(this.draft.repeat) });
         repeatChip.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();

@@ -1,7 +1,7 @@
 import { App, Component, MarkdownRenderer, Modal, Notice, Platform, TFile, setIcon } from "obsidian";
 import { getLabelColor, getProjectColor } from "../colors";
 import { addDaysIso, formatDueDateChip, nextWeekdayIso, todayIso } from "../dateUtils";
-import { getRepeatLabel, getRepeatPresets, repeatRulesEqual } from "../repeatUtils";
+import { getRepeatChipLabel, getRepeatLabel, getRepeatPresets, repeatRulesEqual } from "../repeatUtils";
 import { CustomRepeatModal } from "./CustomRepeatModal";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
 import { applyBelkiFontSettings, BelkiSettings } from "../settings";
@@ -1370,14 +1370,15 @@ export class TaskDetailModal extends Modal {
       });
 
       if (this.draft.repeat) {
+        const fullRepeatLabel = getRepeatLabel(this.draft.repeat);
         const repeatRow = wrap.createDiv({ cls: "belki-date-btn-row belki-detail-repeat-row" });
         const repeatChip = repeatRow.createEl("button", {
           cls: "belki-detail-date-btn is-active belki-repeat-active-btn",
-          attr: { type: "button" }
+          attr: { type: "button", title: fullRepeatLabel, "aria-label": fullRepeatLabel }
         });
         const ri = repeatChip.createSpan({ cls: "belki-chip-icon" });
         setIcon(ri, "repeat");
-        repeatChip.createSpan({ cls: "belki-repeat-chip-label", text: getRepeatLabel(this.draft.repeat) });
+        repeatChip.createSpan({ cls: "belki-repeat-chip-label", text: getRepeatChipLabel(this.draft.repeat) });
         repeatChip.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();
