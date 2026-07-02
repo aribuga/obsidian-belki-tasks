@@ -242,6 +242,11 @@ export class TaskBoardView extends ItemView {
     this.projectMenuEl = null;
   }
 
+  private closeProjectActionsMenu(): void {
+    this.projectActionsOpen = null;
+    this.removeProjectMenu();
+  }
+
   refresh(): void {
     this.render();
   }
@@ -1047,7 +1052,7 @@ export class TaskBoardView extends ItemView {
     const renameItem = menu.createEl("button", { cls: "belki-project-option", text: "Rename project", attr: { type: "button" } });
     renameItem.addEventListener("click", (event) => {
       event.stopPropagation();
-      this.projectActionsOpen = null;
+      this.closeProjectActionsMenu();
       new RenameProjectModal(this.app, project, this.getActiveProjects(), async (newName) => {
         await this.store.renameProject(project, newName);
         if (this.selectedProject === project) this.selectedProject = newName;
@@ -1067,7 +1072,7 @@ export class TaskBoardView extends ItemView {
     const archiveItem = menu.createEl("button", { cls: "belki-project-option", text: "Archive project", attr: { type: "button" } });
     archiveItem.addEventListener("click", (event) => {
       event.stopPropagation();
-      this.projectActionsOpen = null;
+      this.closeProjectActionsMenu();
       this.settings.archivedProjects = [...this.settings.archivedProjects, project];
       if (this.selectedProject === project) {
         this.selectedProject = null;
@@ -1079,7 +1084,7 @@ export class TaskBoardView extends ItemView {
     const deleteItem = menu.createEl("button", { cls: "belki-project-option is-destructive", text: "Delete project", attr: { type: "button" } });
     deleteItem.addEventListener("click", (event) => {
       event.stopPropagation();
-      this.projectActionsOpen = null;
+      this.closeProjectActionsMenu();
       const taskCount = this.store.getTasks().filter(
         (task) => normalizeTaskProject(task.project) === project
       ).length;
