@@ -30,6 +30,7 @@ export interface RepeatRule {
   interval: number;
   mode: RepeatMode;
   weekday?: number;
+  weekdays?: number[];
   dayOfMonth?: number;
   month?: number;
   ends: RepeatEndsType;

@@ -570,6 +570,8 @@ function formatDueDateChip(value) {
 
 // src/repeatUtils.ts
 var WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+var WEEKDAY_SHORT_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+var WEEKDAY_DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 var MONTH_NAMES = [
   "",
   "January",
@@ -585,28 +587,74 @@ var MONTH_NAMES = [
   "November",
   "December"
 ];
+function normalizeWeekdayValue(value) {
+  const numberValue = typeof value === "number" ? value : Number(value);
+  if (!Number.isInteger(numberValue) || numberValue < 0 || numberValue > 6) {
+    return void 0;
+  }
+  return numberValue;
+}
+function sortWeekdaysForDisplay(a, b) {
+  return WEEKDAY_DISPLAY_ORDER.indexOf(a) - WEEKDAY_DISPLAY_ORDER.indexOf(b);
+}
+function normalizeWeekdays(values) {
+  if (!Array.isArray(values)) {
+    const single = normalizeWeekdayValue(values);
+    return single === void 0 ? [] : [single];
+  }
+  return Array.from(
+    new Set(
+      values.map(normalizeWeekdayValue).filter((value) => value !== void 0)
+    )
+  ).sort(sortWeekdaysForDisplay);
+}
+function getRepeatWeekdays(rule) {
+  const weekdays = normalizeWeekdays(rule.weekdays);
+  if (weekdays.length > 0) {
+    return weekdays;
+  }
+  return normalizeWeekdays(rule.weekday);
+}
+function normalizeRepeatRule(rule) {
+  const normalized = { ...rule };
+  normalized.interval = normalized.interval && normalized.interval > 0 ? normalized.interval : 1;
+  normalized.ends = normalized.ends || "never";
+  normalized.mode = normalized.mode || "scheduledDate";
+  const weekdays = getRepeatWeekdays(normalized);
+  if (normalized.frequency === "weekly" && normalized.mode === "scheduledDate" && weekdays.length > 0) {
+    normalized.weekdays = weekdays;
+    normalized.weekday = weekdays[0];
+  } else {
+    delete normalized.weekdays;
+    if (normalized.frequency !== "weekly" || normalized.mode !== "scheduledDate") {
+      delete normalized.weekday;
+    }
+  }
+  return normalized;
+}
 function ordinal(n) {
   const v = n % 100;
   const s = ["th", "st", "nd", "rd"];
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 function parseRepeat(value) {
-  var _a;
+  var _a, _b;
   if (!value) return void 0;
   if (value.startsWith("{")) {
     try {
       const obj = JSON.parse(value);
-      return {
+      return normalizeRepeatRule({
         frequency: obj.f,
         interval: (_a = obj.i) != null ? _a : 1,
         mode: obj.m === "c" ? "completedDate" : "scheduledDate",
         weekday: obj.w,
+        weekdays: normalizeWeekdays(obj.ws),
         dayOfMonth: obj.dom,
         month: obj.mo,
         ends: obj.e === "d" ? "onDate" : obj.e === "o" ? "afterOccurrences" : "never",
         endsDate: obj.ed,
         endsCount: obj.ec
-      };
+      });
     } catch (e) {
       return void 0;
     }
@@ -619,8 +667,10 @@ function parseRepeat(value) {
       return { frequency: "daily", ...defaults };
     case "weekdays":
       return { frequency: "weekdays", ...defaults };
-    case "weekly":
-      return { frequency: "weekly", ...defaults, weekday: parseInt(parts[1]) || 1 };
+    case "weekly": {
+      const weekday = (_b = normalizeWeekdayValue(parts[1])) != null ? _b : 1;
+      return { frequency: "weekly", ...defaults, weekday, weekdays: [weekday] };
+    }
     case "monthly":
       return { frequency: "monthly", ...defaults, dayOfMonth: parseInt(parts[1]) || 1 };
     case "yearly":
@@ -630,41 +680,52 @@ function parseRepeat(value) {
   }
 }
 function serializeRepeat(rule) {
+  const normalized = normalizeRepeatRule(rule);
   const obj = {
-    f: rule.frequency,
-    i: rule.interval,
-    m: rule.mode === "completedDate" ? "c" : "s",
-    e: rule.ends === "onDate" ? "d" : rule.ends === "afterOccurrences" ? "o" : "n"
+    f: normalized.frequency,
+    i: normalized.interval,
+    m: normalized.mode === "completedDate" ? "c" : "s",
+    e: normalized.ends === "onDate" ? "d" : normalized.ends === "afterOccurrences" ? "o" : "n"
   };
-  if (rule.weekday !== void 0) obj.w = rule.weekday;
-  if (rule.dayOfMonth !== void 0) obj.dom = rule.dayOfMonth;
-  if (rule.month !== void 0) obj.mo = rule.month;
-  if (rule.endsDate) obj.ed = rule.endsDate;
-  if (rule.endsCount !== void 0) obj.ec = rule.endsCount;
+  const weekdays = getRepeatWeekdays(normalized);
+  if (normalized.frequency === "weekly" && normalized.mode === "scheduledDate" && weekdays.length > 0) {
+    obj.ws = weekdays;
+    obj.w = weekdays[0];
+  }
+  if (normalized.dayOfMonth !== void 0) obj.dom = normalized.dayOfMonth;
+  if (normalized.month !== void 0) obj.mo = normalized.month;
+  if (normalized.endsDate) obj.ed = normalized.endsDate;
+  if (normalized.endsCount !== void 0) obj.ec = normalized.endsCount;
   return JSON.stringify(obj);
 }
 function getRepeatLabel(rule) {
   var _a, _b, _c, _d;
-  const i = (_a = rule.interval) != null ? _a : 1;
-  switch (rule.frequency) {
+  const normalized = normalizeRepeatRule(rule);
+  const i = (_a = normalized.interval) != null ? _a : 1;
+  switch (normalized.frequency) {
     case "daily":
       return i === 1 ? "Every day" : `Every ${i} days`;
     case "weekdays":
       return "Every weekday";
     case "weekly": {
-      if (rule.weekday !== void 0) {
-        const day = WEEKDAY_NAMES[rule.weekday];
-        return i === 1 ? `Every ${day}` : `Every ${i} weeks on ${day}`;
+      const weekdays = getRepeatWeekdays(normalized);
+      if (weekdays.length === 1) {
+        const day = WEEKDAY_NAMES[weekdays[0]];
+        return i === 1 ? `Every week on ${day}` : `Every ${i} weeks on ${day}`;
+      }
+      if (weekdays.length > 1) {
+        const days = weekdays.map((weekday) => WEEKDAY_SHORT_NAMES[weekday]).join(", ");
+        return i === 1 ? `Every week on ${days}` : `Every ${i} weeks on ${days}`;
       }
       return i === 1 ? "Every week" : `Every ${i} weeks`;
     }
     case "monthly": {
-      const ord = ordinal((_b = rule.dayOfMonth) != null ? _b : 1);
+      const ord = ordinal((_b = normalized.dayOfMonth) != null ? _b : 1);
       return i === 1 ? `Monthly on the ${ord}` : `Every ${i} months on the ${ord}`;
     }
     case "yearly": {
-      const mo = MONTH_NAMES[(_c = rule.month) != null ? _c : 1];
-      const d = (_d = rule.dayOfMonth) != null ? _d : 1;
+      const mo = MONTH_NAMES[(_c = normalized.month) != null ? _c : 1];
+      const d = (_d = normalized.dayOfMonth) != null ? _d : 1;
       return i === 1 ? `Yearly on ${mo} ${d}` : `Every ${i} years on ${mo} ${d}`;
     }
   }
@@ -677,7 +738,7 @@ function getRepeatPresets(due) {
   const weekday = date.getDay();
   return [
     { label: "Every day", rule: { frequency: "daily", ...PRESET_DEFAULTS } },
-    { label: `Every ${WEEKDAY_NAMES[weekday]}`, rule: { frequency: "weekly", ...PRESET_DEFAULTS, weekday } },
+    { label: `Every ${WEEKDAY_NAMES[weekday]}`, rule: { frequency: "weekly", ...PRESET_DEFAULTS, weekday, weekdays: [weekday] } },
     { label: "Every weekday (Mon \u2013 Fri)", rule: { frequency: "weekdays", ...PRESET_DEFAULTS } },
     { label: `Monthly on the ${ordinal(day)}`, rule: { frequency: "monthly", ...PRESET_DEFAULTS, dayOfMonth: day } },
     { label: `Yearly on ${MONTH_NAMES[month]} ${day}`, rule: { frequency: "yearly", ...PRESET_DEFAULTS, month, dayOfMonth: day } }
@@ -685,20 +746,23 @@ function getRepeatPresets(due) {
 }
 function nextOccurrence(rule, fromDate) {
   var _a;
+  const normalized = normalizeRepeatRule(rule);
   const [year, month, day] = fromDate.split("-").map(Number);
   const date = new Date(year, month - 1, day);
-  const interval = (_a = rule.interval) != null ? _a : 1;
-  switch (rule.frequency) {
+  const interval = (_a = normalized.interval) != null ? _a : 1;
+  switch (normalized.frequency) {
     case "daily":
       date.setDate(date.getDate() + interval);
       break;
     case "weekly":
-      date.setDate(date.getDate() + 7 * interval);
-      if (rule.weekday !== void 0 && date.getDay() !== rule.weekday) {
-        let diff = rule.weekday - date.getDay();
-        if (diff < 0) diff += 7;
-        date.setDate(date.getDate() + diff);
+      if (normalized.mode === "scheduledDate") {
+        const weekdays = getRepeatWeekdays(normalized);
+        if (weekdays.length > 0) {
+          date.setDate(date.getDate() + nextWeeklyWeekdayDelta(date.getDay(), weekdays, interval));
+          break;
+        }
       }
+      date.setDate(date.getDate() + 7 * interval);
       break;
     case "weekdays":
       date.setDate(date.getDate() + 1);
@@ -725,6 +789,21 @@ function nextOccurrence(rule, fromDate) {
     }
   }
   return toIsoDate(date);
+}
+function weekdayDisplayIndex(weekday) {
+  return WEEKDAY_DISPLAY_ORDER.indexOf(weekday);
+}
+function nextWeeklyWeekdayDelta(currentWeekday, weekdays, interval) {
+  const currentDisplayIndex = weekdayDisplayIndex(currentWeekday);
+  const laterThisWeek = weekdays.filter((weekday) => weekdayDisplayIndex(weekday) > currentDisplayIndex).map((weekday) => (weekday - currentWeekday + 7) % 7).filter((delta) => delta > 0).sort((a, b) => a - b);
+  if (laterThisWeek.length > 0) {
+    return laterThisWeek[0];
+  }
+  const nextCycleDeltas = weekdays.map((weekday) => {
+    const delta = (weekday - currentWeekday + 7) % 7;
+    return delta === 0 ? interval * 7 : (interval - 1) * 7 + delta;
+  }).sort((a, b) => a - b);
+  return nextCycleDeltas[0] || interval * 7;
 }
 function isRepeatEnded(rule, occurrenceCount, nextDate) {
   if (rule.ends === "never") return false;
@@ -1600,6 +1679,44 @@ var TaskStore = class {
     this.tasks = this.tasks.filter((candidate) => candidate.id !== id).map((candidate, index) => ({ ...candidate, order: index }));
     await this.saveSources([sourcePath]);
   }
+  async reorderSubTask(taskId, targetTaskId, placement) {
+    if (taskId === targetTaskId) {
+      return;
+    }
+    const dragged = this.tasks.find((candidate) => candidate.id === taskId);
+    const target = this.tasks.find((candidate) => candidate.id === targetTaskId);
+    if (!dragged || !target || !dragged.parentId || dragged.parentId !== target.parentId) {
+      return;
+    }
+    const siblings = this.tasks.filter((candidate) => candidate.parentId === dragged.parentId).sort((a, b) => a.order - b.order);
+    const reorderedSiblings = siblings.filter((candidate) => candidate.id !== dragged.id);
+    const targetIndex = reorderedSiblings.findIndex((candidate) => candidate.id === target.id);
+    if (targetIndex === -1) {
+      return;
+    }
+    reorderedSiblings.splice(
+      placement === "after" ? targetIndex + 1 : targetIndex,
+      0,
+      dragged
+    );
+    const siblingIds = new Set(siblings.map((candidate) => candidate.id));
+    const orderedTasks = [...this.tasks].sort((a, b) => a.order - b.order);
+    const firstSiblingIndex = orderedTasks.findIndex((candidate) => siblingIds.has(candidate.id));
+    const withoutSiblings = orderedTasks.filter((candidate) => !siblingIds.has(candidate.id));
+    const insertIndex = firstSiblingIndex === -1 ? withoutSiblings.length : Math.min(firstSiblingIndex, withoutSiblings.length);
+    withoutSiblings.splice(insertIndex, 0, ...reorderedSiblings);
+    const changedSources = /* @__PURE__ */ new Set();
+    this.tasks = withoutSiblings.map((task, index) => {
+      if (task.order !== index) {
+        changedSources.add(task.sourcePath || this.monthlyPathForDate(task.created || todayIso()));
+      }
+      return { ...task, order: index };
+    });
+    for (const sourcePath of changedSources) {
+      this.reorderDocumentBlocksForSource(sourcePath);
+    }
+    await this.saveSources([...changedSources]);
+  }
   async renameProject(oldName, newName) {
     const changedSources = /* @__PURE__ */ new Set();
     this.tasks = this.tasks.map((task) => {
@@ -1743,6 +1860,28 @@ var TaskStore = class {
       }
       this.documents.set(sourcePath, parseTaskDocument(content, sourcePath));
     }
+  }
+  reorderDocumentBlocksForSource(sourcePath) {
+    const document = this.documents.get(sourcePath);
+    if (!document) {
+      return;
+    }
+    const existingBlockIds = new Set(
+      document.blocks.filter((block) => block.type === "task").map((block) => block.taskId)
+    );
+    const orderedTaskIds = this.tasks.filter((task) => task.sourcePath === sourcePath && existingBlockIds.has(task.id)).sort((a, b) => a.order - b.order).map((task) => task.id);
+    let cursor = 0;
+    this.documents.set(sourcePath, {
+      ...document,
+      blocks: document.blocks.map((block) => {
+        if (block.type !== "task") {
+          return block;
+        }
+        const taskId = orderedTaskIds[cursor];
+        cursor += 1;
+        return taskId ? { type: "task", taskId } : block;
+      })
+    });
   }
   async ensureTaskStructure() {
     await this.ensureFolder(this.dataDir);
@@ -2056,7 +2195,7 @@ var CustomRepeatModal = class extends import_obsidian4.Modal {
   constructor(app, current, onSave) {
     super(app);
     this.onSave = onSave;
-    this.draft = current ? { ...current } : { frequency: "weekly", interval: 1, mode: "scheduledDate", ends: "never" };
+    this.draft = current ? normalizeRepeatRule(current) : { frequency: "weekly", interval: 1, mode: "scheduledDate", ends: "never" };
   }
   onOpen() {
     this.titleEl.setText("Custom repeat");
@@ -2077,7 +2216,7 @@ var CustomRepeatModal = class extends import_obsidian4.Modal {
     });
     this.renderRadio(modeWrap, "Completed date", this.draft.mode === "completedDate", () => {
       this.draft.mode = "completedDate";
-      this.draft.weekday = void 0;
+      this.clearWeekdays();
       this.render();
     });
     this.renderSection(contentEl, "Every");
@@ -2106,22 +2245,25 @@ var CustomRepeatModal = class extends import_obsidian4.Modal {
     freqSelect.addEventListener("change", () => {
       this.draft.frequency = freqSelect.value;
       if (this.draft.frequency !== "weekly") {
-        this.draft.weekday = void 0;
+        this.clearWeekdays();
       }
       this.render();
     });
     if (this.draft.frequency === "weekly" && this.draft.mode === "scheduledDate") {
       this.renderSection(contentEl, "On");
       const dayRow = contentEl.createDiv({ cls: "belki-repeat-day-row" });
+      const selectedWeekdays = getRepeatWeekdays(this.draft);
       for (const { label, value } of DISPLAY_DAYS) {
         const btn = dayRow.createEl("button", {
           cls: "belki-repeat-day-btn",
           text: label,
           attr: { type: "button" }
         });
-        btn.toggleClass("is-active", this.draft.weekday === value);
+        btn.toggleClass("is-active", selectedWeekdays.includes(value));
         btn.addEventListener("click", () => {
-          this.draft.weekday = this.draft.weekday === value ? void 0 : value;
+          const current = getRepeatWeekdays(this.draft);
+          const next = current.includes(value) ? current.filter((weekday) => weekday !== value) : [...current, value];
+          this.setWeekdays(next);
           this.render();
         });
       }
@@ -2173,11 +2315,17 @@ var CustomRepeatModal = class extends import_obsidian4.Modal {
     const actions = contentEl.createDiv({ cls: "belki-repeat-modal-actions" });
     const cancelBtn = actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } });
     const saveBtn = actions.createEl("button", { cls: "belki-button belki-button-primary", text: "Save", attr: { type: "button" } });
+    const requiresWeekdays = this.requiresWeekdays();
+    saveBtn.toggleAttribute("disabled", requiresWeekdays && getRepeatWeekdays(this.draft).length === 0);
     cancelBtn.addEventListener("click", () => this.close());
     saveBtn.addEventListener("click", () => {
+      if (this.requiresWeekdays() && getRepeatWeekdays(this.draft).length === 0) {
+        new import_obsidian4.Notice("Choose at least one weekday.");
+        return;
+      }
       const v = parseInt(intervalInput.value);
       this.draft.interval = v >= 1 && Number.isInteger(v) ? v : 1;
-      this.onSave({ ...this.draft });
+      this.onSave(normalizeRepeatRule(this.draft));
       this.close();
     });
   }
@@ -2191,6 +2339,22 @@ var CustomRepeatModal = class extends import_obsidian4.Modal {
     row.createSpan({ text: label });
     row.addEventListener("click", onClick);
     return row;
+  }
+  requiresWeekdays() {
+    return this.draft.frequency === "weekly" && this.draft.mode === "scheduledDate";
+  }
+  clearWeekdays() {
+    delete this.draft.weekday;
+    delete this.draft.weekdays;
+  }
+  setWeekdays(values) {
+    const weekdays = DISPLAY_DAYS.map(({ value }) => value).filter((value) => values.includes(value));
+    if (weekdays.length === 0) {
+      this.clearWeekdays();
+      return;
+    }
+    this.draft.weekdays = weekdays;
+    this.draft.weekday = weekdays[0];
   }
 };
 
@@ -4152,12 +4316,91 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
       text: subTasks.length > 0 ? ` ${doneCount}/${subTasks.length}` : ""
     });
     const list = section.createDiv({ cls: "belki-subtasks-list" });
+    let draggedSubTaskId = null;
+    const clearDropState = () => {
+      list.querySelectorAll(".is-dragging, .is-drop-before, .is-drop-after").forEach((row) => {
+        row.removeClass("is-dragging");
+        row.removeClass("is-drop-before");
+        row.removeClass("is-drop-after");
+      });
+    };
+    const dropPlacementForEvent = (row, event) => {
+      const rect = row.getBoundingClientRect();
+      return event.clientY > rect.top + rect.height / 2 ? "after" : "before";
+    };
     const renderList = () => {
       list.empty();
       const all = this.options.store.getTasks().filter((t) => t.parentId === this.draft.id);
-      const current = [...all.filter((t) => !t.completed), ...all.filter((t) => t.completed)];
+      const current = [...all].sort((a, b) => a.order - b.order);
       current.forEach((sub) => {
         const row = list.createDiv({ cls: "belki-subtask-row" });
+        row.dataset.subtaskId = sub.id;
+        const dragHandle = row.createEl("button", {
+          cls: "belki-subtask-drag-handle",
+          text: "\u22EE\u22EE",
+          attr: {
+            type: "button",
+            draggable: "true",
+            "aria-label": `Reorder ${sub.title}`
+          }
+        });
+        dragHandle.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        });
+        dragHandle.addEventListener("dragstart", (event) => {
+          var _a, _b;
+          event.stopPropagation();
+          draggedSubTaskId = sub.id;
+          row.addClass("is-dragging");
+          const dragImage = this.createSubTaskDragImage(row);
+          (_a = event.dataTransfer) == null ? void 0 : _a.setData("application/x-belki-subtask-id", sub.id);
+          (_b = event.dataTransfer) == null ? void 0 : _b.setData("text/plain", sub.id);
+          if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setDragImage(dragImage, 20, 18);
+          }
+          window.setTimeout(() => dragImage.remove(), 0);
+        });
+        dragHandle.addEventListener("dragend", () => {
+          draggedSubTaskId = null;
+          clearDropState();
+        });
+        row.addEventListener("dragover", (event) => {
+          if (!draggedSubTaskId || draggedSubTaskId === sub.id) {
+            return;
+          }
+          event.preventDefault();
+          const placement = dropPlacementForEvent(row, event);
+          row.toggleClass("is-drop-before", placement === "before");
+          row.toggleClass("is-drop-after", placement === "after");
+          if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = "move";
+          }
+        });
+        row.addEventListener("dragleave", (event) => {
+          if (event.relatedTarget instanceof Node && row.contains(event.relatedTarget)) {
+            return;
+          }
+          row.removeClass("is-drop-before");
+          row.removeClass("is-drop-after");
+        });
+        row.addEventListener("drop", (event) => {
+          var _a, _b;
+          const taskId = draggedSubTaskId || ((_a = event.dataTransfer) == null ? void 0 : _a.getData("application/x-belki-subtask-id")) || ((_b = event.dataTransfer) == null ? void 0 : _b.getData("text/plain"));
+          if (!taskId || taskId === sub.id) {
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+          const placement = dropPlacementForEvent(row, event);
+          draggedSubTaskId = null;
+          clearDropState();
+          void this.options.store.reorderSubTask(taskId, sub.id, placement).then(() => {
+            renderList();
+            this.options.onChange();
+          });
+        });
         const checkbox = row.createEl("button", {
           cls: "belki-task-checkbox belki-subtask-checkbox",
           attr: { type: "button" }
@@ -4389,6 +4632,18 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
     };
     showAddButton();
   }
+  createSubTaskDragImage(row) {
+    const dragImage = row.cloneNode(true);
+    dragImage.addClass("belki-subtask-drag-preview");
+    dragImage.setCssStyles({
+      position: "absolute",
+      top: "-9999px",
+      left: "-9999px",
+      width: `${row.offsetWidth}px`
+    });
+    activeDocument.body.appendChild(dragImage);
+    return dragImage;
+  }
   renderProject(parent) {
     const field = this.createField(parent, "Project");
     const projectPicker = field.createDiv({ cls: "belki-project-picker belki-detail-project-picker" });
@@ -4612,10 +4867,16 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian7.Modal {
         });
         const ri = repeatChip.createSpan({ cls: "belki-chip-icon" });
         (0, import_obsidian7.setIcon)(ri, "repeat");
-        repeatChip.createSpan({ text: getRepeatLabel(this.draft.repeat) });
+        repeatChip.createSpan({ cls: "belki-repeat-chip-label", text: getRepeatLabel(this.draft.repeat) });
         repeatChip.addEventListener("click", (e) => {
+          e.preventDefault();
           e.stopPropagation();
-          btn.click();
+          if (!this.draft.due) this.draft.due = todayIso();
+          closePopover();
+          new CustomRepeatModal(this.app, this.draft.repeat, (rule) => {
+            this.draft.repeat = rule;
+            renderPicker();
+          }).open();
         });
         const clearRepeat = repeatRow.createEl("button", {
           cls: "belki-date-chip-clear",

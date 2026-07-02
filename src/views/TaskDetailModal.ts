@@ -778,13 +778,106 @@ export class TaskDetailModal extends Modal {
     });
 
     const list = section.createDiv({ cls: "belki-subtasks-list" });
+    let draggedSubTaskId: string | null = null;
+
+    const clearDropState = () => {
+      list
+        .querySelectorAll<HTMLElement>(".is-dragging, .is-drop-before, .is-drop-after")
+        .forEach((row) => {
+          row.removeClass("is-dragging");
+          row.removeClass("is-drop-before");
+          row.removeClass("is-drop-after");
+        });
+    };
+
+    const dropPlacementForEvent = (
+      row: HTMLElement,
+      event: DragEvent
+    ): "before" | "after" => {
+      const rect = row.getBoundingClientRect();
+      return event.clientY > rect.top + rect.height / 2 ? "after" : "before";
+    };
 
     const renderList = () => {
       list.empty();
       const all = this.options.store.getTasks().filter((t) => t.parentId === this.draft.id);
-      const current = [...all.filter((t) => !t.completed), ...all.filter((t) => t.completed)];
+      const current = [...all].sort((a, b) => a.order - b.order);
       current.forEach((sub) => {
         const row = list.createDiv({ cls: "belki-subtask-row" });
+        row.dataset.subtaskId = sub.id;
+
+        const dragHandle = row.createEl("button", {
+          cls: "belki-subtask-drag-handle",
+          text: "⋮⋮",
+          attr: {
+            type: "button",
+            draggable: "true",
+            "aria-label": `Reorder ${sub.title}`
+          }
+        });
+        dragHandle.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        });
+        dragHandle.addEventListener("dragstart", (event) => {
+          event.stopPropagation();
+          draggedSubTaskId = sub.id;
+          row.addClass("is-dragging");
+          const dragImage = this.createSubTaskDragImage(row);
+          event.dataTransfer?.setData("application/x-belki-subtask-id", sub.id);
+          event.dataTransfer?.setData("text/plain", sub.id);
+          if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setDragImage(dragImage, 20, 18);
+          }
+          window.setTimeout(() => dragImage.remove(), 0);
+        });
+        dragHandle.addEventListener("dragend", () => {
+          draggedSubTaskId = null;
+          clearDropState();
+        });
+
+        row.addEventListener("dragover", (event) => {
+          if (!draggedSubTaskId || draggedSubTaskId === sub.id) {
+            return;
+          }
+
+          event.preventDefault();
+          const placement = dropPlacementForEvent(row, event);
+          row.toggleClass("is-drop-before", placement === "before");
+          row.toggleClass("is-drop-after", placement === "after");
+          if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = "move";
+          }
+        });
+        row.addEventListener("dragleave", (event) => {
+          if (event.relatedTarget instanceof Node && row.contains(event.relatedTarget)) {
+            return;
+          }
+
+          row.removeClass("is-drop-before");
+          row.removeClass("is-drop-after");
+        });
+        row.addEventListener("drop", (event) => {
+          const taskId =
+            draggedSubTaskId ||
+            event.dataTransfer?.getData("application/x-belki-subtask-id") ||
+            event.dataTransfer?.getData("text/plain");
+          if (!taskId || taskId === sub.id) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+          const placement = dropPlacementForEvent(row, event);
+          draggedSubTaskId = null;
+          clearDropState();
+          void this.options.store.reorderSubTask(taskId, sub.id, placement).then(() => {
+            renderList();
+            this.options.onChange();
+          });
+        });
+
         const checkbox = row.createEl("button", {
           cls: "belki-task-checkbox belki-subtask-checkbox",
           attr: { type: "button" }
@@ -1015,6 +1108,19 @@ export class TaskDetailModal extends Modal {
     };
 
     showAddButton();
+  }
+
+  private createSubTaskDragImage(row: HTMLElement): HTMLElement {
+    const dragImage = row.cloneNode(true) as HTMLElement;
+    dragImage.addClass("belki-subtask-drag-preview");
+    dragImage.setCssStyles({
+      position: "absolute",
+      top: "-9999px",
+      left: "-9999px",
+      width: `${row.offsetWidth}px`
+    });
+    activeDocument.body.appendChild(dragImage);
+    return dragImage;
   }
 
   private renderProject(parent: HTMLElement): void {
@@ -1267,10 +1373,16 @@ export class TaskDetailModal extends Modal {
         });
         const ri = repeatChip.createSpan({ cls: "belki-chip-icon" });
         setIcon(ri, "repeat");
-        repeatChip.createSpan({ text: getRepeatLabel(this.draft.repeat) });
+        repeatChip.createSpan({ cls: "belki-repeat-chip-label", text: getRepeatLabel(this.draft.repeat) });
         repeatChip.addEventListener("click", (e) => {
+          e.preventDefault();
           e.stopPropagation();
-          btn.click();
+          if (!this.draft.due) this.draft.due = todayIso();
+          closePopover();
+          new CustomRepeatModal(this.app, this.draft.repeat, (rule) => {
+            this.draft.repeat = rule;
+            renderPicker();
+          }).open();
         });
         const clearRepeat = repeatRow.createEl("button", {
           cls: "belki-date-chip-clear",

@@ -1,6 +1,6 @@
-import { App, Modal, setIcon } from "obsidian";
+import { App, Modal, Notice, setIcon } from "obsidian";
 import { RepeatFrequency, RepeatRule } from "../types";
-import { getRepeatLabel } from "../repeatUtils";
+import { getRepeatLabel, getRepeatWeekdays, normalizeRepeatRule } from "../repeatUtils";
 
 const FREQ_LABELS: Record<RepeatFrequency, string> = {
   daily: "Day",
@@ -28,7 +28,7 @@ export class CustomRepeatModal extends Modal {
     super(app);
     this.onSave = onSave;
     this.draft = current
-      ? { ...current }
+      ? normalizeRepeatRule(current)
       : { frequency: "weekly", interval: 1, mode: "scheduledDate", ends: "never" };
   }
 
@@ -55,7 +55,7 @@ export class CustomRepeatModal extends Modal {
     });
     this.renderRadio(modeWrap, "Completed date", this.draft.mode === "completedDate", () => {
       this.draft.mode = "completedDate";
-      this.draft.weekday = undefined;
+      this.clearWeekdays();
       this.render();
     });
 
@@ -87,7 +87,7 @@ export class CustomRepeatModal extends Modal {
     freqSelect.addEventListener("change", () => {
       this.draft.frequency = freqSelect.value as RepeatFrequency;
       if (this.draft.frequency !== "weekly") {
-        this.draft.weekday = undefined;
+        this.clearWeekdays();
       }
       this.render();
     });
@@ -96,15 +96,20 @@ export class CustomRepeatModal extends Modal {
     if (this.draft.frequency === "weekly" && this.draft.mode === "scheduledDate") {
       this.renderSection(contentEl, "On");
       const dayRow = contentEl.createDiv({ cls: "belki-repeat-day-row" });
+      const selectedWeekdays = getRepeatWeekdays(this.draft);
       for (const { label, value } of DISPLAY_DAYS) {
         const btn = dayRow.createEl("button", {
           cls: "belki-repeat-day-btn",
           text: label,
           attr: { type: "button" }
         });
-        btn.toggleClass("is-active", this.draft.weekday === value);
+        btn.toggleClass("is-active", selectedWeekdays.includes(value));
         btn.addEventListener("click", () => {
-          this.draft.weekday = this.draft.weekday === value ? undefined : value;
+          const current = getRepeatWeekdays(this.draft);
+          const next = current.includes(value)
+            ? current.filter((weekday) => weekday !== value)
+            : [...current, value];
+          this.setWeekdays(next);
           this.render();
         });
       }
@@ -165,12 +170,19 @@ export class CustomRepeatModal extends Modal {
     const actions = contentEl.createDiv({ cls: "belki-repeat-modal-actions" });
     const cancelBtn = actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } });
     const saveBtn = actions.createEl("button", { cls: "belki-button belki-button-primary", text: "Save", attr: { type: "button" } });
+    const requiresWeekdays = this.requiresWeekdays();
+    saveBtn.toggleAttribute("disabled", requiresWeekdays && getRepeatWeekdays(this.draft).length === 0);
 
     cancelBtn.addEventListener("click", () => this.close());
     saveBtn.addEventListener("click", () => {
+      if (this.requiresWeekdays() && getRepeatWeekdays(this.draft).length === 0) {
+        new Notice("Choose at least one weekday.");
+        return;
+      }
+
       const v = parseInt(intervalInput.value);
       this.draft.interval = (v >= 1 && Number.isInteger(v)) ? v : 1;
-      this.onSave({ ...this.draft });
+      this.onSave(normalizeRepeatRule(this.draft));
       this.close();
     });
   }
@@ -186,5 +198,28 @@ export class CustomRepeatModal extends Modal {
     row.createSpan({ text: label });
     row.addEventListener("click", onClick);
     return row;
+  }
+
+  private requiresWeekdays(): boolean {
+    return this.draft.frequency === "weekly" && this.draft.mode === "scheduledDate";
+  }
+
+  private clearWeekdays(): void {
+    delete this.draft.weekday;
+    delete this.draft.weekdays;
+  }
+
+  private setWeekdays(values: number[]): void {
+    const weekdays = DISPLAY_DAYS
+      .map(({ value }) => value)
+      .filter((value) => values.includes(value));
+
+    if (weekdays.length === 0) {
+      this.clearWeekdays();
+      return;
+    }
+
+    this.draft.weekdays = weekdays;
+    this.draft.weekday = weekdays[0];
   }
 }

@@ -256,6 +256,62 @@ export class TaskStore {
     await this.saveSources([sourcePath]);
   }
 
+  async reorderSubTask(
+    taskId: string,
+    targetTaskId: string,
+    placement: "before" | "after"
+  ): Promise<void> {
+    if (taskId === targetTaskId) {
+      return;
+    }
+
+    const dragged = this.tasks.find((candidate) => candidate.id === taskId);
+    const target = this.tasks.find((candidate) => candidate.id === targetTaskId);
+    if (!dragged || !target || !dragged.parentId || dragged.parentId !== target.parentId) {
+      return;
+    }
+
+    const siblings = this.tasks
+      .filter((candidate) => candidate.parentId === dragged.parentId)
+      .sort((a, b) => a.order - b.order);
+    const reorderedSiblings = siblings.filter((candidate) => candidate.id !== dragged.id);
+    const targetIndex = reorderedSiblings.findIndex((candidate) => candidate.id === target.id);
+    if (targetIndex === -1) {
+      return;
+    }
+
+    reorderedSiblings.splice(
+      placement === "after" ? targetIndex + 1 : targetIndex,
+      0,
+      dragged
+    );
+
+    const siblingIds = new Set(siblings.map((candidate) => candidate.id));
+    const orderedTasks = [...this.tasks].sort((a, b) => a.order - b.order);
+    const firstSiblingIndex = orderedTasks.findIndex((candidate) => siblingIds.has(candidate.id));
+    const withoutSiblings = orderedTasks.filter((candidate) => !siblingIds.has(candidate.id));
+    const insertIndex =
+      firstSiblingIndex === -1
+        ? withoutSiblings.length
+        : Math.min(firstSiblingIndex, withoutSiblings.length);
+    withoutSiblings.splice(insertIndex, 0, ...reorderedSiblings);
+
+    const changedSources = new Set<string>();
+    this.tasks = withoutSiblings.map((task, index) => {
+      if (task.order !== index) {
+        changedSources.add(task.sourcePath || this.monthlyPathForDate(task.created || todayIso()));
+      }
+
+      return { ...task, order: index };
+    });
+
+    for (const sourcePath of changedSources) {
+      this.reorderDocumentBlocksForSource(sourcePath);
+    }
+
+    await this.saveSources([...changedSources]);
+  }
+
   async renameProject(oldName: string, newName: string): Promise<void> {
     const changedSources = new Set<string>();
     this.tasks = this.tasks.map((task) => {
@@ -430,6 +486,37 @@ export class TaskStore {
       }
       this.documents.set(sourcePath, parseTaskDocument(content, sourcePath));
     }
+  }
+
+  private reorderDocumentBlocksForSource(sourcePath: string): void {
+    const document = this.documents.get(sourcePath);
+    if (!document) {
+      return;
+    }
+
+    const existingBlockIds = new Set(
+      document.blocks
+        .filter((block) => block.type === "task")
+        .map((block) => block.taskId)
+    );
+    const orderedTaskIds = this.tasks
+      .filter((task) => task.sourcePath === sourcePath && existingBlockIds.has(task.id))
+      .sort((a, b) => a.order - b.order)
+      .map((task) => task.id);
+
+    let cursor = 0;
+    this.documents.set(sourcePath, {
+      ...document,
+      blocks: document.blocks.map((block) => {
+        if (block.type !== "task") {
+          return block;
+        }
+
+        const taskId = orderedTaskIds[cursor];
+        cursor += 1;
+        return taskId ? { type: "task", taskId } : block;
+      })
+    });
   }
 
   private async ensureTaskStructure(): Promise<void> {
