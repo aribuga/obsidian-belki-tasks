@@ -6279,11 +6279,9 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
       new RenameProjectModal(this.app, project, this.getActiveProjects(), async (newName) => {
         await this.store.renameProject(project, newName);
         if (this.selectedProject === project) this.selectedProject = newName;
-        const colorOverride = this.settings.projectColors[project];
-        if (colorOverride) {
-          this.settings.projectColors[newName] = colorOverride;
-          delete this.settings.projectColors[project];
-        }
+        const preservedColor = this.settings.projectColors[project] || getProjectColor(project, this.settings.projectColors).regular;
+        this.settings.projectColors[newName] = preservedColor;
+        delete this.settings.projectColors[project];
         this.settings.projectRegistry = this.settings.projectRegistry.map(
           (p) => p === project ? newName : p
         );
