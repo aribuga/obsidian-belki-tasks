@@ -5785,8 +5785,13 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
     (0, import_obsidian9.setIcon)(addProjectBtn, "plus");
     addProjectBtn.createSpan({ cls: "belki-sidebar-add-project-label", text: "Project" });
     addProjectBtn.addEventListener("click", () => {
-      new CreateProjectModal(this.app, this.getActiveProjects(), (name) => {
-        this.ensureProjectInRegistry(name);
+      new CreateProjectModal(this.app, this.getKnownProjects(), (project) => {
+        this.ensureProjectInRegistry(project.name);
+        if (project.colorOverride) {
+          this.settings.projectColors[project.name] = project.colorOverride;
+        } else {
+          delete this.settings.projectColors[project.name];
+        }
         void this.saveSettings().then(() => this.render());
       }).open();
     });
@@ -6148,12 +6153,7 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
       return;
     }
     if (this.mode === "projects") {
-      const archivedSet = new Set(this.settings.archivedProjects);
-      const projects = this.selectedProject ? [this.selectedProject] : uniqueRealProjects([
-        this.settings.defaultProject,
-        ...this.store.getProjects(),
-        ...Object.keys(this.settings.projectColors)
-      ]).filter((p) => !archivedSet.has(p));
+      const projects = this.selectedProject ? [this.selectedProject] : this.getActiveProjects();
       if (projects.length === 0) {
         this.renderEmptySection(parent, "No projects yet.");
         return;
@@ -6312,12 +6312,15 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
   }
   getActiveProjects() {
     const archivedSet = new Set(this.settings.archivedProjects);
+    return this.getKnownProjects().filter((p) => !archivedSet.has(p));
+  }
+  getKnownProjects() {
     return uniqueRealProjects([
       this.settings.defaultProject,
       ...this.store.getProjects(),
       ...Object.keys(this.settings.projectColors),
       ...this.settings.projectRegistry
-    ]).filter((p) => !archivedSet.has(p));
+    ]);
   }
   ensureProjectInRegistry(project) {
     const normalized = normalizeTaskProject(project);
@@ -6349,9 +6352,11 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
       new RenameProjectModal(this.app, project, this.getActiveProjects(), async (newName) => {
         await this.store.renameProject(project, newName);
         if (this.selectedProject === project) this.selectedProject = newName;
-        const preservedColor = this.settings.projectColors[project] || getProjectColor(project, this.settings.projectColors).regular;
-        this.settings.projectColors[newName] = preservedColor;
-        delete this.settings.projectColors[project];
+        const preservedColor = this.settings.projectColors[project];
+        if (preservedColor) {
+          this.settings.projectColors[newName] = preservedColor;
+          delete this.settings.projectColors[project];
+        }
         this.settings.projectRegistry = this.settings.projectRegistry.map(
           (p) => p === project ? newName : p
         );
@@ -7445,16 +7450,77 @@ var CreateProjectModal = class extends import_obsidian9.Modal {
     super(app);
     this.existingProjects = existingProjects;
     this.onSubmit = onSubmit;
+    this.selectedColor = null;
+    this.autoPreviewName = "New project";
   }
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("belki-project-rename-modal");
+    contentEl.addClass("belki-project-create-modal");
     contentEl.createEl("h2", { text: "New project" });
     const input = contentEl.createEl("input", {
       cls: "belki-label-prompt-input",
       attr: { type: "text", placeholder: "Project name" }
     });
+    const appearance = contentEl.createDiv({ cls: "belki-project-create-appearance" });
+    const preview = appearance.createDiv({ cls: "belki-project-create-preview" });
+    const previewChip = preview.createDiv({ cls: "belki-project-create-preview-chip" });
+    const previewDot = previewChip.createSpan({ cls: "belki-project-dot" });
+    const previewName = previewChip.createSpan({ cls: "belki-project-create-preview-name" });
+    const colorControl = appearance.createDiv({ cls: "belki-project-create-color-control" });
+    const autoButton = colorControl.createEl("button", {
+      cls: "belki-project-color-auto is-selected",
+      attr: { type: "button", "aria-label": "Automatic project color", "aria-pressed": "true" }
+    });
+    const autoDot = autoButton.createSpan({ cls: "belki-project-color-dot" });
+    const autoText = autoButton.createSpan({ cls: "belki-project-color-auto-text", text: "\u2713 Auto" });
+    const randomButton = colorControl.createEl("button", {
+      cls: "belki-project-color-random",
+      attr: { type: "button", "aria-label": "Choose another project color" }
+    });
+    (0, import_obsidian9.setIcon)(randomButton, "refresh-cw");
+    const customColor = colorControl.createEl("label", { cls: "belki-project-color-custom" });
+    const customDot = customColor.createSpan({ cls: "belki-project-color-custom-dot" });
+    const colorInput = customColor.createEl("input", {
+      attr: { type: "color", "aria-label": "Custom project color" }
+    });
+    customColor.createSpan({ text: "Custom" });
+    const selectColor = (color) => {
+      this.selectedColor = color;
+      autoButton.toggleClass("is-selected", color === null);
+      autoButton.setAttribute("aria-pressed", String(color === null));
+      autoText.setText(color === null ? "\u2713 Auto" : "Auto");
+      customColor.toggleClass("is-selected", color !== null);
+      updatePreview();
+    };
+    autoButton.addEventListener("click", () => {
+      this.autoPreviewName = normalizeTaskProject(input.value) || "New project";
+      selectColor(null);
+    });
+    randomButton.addEventListener("click", () => {
+      const currentColor = (this.selectedColor || getProjectColor(this.autoPreviewName, {}).regular).toLowerCase();
+      const candidates = BELKI_COLOR_PALETTE.map((color) => color.regular).filter((color) => color.toLowerCase() !== currentColor);
+      const nextColor = candidates[Math.floor(Math.random() * candidates.length)] || BELKI_COLOR_PALETTE[0].regular;
+      selectColor(nextColor);
+    });
+    colorInput.addEventListener("input", () => selectColor(colorInput.value));
+    colorInput.addEventListener("change", () => selectColor(colorInput.value));
+    const updatePreview = () => {
+      const previewProjectName = normalizeTaskProject(input.value) || "New project";
+      const generatedColor = getProjectColor(this.autoPreviewName, {});
+      const previewColor = this.selectedColor ? getProjectColor(previewProjectName, { [previewProjectName]: this.selectedColor }) : generatedColor;
+      previewChip.setCssProps({
+        "--belki-project-bg": previewColor.light,
+        "--belki-project-color": previewColor.regular
+      });
+      previewDot.setCssStyles({ backgroundColor: previewColor.regular });
+      autoDot.setCssStyles({ backgroundColor: generatedColor.regular });
+      customColor.setCssProps({ "--belki-custom-color": previewColor.regular });
+      customDot.setCssStyles({ backgroundColor: previewColor.regular });
+      colorInput.value = this.selectedColor || generatedColor.regular;
+      previewName.setText(previewProjectName);
+    };
     let errorEl = null;
     const showError = (msg) => {
       if (!errorEl) {
@@ -7471,7 +7537,7 @@ var CreateProjectModal = class extends import_obsidian9.Modal {
       attr: { type: "button" }
     });
     const submit = () => {
-      const name = input.value.trim();
+      const name = normalizeTaskProject(input.value);
       if (!name) {
         showError("Project name cannot be empty.");
         return;
@@ -7484,16 +7550,23 @@ var CreateProjectModal = class extends import_obsidian9.Modal {
         showError("A project with that name already exists.");
         return;
       }
-      this.onSubmit(name);
+      this.onSubmit({
+        name,
+        colorOverride: this.selectedColor || void 0
+      });
       this.close();
     };
     submitButton.addEventListener("click", submit);
+    input.addEventListener("input", () => {
+      updatePreview();
+    });
     input.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
         submit();
       }
     });
+    updatePreview();
     input.focus();
   }
 };
