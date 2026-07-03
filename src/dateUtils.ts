@@ -36,6 +36,16 @@ export function compareIsoDates(a: string, b: string): number {
   return a < b ? -1 : 1;
 }
 
+export function daysBetweenIsoDates(from: string, to: string): number | null {
+  const fromDay = isoDateToUtcDay(from);
+  const toDay = isoDateToUtcDay(to);
+  if (fromDay === null || toDay === null) {
+    return null;
+  }
+
+  return toDay - fromDay;
+}
+
 export function isBeforeToday(value: string | undefined): boolean {
   return isIsoDate(value) && value < todayIso();
 }
@@ -84,4 +94,13 @@ export function formatDateLabel(value: string): string {
     month: "short",
     day: "numeric"
   }).format(date);
+}
+
+function isoDateToUtcDay(value: string): number | null {
+  if (!isIsoDate(value)) {
+    return null;
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+  return Math.floor(Date.UTC(year, month - 1, day) / 86_400_000);
 }

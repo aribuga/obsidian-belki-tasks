@@ -536,6 +536,14 @@ function compareIsoDates(a, b) {
   }
   return a < b ? -1 : 1;
 }
+function daysBetweenIsoDates(from, to) {
+  const fromDay = isoDateToUtcDay(from);
+  const toDay = isoDateToUtcDay(to);
+  if (fromDay === null || toDay === null) {
+    return null;
+  }
+  return toDay - fromDay;
+}
 function isBeforeToday(value) {
   return isIsoDate(value) && value < todayIso();
 }
@@ -566,6 +574,13 @@ function formatDueDateChip(value) {
     day: "numeric",
     ...year !== thisYear ? { year: "numeric" } : {}
   }).format(date);
+}
+function isoDateToUtcDay(value) {
+  if (!isIsoDate(value)) {
+    return null;
+  }
+  const [year, month, day] = value.split("-").map(Number);
+  return Math.floor(Date.UTC(year, month - 1, day) / 864e5);
 }
 
 // src/repeatUtils.ts
@@ -7365,13 +7380,17 @@ function compareOptionalDateDesc(a, b) {
 }
 function formatDueChip(value) {
   const today = todayIso();
-  if (value === today) {
+  const diffFromToday = daysBetweenIsoDates(today, value);
+  if (diffFromToday === 0) {
     return "Today";
   }
-  if (value === addDaysIso2(-1)) {
+  if (diffFromToday === -1) {
     return "Yesterday";
   }
-  if (value === addDaysIso2(1)) {
+  if (diffFromToday !== null && diffFromToday < -1) {
+    return `${Math.abs(diffFromToday)} days ago`;
+  }
+  if (diffFromToday === 1) {
     return "Tomorrow";
   }
   return formatShortDate(value);

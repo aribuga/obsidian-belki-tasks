@@ -2,6 +2,7 @@ import { App, ItemView, Modal, Platform, WorkspaceLeaf, setIcon } from "obsidian
 import { BELKI_COLOR_PALETTE, getLabelColor, getProjectColor } from "../colors";
 import {
   compareIsoDates,
+  daysBetweenIsoDates,
   isAfterToday,
   isBeforeToday,
   isToday,
@@ -2284,15 +2285,20 @@ function compareOptionalDateDesc(
 
 function formatDueChip(value: string): string {
   const today = todayIso();
-  if (value === today) {
+  const diffFromToday = daysBetweenIsoDates(today, value);
+  if (diffFromToday === 0) {
     return "Today";
   }
 
-  if (value === addDaysIso(-1)) {
+  if (diffFromToday === -1) {
     return "Yesterday";
   }
 
-  if (value === addDaysIso(1)) {
+  if (diffFromToday !== null && diffFromToday < -1) {
+    return `${Math.abs(diffFromToday)} days ago`;
+  }
+
+  if (diffFromToday === 1) {
     return "Tomorrow";
   }
 
