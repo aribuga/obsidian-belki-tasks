@@ -533,6 +533,10 @@
   display: none;
 }
 
+.belki-drag-preview .belki-task-actions {
+  display: none;
+}
+
 .belki-drag-preview .belki-task-drag-handle {
   opacity: 1;
 }
@@ -792,9 +796,91 @@
   color: var(--belki-danger);
 }
 
+.belki-task-actions {
+  align-items: center;
+  display: flex;
+  grid-column: 5;
+  justify-content: flex-end;
+  min-width: 28px;
+  position: relative;
+}
+
+.belki-task-actions-button {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  box-shadow: none;
+  color: var(--belki-muted);
+  cursor: pointer;
+  display: none;
+  font: inherit;
+  font-size: 18px;
+  height: 28px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  width: 28px;
+}
+
+.belki-task-actions-button:hover {
+  background: var(--belki-hover);
+  color: var(--belki-text);
+}
+
+.belki-task-action-menu {
+  background: var(--belki-surface);
+  border: 1px solid var(--belki-border);
+  border-radius: 10px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.16);
+  display: grid;
+  gap: 2px;
+  min-width: 170px;
+  padding: 6px;
+  position: fixed;
+  z-index: 100;
+}
+
+.belki-task-action-menu-item {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  box-shadow: none;
+  color: var(--belki-text);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: 13px;
+  gap: 8px;
+  height: 34px;
+  justify-content: flex-start;
+  padding: 0 10px;
+  position: relative;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.belki-task-action-menu-item:hover {
+  background: var(--belki-hover);
+}
+
+.belki-task-action-date-input {
+  cursor: pointer;
+  inset: 0;
+  opacity: 0;
+  position: absolute;
+}
+
 @media (hover: none) {
-  .belki-task-delete {
-    opacity: 1;
+  .belki-task-actions-button {
+    display: inline-flex;
+  }
+
+  .belki-task-actions .belki-task-delete {
+    display: none;
   }
 }
 
@@ -3952,6 +4038,12 @@ button.belki-search-result.is-selected {
     gap: 10px;
     grid-template-columns: 24px minmax(0, 1fr) 28px;
     padding: 13px 0;
+  }
+
+  .belki-task-actions {
+    align-self: center;
+    grid-column: 3;
+    grid-row: 1;
   }
 
   .belki-task-delete {
