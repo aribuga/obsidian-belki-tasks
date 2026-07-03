@@ -24,7 +24,9 @@ import { TaskDetailModal } from "./TaskDetailModal";
 import {
   getPriorityClass,
   getPriorityColor,
+  getPriorityDisplayLabel,
   getPriorityLabel,
+  hasVisiblePriority,
   isDefaultPriority
 } from "../priority";
 import {
@@ -42,6 +44,24 @@ const LINK_RE = /(\[\[([^\]|#\n]+?)(?:#([^\]|\n]+?))?(?:\|([^\]\n]+?))?\]\])|(\[
 interface RenderLinkedTextOptions {
   app: App;
   sourcePath?: string;
+}
+
+interface ActivityDay {
+  count: number;
+  date: string;
+  level: number;
+}
+
+interface ActivityData {
+  allTimeCount: number;
+  byDate: Map<string, BelkiTask[]>;
+  currentStreak: number;
+  defaultSelectedDate: string | null;
+  heatmapDays: ActivityDay[];
+  monthCount: number;
+  todayCount: number;
+  weekCount: number;
+  yesterdayCount: number;
 }
 
 export function renderLinkedText(
@@ -182,6 +202,8 @@ export class TaskBoardView extends ItemView {
   private highlightedTaskId: string | null = null;
   private activeFilter: string | null = null;
   private activeLabel: string | null = null;
+  private activitySelectedDate: string | null = null;
+  private activityCache: { signature: string; data: ActivityData } | null = null;
   private draggedTaskId: string | null = null;
   private sortPopoverOpen = false;
   private projectActionsOpen: string | null = null;
@@ -464,6 +486,7 @@ export class TaskBoardView extends ItemView {
     this.renderNavButton(nav, "Upcoming", "upcoming", this.getUpcomingTasks(active).length, "upcoming");
     this.renderNavButton(nav, "Filters & Labels", "filters", undefined, "filters");
     this.renderNavButton(nav, "Projects", "projects", undefined, "projects");
+    this.renderNavButton(nav, "Activity", "activity", undefined, "activity");
 
     const projectsSection = sidebar.createDiv({ cls: "belki-sidebar-section" });
     const projectsHeadingRow = projectsSection.createDiv({ cls: "belki-sidebar-heading-row" });
@@ -600,16 +623,28 @@ export class TaskBoardView extends ItemView {
     const tasks = this.store.getTasks();
     const active = tasks.filter((task) => !task.completed);
     const visible = this.getVisibleTasks(tasks);
+    const activityData = this.mode === "activity" ? this.getActivityData(tasks) : null;
 
     const header = main.createDiv({ cls: "belki-main-header" });
     const titleWrap = header.createDiv();
     titleWrap.createEl("h1", { text: this.getTitle() });
-    titleWrap.createDiv({ cls: "belki-subtitle", text: `${visible.length} task${visible.length === 1 ? "" : "s"}` });
-    this.renderSortingControl(header);
+    titleWrap.createDiv({
+      cls: "belki-subtitle",
+      text: activityData
+        ? `${activityData.allTimeCount} completed task${activityData.allTimeCount === 1 ? "" : "s"}`
+        : `${visible.length} task${visible.length === 1 ? "" : "s"}`
+    });
+    if (this.mode !== "activity") {
+      this.renderSortingControl(header);
+    }
 
     const sections = main.createDiv({ cls: "belki-sections" });
 
     this.renderTaskSections(sections, tasks);
+
+    if (this.mode === "activity") {
+      return;
+    }
 
     const addArea = main.createDiv({ cls: "belki-add-area" });
     if (this.composerOpen) {
@@ -946,6 +981,11 @@ export class TaskBoardView extends ItemView {
       return;
     }
 
+    if (this.mode === "activity") {
+      this.renderActivityView(parent, allTasks);
+      return;
+    }
+
     if (this.mode === "completed") {
       this.renderCompletedView(parent, allTasks);
       return;
@@ -993,6 +1033,225 @@ export class TaskBoardView extends ItemView {
       const section = this.createSection(parent, "Earlier", noDate.length);
       this.renderTaskList(section, noDate);
     }
+  }
+
+  private renderActivityView(parent: HTMLElement, allTasks: BelkiTask[]): void {
+    const data = this.getActivityData(allTasks);
+    const selectedDate = this.activitySelectedDate || data.defaultSelectedDate || todayIso();
+    const selectedTasks = data.byDate.get(selectedDate) || [];
+
+    const activity = parent.createDiv({ cls: "belki-activity" });
+
+    if (data.allTimeCount === 0) {
+      activity.createDiv({
+        cls: "belki-activity-empty",
+        text: "No completed tasks yet. Complete a task and your activity will appear here."
+      });
+      return;
+    }
+
+    const dashboard = activity.createDiv({ cls: "belki-activity-dashboard" });
+    const dashboardTop = dashboard.createDiv({ cls: "belki-activity-dashboard-top" });
+    dashboardTop.createSpan({ cls: "belki-activity-tab is-active", text: "Overview" });
+
+    const summary = dashboard.createDiv({ cls: "belki-activity-summary" });
+    this.renderActivitySummaryCard(summary, "Today", data.todayCount);
+    this.renderActivitySummaryCard(summary, "Yesterday", data.yesterdayCount);
+    this.renderActivitySummaryCard(summary, "This week", data.weekCount);
+    this.renderActivitySummaryCard(summary, "This month", data.monthCount);
+    this.renderActivitySummaryCard(summary, "All time", data.allTimeCount);
+    this.renderActivitySummaryCard(summary, "Current streak", `${data.currentStreak}d`);
+
+    const heatmapSection = dashboard.createDiv({ cls: "belki-activity-panel" });
+    const heatmapHeader = heatmapSection.createDiv({ cls: "belki-activity-panel-header" });
+    heatmapHeader.createEl("h2", { text: "Completed tasks" });
+    heatmapHeader.createSpan({ text: "Last 26 weeks" });
+
+    const heatmapScroller = heatmapSection.createDiv({ cls: "belki-activity-heatmap-scroll" });
+    const heatmap = heatmapScroller.createDiv({ cls: "belki-activity-heatmap" });
+    for (const day of data.heatmapDays) {
+      const cell = heatmap.createEl("button", {
+        cls: `belki-activity-day level-${day.level}`,
+        attr: {
+          type: "button",
+          title: `${formatActivityDate(day.date)} · ${day.count} completed`,
+          "aria-label": `${formatActivityDate(day.date)}: ${day.count} completed tasks`
+        }
+      });
+      cell.toggleClass("is-selected", day.date === selectedDate);
+      cell.addEventListener("click", () => {
+        this.activitySelectedDate = day.date;
+        this.renderPreservingMainScroll();
+      });
+    }
+
+    const feed = activity.createDiv({ cls: "belki-activity-feed" });
+    const feedHeader = feed.createDiv({ cls: "belki-activity-feed-header" });
+    feedHeader.createEl("h2", {
+      text: formatActivityDayHeading(selectedDate, selectedTasks.length)
+    });
+
+    if (selectedTasks.length === 0) {
+      feed.createDiv({
+        cls: "belki-empty belki-empty-small",
+        text: "No tasks completed on this day."
+      });
+      return;
+    }
+
+    const list = feed.createDiv({ cls: "belki-activity-list" });
+    for (const task of selectedTasks) {
+      this.renderActivityFeedRow(list, task);
+    }
+  }
+
+  private renderActivitySummaryCard(
+    parent: HTMLElement,
+    label: string,
+    value: number | string
+  ): void {
+    const card = parent.createDiv({ cls: "belki-activity-card" });
+    card.createDiv({ cls: "belki-activity-card-count", text: String(value) });
+    card.createDiv({
+      cls: "belki-activity-card-label",
+      text: label
+    });
+  }
+
+  private renderActivityFeedRow(parent: HTMLElement, task: BelkiTask): void {
+    const row = parent.createDiv({ cls: "belki-activity-row" });
+    row.setAttr("role", "button");
+    row.setAttr("tabindex", "0");
+    row.addEventListener("click", (event) => {
+      if (event.target instanceof HTMLElement && event.target.closest("a")) {
+        return;
+      }
+      this.openTaskDetail(task);
+    });
+    row.addEventListener("keydown", (event) => {
+      if (event.target !== row) {
+        return;
+      }
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        this.openTaskDetail(task);
+      }
+    });
+
+    const title = row.createDiv({ cls: "belki-activity-row-title" });
+    title.createSpan({ text: "You completed " });
+    renderLinkedText(task.title, title.createSpan({ cls: "belki-activity-task-title" }), {
+      app: this.app,
+      sourcePath: task.sourcePath
+    });
+
+    const meta = row.createDiv({ cls: "belki-activity-row-meta" });
+    const project = normalizeTaskProject(task.project);
+    if (project) {
+      const projectColor = getProjectColor(project, this.settings.projectColors);
+      const projectChip = meta.createSpan({ cls: "belki-activity-project-chip" });
+      projectChip.setCssStyles({ backgroundColor: projectColor.light });
+      projectChip
+        .createSpan({ cls: "belki-project-dot" })
+        .setCssStyles({ backgroundColor: projectColor.regular });
+      projectChip.createSpan({ text: project });
+    }
+
+    if (hasVisiblePriority(task.priority)) {
+      meta.createSpan({
+        cls: `belki-activity-priority ${getPriorityClass(task.priority)}`,
+        text: getPriorityDisplayLabel(task.priority)
+      });
+    }
+
+    for (const label of task.labels) {
+      const chip = meta.createSpan({ cls: "belki-activity-label", text: displayLabel(label) });
+      const labelColor = getLabelColor(label, this.settings.labelColors);
+      chip.setCssStyles({
+        borderColor: labelColor.light,
+        backgroundColor: labelColor.light
+      });
+    }
+
+    if (meta.childElementCount === 0) {
+      meta.createSpan({ text: "Completed" });
+    }
+  }
+
+  private getActivityData(allTasks: BelkiTask[]): ActivityData {
+    const completedTasks = allTasks.filter((task) =>
+      task.completed &&
+      Boolean(task.completedDate) &&
+      parseIsoDate(task.completedDate || "") !== null
+    );
+    const signature = completedTasks
+      .map((task) => [
+        task.id,
+        task.completedDate,
+        task.title,
+        normalizeTaskProject(task.project) || "",
+        task.priority,
+        task.labels.join(",")
+      ].join(":"))
+      .join("|");
+
+    if (this.activityCache?.signature === signature) {
+      return this.activityCache.data;
+    }
+
+    const byDate = new Map<string, BelkiTask[]>();
+    for (const task of completedTasks) {
+      const date = task.completedDate!;
+      const group = byDate.get(date) || [];
+      group.push(task);
+      byDate.set(date, group);
+    }
+
+    for (const tasks of byDate.values()) {
+      tasks.sort(byOrder);
+    }
+
+    const today = todayIso();
+    const yesterday = yesterdayIso();
+    const weekStart = startOfWeekIso(today);
+    const monthPrefix = today.slice(0, 7);
+    const heatmapDays: ActivityDay[] = [];
+    for (let offset = -181; offset <= 0; offset += 1) {
+      const date = addDaysToIso(today, offset);
+      const count = byDate.get(date)?.length || 0;
+      heatmapDays.push({
+        count,
+        date,
+        level: activityLevel(count)
+      });
+    }
+
+    let currentStreak = 0;
+    for (let date = today; (byDate.get(date)?.length || 0) > 0; date = addDaysToIso(date, -1)) {
+      currentStreak += 1;
+    }
+
+    const sortedDates = [...byDate.keys()].sort((a, b) => b.localeCompare(a));
+    const defaultSelectedDate =
+      (byDate.get(today)?.length || 0) > 0 ? today : sortedDates[0] || null;
+
+    const data: ActivityData = {
+      allTimeCount: completedTasks.length,
+      byDate,
+      currentStreak,
+      defaultSelectedDate,
+      heatmapDays,
+      monthCount: completedTasks.filter((task) => task.completedDate?.startsWith(monthPrefix)).length,
+      todayCount: byDate.get(today)?.length || 0,
+      weekCount: completedTasks.filter((task) => {
+        const date = task.completedDate || "";
+        return date >= weekStart && date <= today;
+      }).length,
+      yesterdayCount: byDate.get(yesterday)?.length || 0
+    };
+
+    this.activityCache = { signature, data };
+    return data;
   }
 
   private renderFiltersAndLabels(parent: HTMLElement, allTasks: BelkiTask[]): void {
@@ -1821,6 +2080,10 @@ export class TaskBoardView extends ItemView {
       ));
     }
 
+    if (this.mode === "activity") {
+      return [];
+    }
+
     if (this.mode === "projects") {
       return this.sortTasks(this.selectedProject
         ? active.filter((task) => normalizeTaskProject(task.project) === this.selectedProject)
@@ -1953,6 +2216,9 @@ export class TaskBoardView extends ItemView {
     }
     if (this.mode === "completed") {
       return "Completed";
+    }
+    if (this.mode === "activity") {
+      return "Activity";
     }
     if (this.mode === "archived") {
       return "Archived projects";
@@ -2592,6 +2858,60 @@ function parseIsoDate(value: string): Date | null {
 function addDaysIso(offset: number): string {
   const date = new Date();
   date.setDate(date.getDate() + offset);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function addDaysToIso(value: string, offset: number): string {
+  const date = parseIsoDate(value);
+  if (!date) {
+    return value;
+  }
+
+  date.setDate(date.getDate() + offset);
+  return toLocalIsoDate(date);
+}
+
+function startOfWeekIso(value: string): string {
+  const date = parseIsoDate(value);
+  if (!date) {
+    return value;
+  }
+
+  const day = date.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + mondayOffset);
+  return toLocalIsoDate(date);
+}
+
+function activityLevel(count: number): number {
+  if (count <= 0) return 0;
+  if (count === 1) return 1;
+  if (count <= 3) return 2;
+  if (count <= 6) return 3;
+  return 4;
+}
+
+function formatActivityDate(value: string): string {
+  const date = parseIsoDate(value);
+  if (!date) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  }).format(date);
+}
+
+function formatActivityDayHeading(date: string, count: number): string {
+  return `${formatShortDate(date)} · ${formatWeekday(date)} · ${count}`;
+}
+
+function toLocalIsoDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");

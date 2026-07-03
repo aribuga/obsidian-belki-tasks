@@ -39,6 +39,7 @@ export interface BelkiIconSettings {
   upcoming: string;
   filters: string;
   projects: string;
+  activity: string;
   completed: string;
 }
 
@@ -53,6 +54,7 @@ export const DEFAULT_SETTINGS: BelkiSettings = {
     upcoming: "🗓️",
     filters: "🏷️",
     projects: "📁",
+    activity: "📈",
     completed: "✅"
   },
   projectColors: {},
@@ -302,6 +304,7 @@ export class BelkiSettingTab extends PluginSettingTab {
     this.addIconSetting("Upcoming icon", "upcoming");
     this.addIconSetting("Filters icon", "filters");
     this.addIconSetting("Projects icon", "projects");
+    this.addIconSetting("Activity icon", "activity");
     this.addIconSetting("Completed icon", "completed");
 
     new Setting(containerEl).setName("Project colors").setHeading();

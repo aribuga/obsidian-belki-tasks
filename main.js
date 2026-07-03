@@ -210,6 +210,7 @@ var DEFAULT_SETTINGS = {
     upcoming: "\u{1F5D3}\uFE0F",
     filters: "\u{1F3F7}\uFE0F",
     projects: "\u{1F4C1}",
+    activity: "\u{1F4C8}",
     completed: "\u2705"
   },
   projectColors: {},
@@ -389,6 +390,7 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
     this.addIconSetting("Upcoming icon", "upcoming");
     this.addIconSetting("Filters icon", "filters");
     this.addIconSetting("Projects icon", "projects");
+    this.addIconSetting("Activity icon", "activity");
     this.addIconSetting("Completed icon", "completed");
     new import_obsidian.Setting(containerEl).setName("Project colors").setHeading();
     const projects = this.plugin.getProjectNames();
@@ -5661,6 +5663,8 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
     this.highlightedTaskId = null;
     this.activeFilter = null;
     this.activeLabel = null;
+    this.activitySelectedDate = null;
+    this.activityCache = null;
     this.draggedTaskId = null;
     this.sortPopoverOpen = false;
     this.projectActionsOpen = null;
@@ -5897,6 +5901,7 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
     this.renderNavButton(nav, "Upcoming", "upcoming", this.getUpcomingTasks(active).length, "upcoming");
     this.renderNavButton(nav, "Filters & Labels", "filters", void 0, "filters");
     this.renderNavButton(nav, "Projects", "projects", void 0, "projects");
+    this.renderNavButton(nav, "Activity", "activity", void 0, "activity");
     const projectsSection = sidebar.createDiv({ cls: "belki-sidebar-section" });
     const projectsHeadingRow = projectsSection.createDiv({ cls: "belki-sidebar-heading-row" });
     projectsHeadingRow.createDiv({ cls: "belki-sidebar-heading", text: "Projects" });
@@ -6010,13 +6015,22 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
     const tasks = this.store.getTasks();
     const active = tasks.filter((task) => !task.completed);
     const visible = this.getVisibleTasks(tasks);
+    const activityData = this.mode === "activity" ? this.getActivityData(tasks) : null;
     const header = main.createDiv({ cls: "belki-main-header" });
     const titleWrap = header.createDiv();
     titleWrap.createEl("h1", { text: this.getTitle() });
-    titleWrap.createDiv({ cls: "belki-subtitle", text: `${visible.length} task${visible.length === 1 ? "" : "s"}` });
-    this.renderSortingControl(header);
+    titleWrap.createDiv({
+      cls: "belki-subtitle",
+      text: activityData ? `${activityData.allTimeCount} completed task${activityData.allTimeCount === 1 ? "" : "s"}` : `${visible.length} task${visible.length === 1 ? "" : "s"}`
+    });
+    if (this.mode !== "activity") {
+      this.renderSortingControl(header);
+    }
     const sections = main.createDiv({ cls: "belki-sections" });
     this.renderTaskSections(sections, tasks);
+    if (this.mode === "activity") {
+      return;
+    }
     const addArea = main.createDiv({ cls: "belki-add-area" });
     if (this.composerOpen) {
       this.renderAddTaskComposer(addArea, () => {
@@ -6313,6 +6327,10 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
       this.renderFiltersAndLabels(parent, allTasks);
       return;
     }
+    if (this.mode === "activity") {
+      this.renderActivityView(parent, allTasks);
+      return;
+    }
     if (this.mode === "completed") {
       this.renderCompletedView(parent, allTasks);
       return;
@@ -6351,6 +6369,192 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
       const section = this.createSection(parent, "Earlier", noDate.length);
       this.renderTaskList(section, noDate);
     }
+  }
+  renderActivityView(parent, allTasks) {
+    const data = this.getActivityData(allTasks);
+    const selectedDate = this.activitySelectedDate || data.defaultSelectedDate || todayIso();
+    const selectedTasks = data.byDate.get(selectedDate) || [];
+    const activity = parent.createDiv({ cls: "belki-activity" });
+    if (data.allTimeCount === 0) {
+      activity.createDiv({
+        cls: "belki-activity-empty",
+        text: "No completed tasks yet. Complete a task and your activity will appear here."
+      });
+      return;
+    }
+    const dashboard = activity.createDiv({ cls: "belki-activity-dashboard" });
+    const dashboardTop = dashboard.createDiv({ cls: "belki-activity-dashboard-top" });
+    dashboardTop.createSpan({ cls: "belki-activity-tab is-active", text: "Overview" });
+    const summary = dashboard.createDiv({ cls: "belki-activity-summary" });
+    this.renderActivitySummaryCard(summary, "Today", data.todayCount);
+    this.renderActivitySummaryCard(summary, "Yesterday", data.yesterdayCount);
+    this.renderActivitySummaryCard(summary, "This week", data.weekCount);
+    this.renderActivitySummaryCard(summary, "This month", data.monthCount);
+    this.renderActivitySummaryCard(summary, "All time", data.allTimeCount);
+    this.renderActivitySummaryCard(summary, "Current streak", `${data.currentStreak}d`);
+    const heatmapSection = dashboard.createDiv({ cls: "belki-activity-panel" });
+    const heatmapHeader = heatmapSection.createDiv({ cls: "belki-activity-panel-header" });
+    heatmapHeader.createEl("h2", { text: "Completed tasks" });
+    heatmapHeader.createSpan({ text: "Last 26 weeks" });
+    const heatmapScroller = heatmapSection.createDiv({ cls: "belki-activity-heatmap-scroll" });
+    const heatmap = heatmapScroller.createDiv({ cls: "belki-activity-heatmap" });
+    for (const day of data.heatmapDays) {
+      const cell = heatmap.createEl("button", {
+        cls: `belki-activity-day level-${day.level}`,
+        attr: {
+          type: "button",
+          title: `${formatActivityDate(day.date)} \xB7 ${day.count} completed`,
+          "aria-label": `${formatActivityDate(day.date)}: ${day.count} completed tasks`
+        }
+      });
+      cell.toggleClass("is-selected", day.date === selectedDate);
+      cell.addEventListener("click", () => {
+        this.activitySelectedDate = day.date;
+        this.renderPreservingMainScroll();
+      });
+    }
+    const feed = activity.createDiv({ cls: "belki-activity-feed" });
+    const feedHeader = feed.createDiv({ cls: "belki-activity-feed-header" });
+    feedHeader.createEl("h2", {
+      text: formatActivityDayHeading(selectedDate, selectedTasks.length)
+    });
+    if (selectedTasks.length === 0) {
+      feed.createDiv({
+        cls: "belki-empty belki-empty-small",
+        text: "No tasks completed on this day."
+      });
+      return;
+    }
+    const list = feed.createDiv({ cls: "belki-activity-list" });
+    for (const task of selectedTasks) {
+      this.renderActivityFeedRow(list, task);
+    }
+  }
+  renderActivitySummaryCard(parent, label, value) {
+    const card = parent.createDiv({ cls: "belki-activity-card" });
+    card.createDiv({ cls: "belki-activity-card-count", text: String(value) });
+    card.createDiv({
+      cls: "belki-activity-card-label",
+      text: label
+    });
+  }
+  renderActivityFeedRow(parent, task) {
+    const row = parent.createDiv({ cls: "belki-activity-row" });
+    row.setAttr("role", "button");
+    row.setAttr("tabindex", "0");
+    row.addEventListener("click", (event) => {
+      if (event.target instanceof HTMLElement && event.target.closest("a")) {
+        return;
+      }
+      this.openTaskDetail(task);
+    });
+    row.addEventListener("keydown", (event) => {
+      if (event.target !== row) {
+        return;
+      }
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        this.openTaskDetail(task);
+      }
+    });
+    const title = row.createDiv({ cls: "belki-activity-row-title" });
+    title.createSpan({ text: "You completed " });
+    renderLinkedText(task.title, title.createSpan({ cls: "belki-activity-task-title" }), {
+      app: this.app,
+      sourcePath: task.sourcePath
+    });
+    const meta = row.createDiv({ cls: "belki-activity-row-meta" });
+    const project = normalizeTaskProject(task.project);
+    if (project) {
+      const projectColor = getProjectColor(project, this.settings.projectColors);
+      const projectChip = meta.createSpan({ cls: "belki-activity-project-chip" });
+      projectChip.setCssStyles({ backgroundColor: projectColor.light });
+      projectChip.createSpan({ cls: "belki-project-dot" }).setCssStyles({ backgroundColor: projectColor.regular });
+      projectChip.createSpan({ text: project });
+    }
+    if (hasVisiblePriority(task.priority)) {
+      meta.createSpan({
+        cls: `belki-activity-priority ${getPriorityClass(task.priority)}`,
+        text: getPriorityDisplayLabel(task.priority)
+      });
+    }
+    for (const label of task.labels) {
+      const chip = meta.createSpan({ cls: "belki-activity-label", text: displayLabel(label) });
+      const labelColor = getLabelColor(label, this.settings.labelColors);
+      chip.setCssStyles({
+        borderColor: labelColor.light,
+        backgroundColor: labelColor.light
+      });
+    }
+    if (meta.childElementCount === 0) {
+      meta.createSpan({ text: "Completed" });
+    }
+  }
+  getActivityData(allTasks) {
+    var _a, _b, _c, _d, _e, _f;
+    const completedTasks = allTasks.filter(
+      (task) => task.completed && Boolean(task.completedDate) && parseIsoDate(task.completedDate || "") !== null
+    );
+    const signature = completedTasks.map((task) => [
+      task.id,
+      task.completedDate,
+      task.title,
+      normalizeTaskProject(task.project) || "",
+      task.priority,
+      task.labels.join(",")
+    ].join(":")).join("|");
+    if (((_a = this.activityCache) == null ? void 0 : _a.signature) === signature) {
+      return this.activityCache.data;
+    }
+    const byDate = /* @__PURE__ */ new Map();
+    for (const task of completedTasks) {
+      const date = task.completedDate;
+      const group = byDate.get(date) || [];
+      group.push(task);
+      byDate.set(date, group);
+    }
+    for (const tasks of byDate.values()) {
+      tasks.sort(byOrder);
+    }
+    const today = todayIso();
+    const yesterday = yesterdayIso();
+    const weekStart = startOfWeekIso(today);
+    const monthPrefix = today.slice(0, 7);
+    const heatmapDays = [];
+    for (let offset = -181; offset <= 0; offset += 1) {
+      const date = addDaysToIso(today, offset);
+      const count = ((_b = byDate.get(date)) == null ? void 0 : _b.length) || 0;
+      heatmapDays.push({
+        count,
+        date,
+        level: activityLevel(count)
+      });
+    }
+    let currentStreak = 0;
+    for (let date = today; (((_c = byDate.get(date)) == null ? void 0 : _c.length) || 0) > 0; date = addDaysToIso(date, -1)) {
+      currentStreak += 1;
+    }
+    const sortedDates = [...byDate.keys()].sort((a, b) => b.localeCompare(a));
+    const defaultSelectedDate = (((_d = byDate.get(today)) == null ? void 0 : _d.length) || 0) > 0 ? today : sortedDates[0] || null;
+    const data = {
+      allTimeCount: completedTasks.length,
+      byDate,
+      currentStreak,
+      defaultSelectedDate,
+      heatmapDays,
+      monthCount: completedTasks.filter((task) => {
+        var _a2;
+        return (_a2 = task.completedDate) == null ? void 0 : _a2.startsWith(monthPrefix);
+      }).length,
+      todayCount: ((_e = byDate.get(today)) == null ? void 0 : _e.length) || 0,
+      weekCount: completedTasks.filter((task) => {
+        const date = task.completedDate || "";
+        return date >= weekStart && date <= today;
+      }).length,
+      yesterdayCount: ((_f = byDate.get(yesterday)) == null ? void 0 : _f.length) || 0
+    };
+    this.activityCache = { signature, data };
+    return data;
   }
   renderFiltersAndLabels(parent, allTasks) {
     if (this.activeFilter) {
@@ -7049,6 +7253,9 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
         (task) => !archivedSet.has(normalizeTaskProject(task.project) || "") && (task.completed || task.completedOccurrences && task.completedOccurrences.length > 0)
       ));
     }
+    if (this.mode === "activity") {
+      return [];
+    }
     if (this.mode === "projects") {
       return this.sortTasks(
         this.selectedProject ? active.filter((task) => normalizeTaskProject(task.project) === this.selectedProject) : active.filter((task) => Boolean(normalizeTaskProject(task.project)))
@@ -7150,6 +7357,9 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
     }
     if (this.mode === "completed") {
       return "Completed";
+    }
+    if (this.mode === "activity") {
+      return "Activity";
     }
     if (this.mode === "archived") {
       return "Archived projects";
@@ -7672,6 +7882,51 @@ function parseIsoDate(value) {
 function addDaysIso2(offset) {
   const date = /* @__PURE__ */ new Date();
   date.setDate(date.getDate() + offset);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+function addDaysToIso(value, offset) {
+  const date = parseIsoDate(value);
+  if (!date) {
+    return value;
+  }
+  date.setDate(date.getDate() + offset);
+  return toLocalIsoDate(date);
+}
+function startOfWeekIso(value) {
+  const date = parseIsoDate(value);
+  if (!date) {
+    return value;
+  }
+  const day = date.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + mondayOffset);
+  return toLocalIsoDate(date);
+}
+function activityLevel(count) {
+  if (count <= 0) return 0;
+  if (count === 1) return 1;
+  if (count <= 3) return 2;
+  if (count <= 6) return 3;
+  return 4;
+}
+function formatActivityDate(value) {
+  const date = parseIsoDate(value);
+  if (!date) {
+    return value;
+  }
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  }).format(date);
+}
+function formatActivityDayHeading(date, count) {
+  return `${formatShortDate(date)} \xB7 ${formatWeekday(date)} \xB7 ${count}`;
+}
+function toLocalIsoDate(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
