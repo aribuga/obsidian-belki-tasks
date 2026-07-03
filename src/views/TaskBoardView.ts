@@ -36,10 +36,19 @@ import {
 
 export const VIEW_TYPE_BELKI = "belki-task-board";
 
-// Groups: 1=wikilink full, 2=note path, 3=heading, 4=alias | 5=md link full, 6=md text, 7=md url | 8=https url | 9=www url
-const LINK_RE = /(\[\[([^\]|#\n]+?)(?:#([^\]|\n]+?))?(?:\|([^\]\n]+?))?\]\])|(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s<>"')\]]+)|(www\.[a-zA-Z0-9][^\s<>"')\]]*)/g;
+// Groups: 1=wikilink full, 2=note path, 3=heading, 4=alias | 5=md link full, 6=md text, 7=md target | 8=https url | 9=www url
+const LINK_RE = /(\[\[([^\]|#\n]+?)(?:#([^\]|\n]+?))?(?:\|([^\]\n]+?))?\]\])|(\[([^\]]+)\]\(([^)\n]+)\))|(https?:\/\/[^\s<>"')\]]+)|(www\.[a-zA-Z0-9][^\s<>"')\]]*)/g;
 
-export function renderLinkedText(text: string, el: HTMLElement, app?: App): void {
+interface RenderLinkedTextOptions {
+  app: App;
+  sourcePath?: string;
+}
+
+export function renderLinkedText(
+  text: string,
+  el: HTMLElement,
+  options?: RenderLinkedTextOptions
+): void {
   LINK_RE.lastIndex = 0;
   let last = 0;
   let match: RegExpExecArray | null;
@@ -52,22 +61,19 @@ export function renderLinkedText(text: string, el: HTMLElement, app?: App): void
       const alias = match[4];
       const displayText = alias || notePath.split("/").pop() || notePath;
       const linkTarget = heading ? `${notePath}#${heading}` : notePath;
-      if (app) {
-        const a = el.createEl("a", { text: displayText, cls: "internal-link" });
-        a.setAttribute("data-href", linkTarget);
-        a.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          void app.workspace.openLinkText(linkTarget, "", false);
-        });
+      if (options?.app) {
+        createInternalLink(el, displayText, linkTarget, options);
       } else {
         el.appendText(displayText);
       }
       last = match.index + match[1].length;
     } else if (match[5]) {
-      // Markdown link [text](url)
-      const a = el.createEl("a", { text: match[6], href: match[7], cls: "external-link" });
-      a.setAttribute("rel", "noopener noreferrer");
+      const target = match[7].trim();
+      if (options?.app && !isExternalLinkTarget(target)) {
+        createInternalLink(el, match[6], target, options);
+      } else {
+        createExternalLink(el, match[6], normalizeExternalHref(target));
+      }
       last = match.index + match[5].length;
     } else {
       // Raw https:// or www. URL
@@ -75,13 +81,61 @@ export function renderLinkedText(text: string, el: HTMLElement, app?: App): void
       const url = full.replace(/[.,;:!?)\]]+$/, "");
       const trailing = full.slice(url.length);
       const href = url.startsWith("www.") ? `https://${url}` : url;
-      const a = el.createEl("a", { text: url, href, cls: "external-link" });
-      a.setAttribute("rel", "noopener noreferrer");
+      createExternalLink(el, url, href);
       if (trailing) el.appendText(trailing);
       last = match.index + full.length;
     }
   }
   if (last < text.length) el.appendText(text.slice(last));
+}
+
+function createInternalLink(
+  parent: HTMLElement,
+  text: string,
+  linkTarget: string,
+  options: RenderLinkedTextOptions
+): void {
+  const link = parent.createEl("a", {
+    text,
+    cls: "internal-link",
+    href: linkTarget
+  });
+  link.setAttribute("data-href", linkTarget);
+  const open = (event: MouseEvent | TouchEvent, openInNewLeaf = false) => {
+    event.preventDefault();
+    event.stopPropagation();
+    void options.app.workspace.openLinkText(
+      linkTarget,
+      options.sourcePath || "",
+      openInNewLeaf
+    );
+  };
+  link.addEventListener("pointerdown", (event) => event.stopPropagation());
+  link.addEventListener("touchstart", (event) => event.stopPropagation());
+  link.addEventListener("touchend", (event) => open(event));
+  link.addEventListener("click", (event) => {
+    open(event, event.metaKey || event.ctrlKey || event.button === 1);
+  });
+  link.addEventListener("auxclick", (event) => {
+    if (event.button === 1) open(event, true);
+  });
+}
+
+function createExternalLink(parent: HTMLElement, text: string, href: string): void {
+  const link = parent.createEl("a", { text, href, cls: "external-link" });
+  link.setAttribute("rel", "noopener noreferrer");
+  link.addEventListener("pointerdown", (event) => event.stopPropagation());
+  link.addEventListener("touchstart", (event) => event.stopPropagation());
+  link.addEventListener("click", (event) => event.stopPropagation());
+  link.addEventListener("auxclick", (event) => event.stopPropagation());
+}
+
+function isExternalLinkTarget(target: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("www.");
+}
+
+function normalizeExternalHref(target: string): string {
+  return target.startsWith("www.") ? `https://${target}` : target;
 }
 
 function markdownPreviewText(text: string): string {
@@ -97,8 +151,6 @@ function markdownPreviewText(text: string): string {
     )
     .filter(Boolean)
     .join(" ")
-    .replace(/\[\[([^\]|#\n]+?)(?:#[^\]|\n]+?)?(?:\|([^\]\n]+?))?\]\]/g, (_match, notePath: string, alias: string | undefined) => alias || notePath.split("/").pop() || notePath)
-    .replace(/\[([^\]]+)\]\((?:https?:\/\/|obsidian:\/\/|mailto:)[^)]+\)/g, "$1")
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/__([^_]+)__/g, "$1")
@@ -1443,7 +1495,10 @@ export class TaskBoardView extends ItemView {
     row.dataset.taskId = task.id;
     row.toggleClass("is-completed", task.completed);
     row.toggleClass("is-highlighted", this.highlightedTaskId === task.id);
-    row.addEventListener("click", () => {
+    row.addEventListener("click", (event) => {
+      if (event.target instanceof HTMLElement && event.target.closest("a")) {
+        return;
+      }
       this.openTaskDetail(task);
     });
 
@@ -1504,10 +1559,20 @@ export class TaskBoardView extends ItemView {
     });
 
     const content = row.createDiv({ cls: "belki-task-content" });
-    renderLinkedText(task.title, content.createDiv({ cls: "belki-task-title" }), this.app);
+    renderLinkedText(task.title, content.createDiv({ cls: "belki-task-title" }), {
+      app: this.app,
+      sourcePath: task.sourcePath
+    });
 
     if (task.description) {
-      renderLinkedText(markdownPreviewText(task.description), content.createDiv({ cls: "belki-task-description" }), this.app);
+      renderLinkedText(
+        markdownPreviewText(task.description),
+        content.createDiv({ cls: "belki-task-description" }),
+        {
+          app: this.app,
+          sourcePath: task.sourcePath
+        }
+      );
     }
 
     const meta = content.createDiv({ cls: "belki-task-meta" });
@@ -2078,7 +2143,14 @@ export class TaskBoardView extends ItemView {
         result.toggleClass("is-selected", index === selectedIndex);
         result.createDiv({ cls: "belki-search-title", text: task.title });
         if (task.description) {
-          renderLinkedText(markdownPreviewText(task.description), result.createDiv({ cls: "belki-search-description" }), this.app);
+          renderLinkedText(
+            markdownPreviewText(task.description),
+            result.createDiv({ cls: "belki-search-description" }),
+            {
+              app: this.app,
+              sourcePath: task.sourcePath
+            }
+          );
         }
         const meta = result.createDiv({ cls: "belki-search-meta" });
         meta.createSpan({ text: projectDisplayName(task.project) });

@@ -4019,8 +4019,51 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
     });
     descriptionInput.value = this.draft.description || "";
     descriptionInput.addClass("is-hidden");
+    const openRenderedInternalLink = (event, internalLink, openInNewLeaf) => {
+      const linkTarget = internalLink.getAttribute("data-href") || internalLink.getAttribute("href") || "";
+      if (!linkTarget) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      void (async () => {
+        await this.app.workspace.openLinkText(
+          linkTarget,
+          this.draft.sourcePath || "",
+          openInNewLeaf
+        );
+        if (!openInNewLeaf) {
+          this.close();
+        }
+      })();
+    };
+    descRendered.addEventListener("pointerdown", (e) => {
+      if (e.target.closest("a")) {
+        e.stopPropagation();
+      }
+    });
+    descRendered.addEventListener("touchstart", (e) => {
+      if (e.target.closest("a")) {
+        e.stopPropagation();
+      }
+    });
+    descRendered.addEventListener("touchend", (e) => {
+      const internalLink = e.target.closest("a.internal-link");
+      if (internalLink) {
+        openRenderedInternalLink(e, internalLink, false);
+      }
+    });
     descRendered.addEventListener("click", (e) => {
-      if (e.target.closest("a")) return;
+      const target = e.target;
+      const internalLink = target.closest("a.internal-link");
+      if (internalLink) {
+        openRenderedInternalLink(e, internalLink, e.metaKey || e.ctrlKey);
+        return;
+      }
+      if (target.closest("a")) {
+        e.stopPropagation();
+        return;
+      }
       descRendered.addClass("is-hidden");
       descriptionInput.removeClass("is-hidden");
       descriptionInput.focus();
@@ -5510,8 +5553,8 @@ function isImagePath(path) {
 
 // src/views/TaskBoardView.ts
 var VIEW_TYPE_BELKI = "belki-task-board";
-var LINK_RE = /(\[\[([^\]|#\n]+?)(?:#([^\]|\n]+?))?(?:\|([^\]\n]+?))?\]\])|(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(https?:\/\/[^\s<>"')\]]+)|(www\.[a-zA-Z0-9][^\s<>"')\]]*)/g;
-function renderLinkedText(text, el, app) {
+var LINK_RE = /(\[\[([^\]|#\n]+?)(?:#([^\]|\n]+?))?(?:\|([^\]\n]+?))?\]\])|(\[([^\]]+)\]\(([^)\n]+)\))|(https?:\/\/[^\s<>"')\]]+)|(www\.[a-zA-Z0-9][^\s<>"')\]]*)/g;
+function renderLinkedText(text, el, options) {
   LINK_RE.lastIndex = 0;
   let last = 0;
   let match;
@@ -5523,39 +5566,76 @@ function renderLinkedText(text, el, app) {
       const alias = match[4];
       const displayText = alias || notePath.split("/").pop() || notePath;
       const linkTarget = heading ? `${notePath}#${heading}` : notePath;
-      if (app) {
-        const a = el.createEl("a", { text: displayText, cls: "internal-link" });
-        a.setAttribute("data-href", linkTarget);
-        a.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          void app.workspace.openLinkText(linkTarget, "", false);
-        });
+      if (options == null ? void 0 : options.app) {
+        createInternalLink(el, displayText, linkTarget, options);
       } else {
         el.appendText(displayText);
       }
       last = match.index + match[1].length;
     } else if (match[5]) {
-      const a = el.createEl("a", { text: match[6], href: match[7], cls: "external-link" });
-      a.setAttribute("rel", "noopener noreferrer");
+      const target = match[7].trim();
+      if ((options == null ? void 0 : options.app) && !isExternalLinkTarget(target)) {
+        createInternalLink(el, match[6], target, options);
+      } else {
+        createExternalLink(el, match[6], normalizeExternalHref(target));
+      }
       last = match.index + match[5].length;
     } else {
       const full = match[0];
       const url = full.replace(/[.,;:!?)\]]+$/, "");
       const trailing = full.slice(url.length);
       const href = url.startsWith("www.") ? `https://${url}` : url;
-      const a = el.createEl("a", { text: url, href, cls: "external-link" });
-      a.setAttribute("rel", "noopener noreferrer");
+      createExternalLink(el, url, href);
       if (trailing) el.appendText(trailing);
       last = match.index + full.length;
     }
   }
   if (last < text.length) el.appendText(text.slice(last));
 }
+function createInternalLink(parent, text, linkTarget, options) {
+  const link = parent.createEl("a", {
+    text,
+    cls: "internal-link",
+    href: linkTarget
+  });
+  link.setAttribute("data-href", linkTarget);
+  const open = (event, openInNewLeaf = false) => {
+    event.preventDefault();
+    event.stopPropagation();
+    void options.app.workspace.openLinkText(
+      linkTarget,
+      options.sourcePath || "",
+      openInNewLeaf
+    );
+  };
+  link.addEventListener("pointerdown", (event) => event.stopPropagation());
+  link.addEventListener("touchstart", (event) => event.stopPropagation());
+  link.addEventListener("touchend", (event) => open(event));
+  link.addEventListener("click", (event) => {
+    open(event, event.metaKey || event.ctrlKey || event.button === 1);
+  });
+  link.addEventListener("auxclick", (event) => {
+    if (event.button === 1) open(event, true);
+  });
+}
+function createExternalLink(parent, text, href) {
+  const link = parent.createEl("a", { text, href, cls: "external-link" });
+  link.setAttribute("rel", "noopener noreferrer");
+  link.addEventListener("pointerdown", (event) => event.stopPropagation());
+  link.addEventListener("touchstart", (event) => event.stopPropagation());
+  link.addEventListener("click", (event) => event.stopPropagation());
+  link.addEventListener("auxclick", (event) => event.stopPropagation());
+}
+function isExternalLinkTarget(target) {
+  return /^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("www.");
+}
+function normalizeExternalHref(target) {
+  return target.startsWith("www.") ? `https://${target}` : target;
+}
 function markdownPreviewText(text) {
   return text.replace(/```[a-zA-Z0-9_-]*\n?([\s\S]*?)```/g, "$1").split(/\r?\n/).map(
     (line) => line.replace(/^\s{0,3}#{1,6}\s+/, "").replace(/^\s{0,3}>\s?/, "").replace(/^\s*(?:[-*+]|\d+\.)\s+/, "").trim()
-  ).filter(Boolean).join(" ").replace(/\[\[([^\]|#\n]+?)(?:#[^\]|\n]+?)?(?:\|([^\]\n]+?))?\]\]/g, (_match, notePath, alias) => alias || notePath.split("/").pop() || notePath).replace(/\[([^\]]+)\]\((?:https?:\/\/|obsidian:\/\/|mailto:)[^)]+\)/g, "$1").replace(/`([^`]+)`/g, "$1").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/__([^_]+)__/g, "$1").replace(/~~([^~]+)~~/g, "$1").replace(/(^|[^*])\*([^*\n]+)\*/g, "$1$2").replace(/(^|[^_])_([^_\n]+)_/g, "$1$2").replace(/\s+/g, " ").trim();
+  ).filter(Boolean).join(" ").replace(/`([^`]+)`/g, "$1").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/__([^_]+)__/g, "$1").replace(/~~([^~]+)~~/g, "$1").replace(/(^|[^*])\*([^*\n]+)\*/g, "$1$2").replace(/(^|[^_])_([^_\n]+)_/g, "$1$2").replace(/\s+/g, " ").trim();
 }
 var SORT_OPTIONS = [
   { mode: "smart", label: "Smart" },
@@ -6683,7 +6763,10 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
     row.dataset.taskId = task.id;
     row.toggleClass("is-completed", task.completed);
     row.toggleClass("is-highlighted", this.highlightedTaskId === task.id);
-    row.addEventListener("click", () => {
+    row.addEventListener("click", (event) => {
+      if (event.target instanceof HTMLElement && event.target.closest("a")) {
+        return;
+      }
       this.openTaskDetail(task);
     });
     const dragHandle = row.createEl("button", {
@@ -6742,9 +6825,19 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
       void this.store.toggleComplete(task.id);
     });
     const content = row.createDiv({ cls: "belki-task-content" });
-    renderLinkedText(task.title, content.createDiv({ cls: "belki-task-title" }), this.app);
+    renderLinkedText(task.title, content.createDiv({ cls: "belki-task-title" }), {
+      app: this.app,
+      sourcePath: task.sourcePath
+    });
     if (task.description) {
-      renderLinkedText(markdownPreviewText(task.description), content.createDiv({ cls: "belki-task-description" }), this.app);
+      renderLinkedText(
+        markdownPreviewText(task.description),
+        content.createDiv({ cls: "belki-task-description" }),
+        {
+          app: this.app,
+          sourcePath: task.sourcePath
+        }
+      );
     }
     const meta = content.createDiv({ cls: "belki-task-meta" });
     if (task.due) {
@@ -7223,7 +7316,14 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
         result.toggleClass("is-selected", index === selectedIndex);
         result.createDiv({ cls: "belki-search-title", text: task.title });
         if (task.description) {
-          renderLinkedText(markdownPreviewText(task.description), result.createDiv({ cls: "belki-search-description" }), this.app);
+          renderLinkedText(
+            markdownPreviewText(task.description),
+            result.createDiv({ cls: "belki-search-description" }),
+            {
+              app: this.app,
+              sourcePath: task.sourcePath
+            }
+          );
         }
         const meta = result.createDiv({ cls: "belki-search-meta" });
         meta.createSpan({ text: projectDisplayName(task.project) });

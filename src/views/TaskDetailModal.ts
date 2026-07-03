@@ -265,8 +265,62 @@ export class TaskDetailModal extends Modal {
     descriptionInput.value = this.draft.description || "";
     descriptionInput.addClass("is-hidden");
 
+    const openRenderedInternalLink = (
+      event: MouseEvent | TouchEvent,
+      internalLink: HTMLAnchorElement,
+      openInNewLeaf: boolean
+    ) => {
+      const linkTarget =
+        internalLink.getAttribute("data-href") ||
+        internalLink.getAttribute("href") ||
+        "";
+      if (!linkTarget) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      void (async () => {
+        await this.app.workspace.openLinkText(
+          linkTarget,
+          this.draft.sourcePath || "",
+          openInNewLeaf
+        );
+        if (!openInNewLeaf) {
+          this.close();
+        }
+      })();
+    };
+
+    descRendered.addEventListener("pointerdown", (e) => {
+      if ((e.target as HTMLElement).closest("a")) {
+        e.stopPropagation();
+      }
+    });
+    descRendered.addEventListener("touchstart", (e) => {
+      if ((e.target as HTMLElement).closest("a")) {
+        e.stopPropagation();
+      }
+    });
+    descRendered.addEventListener("touchend", (e) => {
+      const internalLink = (e.target as HTMLElement).closest<HTMLAnchorElement>("a.internal-link");
+      if (internalLink) {
+        openRenderedInternalLink(e, internalLink, false);
+      }
+    });
     descRendered.addEventListener("click", (e) => {
-      if ((e.target as HTMLElement).closest("a")) return;
+      const target = e.target as HTMLElement;
+      const internalLink = target.closest<HTMLAnchorElement>("a.internal-link");
+      if (internalLink) {
+        openRenderedInternalLink(e, internalLink, e.metaKey || e.ctrlKey);
+        return;
+      }
+
+      if (target.closest("a")) {
+        e.stopPropagation();
+        return;
+      }
+
       descRendered.addClass("is-hidden");
       descriptionInput.removeClass("is-hidden");
       descriptionInput.focus();
