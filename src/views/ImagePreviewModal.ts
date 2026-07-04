@@ -1,4 +1,5 @@
 import { App, Modal, TFile } from "obsidian";
+import { createBelkiIcon } from "../ui/components/BelkiIcon";
 
 export class ImagePreviewModal extends Modal {
   private openedBody: Element | null = null;
@@ -51,16 +52,15 @@ export class ImagePreviewModal extends Modal {
       }
     });
 
-    shell
-      .createEl("button", {
-        cls: "belki-image-lightbox-close",
-        text: "×",
-        attr: {
-          type: "button",
-          "aria-label": "Close image preview"
-        }
-      })
-      .addEventListener("click", () => this.close());
+    const closeButton = shell.createEl("button", {
+      cls: "belki-image-lightbox-close",
+      attr: {
+        type: "button",
+        "aria-label": "Close image preview"
+      }
+    });
+    createBelkiIcon(closeButton, "close");
+    closeButton.addEventListener("click", () => this.close());
   }
 
   onClose(): void {

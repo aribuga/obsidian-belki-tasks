@@ -1,4 +1,4 @@
-import { App, Component, MarkdownRenderer, Modal, Notice, Platform, TFile, setIcon } from "obsidian";
+import { App, Component, MarkdownRenderer, Modal, Notice, Platform, TFile } from "obsidian";
 import { getLabelColor, getProjectColor } from "../colors";
 import { addDaysIso, formatDueDateChip, nextWeekdayIso, todayIso } from "../dateUtils";
 import { getRepeatChipLabel, getRepeatLabel, getRepeatPresets, repeatRulesEqual } from "../repeatUtils";
@@ -16,6 +16,7 @@ import {
   isDefaultPriority
 } from "../priority";
 import { normalizeTaskProject, uniqueRealProjects } from "../projects";
+import { createBelkiIcon } from "../ui/components/BelkiIcon";
 import { attachWikilinkAutocomplete } from "./wikilinkAutocomplete";
 import { attachQuickAddAutocomplete, parseQuickAddTokens } from "./quickAddAutocomplete";
 import { createBelkiActionRow, createBelkiButton } from "../ui";
@@ -121,13 +122,12 @@ export class TaskDetailModal extends Modal {
       : undefined;
 
     const mobileHeader = contentEl.createDiv({ cls: "belki-detail-mobile-header" });
-    mobileHeader
-      .createEl("button", {
-        cls: "belki-detail-mobile-back",
-        text: "←",
-        attr: { type: "button", "aria-label": "Back to task list" }
-      })
-      .addEventListener("click", () => this.close());
+    const mobileBackButton = mobileHeader.createEl("button", {
+      cls: "belki-detail-mobile-back",
+      attr: { type: "button", "aria-label": "Back to task list" }
+    });
+    createBelkiIcon(mobileBackButton, "back");
+    mobileBackButton.addEventListener("click", () => this.close());
     mobileHeader.createDiv({
       cls: "belki-detail-mobile-title",
       text: isSubTask ? "Sub-task" : "Task details"
@@ -140,14 +140,14 @@ export class TaskDetailModal extends Modal {
 
     const closeButton = shell.createEl("button", {
       cls: "belki-detail-close",
-      text: "×",
       attr: { type: "button", "aria-label": "Close task details" }
     });
+    createBelkiIcon(closeButton, "close");
     closeButton.addEventListener("click", () => this.close());
 
     if (isSubTask && parentTask) {
       const contextBar = main.createDiv({ cls: "belki-subtask-context-bar" });
-      contextBar.createSpan({ cls: "belki-subtask-context-arrow", text: "↳" });
+      createBelkiIcon(contextBar, "collapse", { className: "belki-subtask-context-arrow" });
       contextBar.createSpan({ cls: "belki-subtask-context-label", text: "Sub-task of " });
       const parentLink = contextBar.createEl("button", {
         cls: "belki-subtask-context-parent",
@@ -639,7 +639,7 @@ export class TaskDetailModal extends Modal {
           }
         });
 
-        item.createDiv({ cls: "belki-attachment-file-icon", text: "📄" });
+        createBelkiIcon(item, "file", { className: "belki-attachment-file-icon" });
 
         const text = item.createDiv({ cls: "belki-attachment-text" });
         text.createDiv({ cls: "belki-attachment-name", text: attachmentName(path) });
@@ -652,7 +652,7 @@ export class TaskDetailModal extends Modal {
             "aria-label": `Download ${attachmentName(path)}`
           }
         });
-        setIcon(downloadButton, "download");
+        createBelkiIcon(downloadButton, "download");
         downloadButton.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -666,7 +666,7 @@ export class TaskDetailModal extends Modal {
             "aria-label": `Remove ${attachmentName(path)}`
           }
         });
-        setIcon(removeButton, "x");
+        createBelkiIcon(removeButton, "close");
         removeButton.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -701,15 +701,15 @@ export class TaskDetailModal extends Modal {
       })();
     });
 
-    section
-      .createEl("button", {
-        cls: "belki-add-attachment-inline",
-        text: "+ Add attachment",
-        attr: { type: "button" }
-      })
-      .addEventListener("click", () => {
-        fileInput.click();
-      });
+    const addAttachmentButton = section.createEl("button", {
+      cls: "belki-add-attachment-inline",
+      attr: { type: "button" }
+    });
+    createBelkiIcon(addAttachmentButton, "add");
+    addAttachmentButton.createSpan({ text: "Add attachment" });
+    addAttachmentButton.addEventListener("click", () => {
+      fileInput.click();
+    });
 
     renderList();
   }
@@ -754,7 +754,7 @@ export class TaskDetailModal extends Modal {
           "aria-label": `Download ${attachmentName(path)}`
         }
       });
-      setIcon(downloadButton, "download");
+      createBelkiIcon(downloadButton, "download");
       downloadButton.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -768,7 +768,7 @@ export class TaskDetailModal extends Modal {
           "aria-label": `Remove ${attachmentName(path)}`
         }
       });
-      setIcon(removeButton, "x");
+      createBelkiIcon(removeButton, "close");
       removeButton.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -864,13 +864,13 @@ export class TaskDetailModal extends Modal {
 
         const dragHandle = row.createEl("button", {
           cls: "belki-subtask-drag-handle",
-          text: "⋮⋮",
           attr: {
             type: "button",
             draggable: "true",
             "aria-label": `Reorder ${sub.title}`
           }
         });
+        createBelkiIcon(dragHandle, "dragHandle");
         dragHandle.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -965,9 +965,9 @@ export class TaskDetailModal extends Modal {
 
         const deleteBtn = titleLine.createSpan({
           cls: "belki-subtask-delete",
-          text: "×",
           attr: { role: "button", tabindex: "0", "aria-label": "Delete sub-task" }
         });
+        createBelkiIcon(deleteBtn, "delete");
         deleteBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           void this.options.store.deleteTask(sub.id).then(() => {
@@ -1079,11 +1079,10 @@ export class TaskDetailModal extends Modal {
           cls: "belki-subtask-chip" + (composerDue ? " is-active" : "") + (expandedPanel === "date" ? " is-open" : ""),
           attr: { type: "button" }
         });
-        const calIcon = dateChip.createSpan({ cls: "belki-chip-icon" });
-        setIcon(calIcon, "calendar");
+        createBelkiIcon(dateChip, "calendar", { className: "belki-chip-icon" });
         dateChip.createSpan({ text: composerDue ? formatDueDateChip(composerDue) : "Date" });
         if (composerDue) {
-          const clr = dateChip.createSpan({ cls: "belki-subtask-chip-clear", text: "×" });
+          const clr = createBelkiIcon(dateChip, "close", { className: "belki-subtask-chip-clear" });
           clr.addEventListener("click", (e) => { e.stopPropagation(); composerDue = ""; closePanel(); renderChips(); });
         }
         dateChip.addEventListener("click", () => {
@@ -1098,8 +1097,7 @@ export class TaskDetailModal extends Modal {
         if (hasVisiblePriority(composerPriority)) {
           priChip.setCssStyles({ color: getPriorityColor(composerPriority).color });
         }
-        const flagIcon = priChip.createSpan({ cls: "belki-chip-icon" });
-        setIcon(flagIcon, "flag");
+        createBelkiIcon(priChip, "priority", { className: "belki-chip-icon" });
         priChip.createSpan({ text: getPriorityDisplayLabel(composerPriority) });
         priChip.addEventListener("click", () => {
           if (expandedPanel === "priority") { closePanel(); } else { openPriorityPanel(); renderChips(); }
@@ -1161,7 +1159,8 @@ export class TaskDetailModal extends Modal {
         cls: "belki-subtask-add-btn",
         attr: { type: "button" }
       });
-      btn.createSpan({ text: "+ Add sub-task" });
+      createBelkiIcon(btn, "add");
+      btn.createSpan({ text: "Add sub-task" });
       btn.addEventListener("click", showComposer);
     };
 
@@ -1318,8 +1317,7 @@ export class TaskDetailModal extends Modal {
         cls: `belki-detail-date-btn${hasDate ? " is-active" : ""}`,
         attr: { type: "button" }
       });
-      const iconSpan = btn.createSpan({ cls: "belki-chip-icon" });
-      setIcon(iconSpan, "calendar");
+      createBelkiIcon(btn, "calendar", { className: "belki-chip-icon" });
       btn.createSpan({ text: formatDueDateChip(this.draft.due) });
 
       if (hasDate) {
@@ -1327,7 +1325,7 @@ export class TaskDetailModal extends Modal {
           cls: "belki-date-chip-clear",
           attr: { type: "button", "aria-label": "Clear date" }
         });
-        clearBtn.setText("×");
+        createBelkiIcon(clearBtn, "close");
         clearBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           if (this.draft.repeat) new Notice("Date and repeat rule removed.");
@@ -1370,8 +1368,7 @@ export class TaskDetailModal extends Modal {
 
       popover.createDiv({ cls: "belki-date-divider" });
       const repeatHeader = popover.createDiv({ cls: "belki-repeat-header" });
-      const repeatIcon = repeatHeader.createSpan({ cls: "belki-chip-icon" });
-      setIcon(repeatIcon, "repeat");
+      createBelkiIcon(repeatHeader, "recurring", { className: "belki-chip-icon" });
       repeatHeader.createSpan({ text: "Repeat" });
 
       const presetDue = this.draft.due || todayIso();
@@ -1381,8 +1378,7 @@ export class TaskDetailModal extends Modal {
           cls: "belki-date-preset",
           attr: { type: "button" }
         });
-        const ri = presetBtn.createSpan({ cls: "belki-chip-icon" });
-        setIcon(ri, "repeat");
+        createBelkiIcon(presetBtn, "recurring", { className: "belki-chip-icon" });
         presetBtn.createSpan({ text: preset.label });
         presetBtn.toggleClass("is-active", repeatRulesEqual(preset.rule, this.draft.repeat));
         presetBtn.addEventListener("click", (e) => {
@@ -1430,8 +1426,7 @@ export class TaskDetailModal extends Modal {
           cls: "belki-detail-date-btn is-active belki-repeat-active-btn",
           attr: { type: "button", title: fullRepeatLabel, "aria-label": fullRepeatLabel }
         });
-        const ri = repeatChip.createSpan({ cls: "belki-chip-icon" });
-        setIcon(ri, "repeat");
+        createBelkiIcon(repeatChip, "recurring", { className: "belki-chip-icon" });
         repeatChip.createSpan({ cls: "belki-repeat-chip-label", text: getRepeatChipLabel(this.draft.repeat) });
         repeatChip.addEventListener("click", (e) => {
           e.preventDefault();
@@ -1445,9 +1440,9 @@ export class TaskDetailModal extends Modal {
         });
         const clearRepeat = repeatRow.createEl("button", {
           cls: "belki-date-chip-clear",
-          text: "×",
           attr: { type: "button", "aria-label": "Clear repeat" }
         });
+        createBelkiIcon(clearRepeat, "close");
         clearRepeat.addEventListener("click", (e) => {
           e.stopPropagation();
           this.draft.repeat = undefined;
@@ -1480,8 +1475,7 @@ export class TaskDetailModal extends Modal {
         cls: `belki-detail-date-btn${hasDate ? " is-active" : ""}`,
         attr: { type: "button" }
       });
-      const iconSpan = btn.createSpan({ cls: "belki-chip-icon" });
-      setIcon(iconSpan, "diamond");
+      createBelkiIcon(btn, "deadline", { className: "belki-chip-icon" });
       btn.createSpan({ text: hasDate ? formatDueDateChip(this.draft.deadline) : "No deadline" });
 
       if (hasDate) {
@@ -1489,7 +1483,7 @@ export class TaskDetailModal extends Modal {
           cls: "belki-date-chip-clear",
           attr: { type: "button", "aria-label": "Clear deadline" }
         });
-        clearBtn.setText("×");
+        createBelkiIcon(clearBtn, "close");
         clearBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           this.draft.deadline = undefined;
@@ -1524,7 +1518,7 @@ export class TaskDetailModal extends Modal {
       addPreset("Next week", addDaysIso(7));
       addPreset("Next weekend", nextWeekdayIso(6));
 
-      renderCustomDatePicker(popover, this.draft.deadline, "diamond", selectDate);
+      renderCustomDatePicker(popover, this.draft.deadline, "deadline", selectDate);
 
       btn.addEventListener("click", () => {
         const isHidden = popover.hasClass("is-hidden");
@@ -1619,18 +1613,17 @@ export class TaskDetailModal extends Modal {
           event.preventDefault();
           event.stopPropagation();
         });
-        chip
-          .createSpan({
-            cls: "belki-label-chip-remove",
-            text: "×",
-            attr: { "aria-hidden": "true" }
-          })
-          .addEventListener("click", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            this.draft.labels = this.draft.labels.filter((candidate) => candidate !== label);
-            renderLabels();
-          });
+        const removeLabel = chip.createSpan({
+          cls: "belki-label-chip-remove",
+          attr: { "aria-hidden": "true" }
+        });
+        createBelkiIcon(removeLabel, "close");
+        removeLabel.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          this.draft.labels = this.draft.labels.filter((candidate) => candidate !== label);
+          renderLabels();
+        });
       }
 
       suggestions.empty();

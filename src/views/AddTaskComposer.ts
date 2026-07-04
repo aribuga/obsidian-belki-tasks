@@ -1,4 +1,4 @@
-import { App, Notice, Platform, setIcon } from "obsidian";
+import { App, Notice, Platform } from "obsidian";
 import { CreateTaskInput, PRIORITIES, Priority, RepeatRule } from "../types";
 import { getLabelColor, getProjectColor } from "../colors";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
@@ -15,6 +15,7 @@ import { CustomRepeatModal } from "./CustomRepeatModal";
 import { attachWikilinkAutocomplete } from "./wikilinkAutocomplete";
 import { attachQuickAddAutocomplete, parseQuickAddTokens } from "./quickAddAutocomplete";
 import { createBelkiActionRow, createBelkiButton } from "../ui";
+import { createBelkiIcon } from "../ui/components/BelkiIcon";
 
 interface ComposerOptions {
   app: App;
@@ -107,7 +108,7 @@ export class AddTaskComposer {
     const repeatChipWrap = chipRow.createDiv({ cls: "belki-repeat-chip-wrap" });
 
     const priorityWrap = chipRow.createDiv({ cls: "belki-chip-select-wrap" });
-    createIcon(priorityWrap, "flag");
+    createIcon(priorityWrap, "priority");
     const priorityIndicator = priorityWrap.createSpan({ cls: "belki-priority-indicator" });
     const priorityDisplay = priorityWrap.createSpan({ cls: "belki-priority-display" });
     const prioritySelect = priorityWrap.createEl("select", {
@@ -156,24 +157,22 @@ export class AddTaskComposer {
 
       for (const [index, file] of pendingAttachments.entries()) {
         const item = pendingAttachmentsEl.createDiv({ cls: "belki-composer-attachment" });
-        item.createDiv({
-          cls: "belki-composer-attachment-icon",
-          text: isImageFile(file) ? "🖼" : "📄"
+        createBelkiIcon(item, isImageFile(file) ? "attachment" : "file", {
+          className: "belki-composer-attachment-icon"
         });
         item.createDiv({ cls: "belki-composer-attachment-name", text: file.name });
-        item
-          .createEl("button", {
-            cls: "belki-composer-attachment-remove",
-            text: "×",
-            attr: {
-              type: "button",
-              "aria-label": `Remove ${file.name}`
-            }
-          })
-          .addEventListener("click", () => {
-            pendingAttachments = pendingAttachments.filter((_, candidateIndex) => candidateIndex !== index);
-            renderPendingAttachments();
-          });
+        const removeButton = item.createEl("button", {
+          cls: "belki-composer-attachment-remove",
+          attr: {
+            type: "button",
+            "aria-label": `Remove ${file.name}`
+          }
+        });
+        createBelkiIcon(removeButton, "close");
+        removeButton.addEventListener("click", () => {
+          pendingAttachments = pendingAttachments.filter((_, candidateIndex) => candidateIndex !== index);
+          renderPendingAttachments();
+        });
       }
     };
     attachmentButton.addEventListener("click", () => {
@@ -285,14 +284,14 @@ export class AddTaskComposer {
         cls: `belki-chip-button${hasDeadline ? " belki-date-chip is-active is-selected" : ""}`,
         attr: { type: "button", "aria-label": "Set deadline" }
       });
-      createIcon(btn, "diamond");
+      createIcon(btn, "deadline");
       btn.createSpan({
         cls: "belki-chip-label",
         text: hasDeadline ? formatDueDateChip(selectedDeadline) : "Deadline"
       });
 
       if (hasDeadline) {
-        const clearSpan = btn.createSpan({ cls: "belki-deadline-clear", text: "×" });
+        const clearSpan = createBelkiIcon(btn, "close", { className: "belki-deadline-clear" });
         clearSpan.addEventListener("click", (e) => {
           e.stopPropagation();
           selectedDeadline = "";
@@ -407,7 +406,7 @@ export class AddTaskComposer {
           cls: "belki-label-chip-remove",
           attr: { type: "button", "aria-label": `Remove ${displayLabel(label)}` }
         });
-        createIcon(removeBtn, "x");
+        createIcon(removeBtn, "close");
         removeBtn.addEventListener("click", removeLabel);
       }
 
@@ -504,13 +503,13 @@ export class AddTaskComposer {
       cls: "belki-custom-project-confirm",
       attr: { type: "button", "aria-label": "Confirm project" }
     });
-    setIcon(confirmProjectBtn, "check");
+    createBelkiIcon(confirmProjectBtn, "completed");
 
     const cancelProjectBtn = customProjectWrap.createEl("button", {
       cls: "belki-custom-project-cancel",
       attr: { type: "button", "aria-label": "Cancel" }
     });
-    setIcon(cancelProjectBtn, "x");
+    createBelkiIcon(cancelProjectBtn, "close");
 
     let previousProjectValue = "";
 
@@ -721,16 +720,15 @@ export class AddTaskComposer {
         cls: `belki-chip-button belki-date-chip${hasDate ? " is-active is-selected" : ""}`,
         attr: { type: "button", "aria-label": "Set due date" }
       });
-      const iconSpan = dueDateButton.createSpan({ cls: "belki-chip-icon" });
-      setIcon(iconSpan, "calendar");
+      createBelkiIcon(dueDateButton, "calendar", { className: "belki-chip-icon" });
       dueDateButton.createSpan({ cls: "belki-chip-label", text: formatDueDateChip(selectedDue) });
 
       if (hasDate) {
         const clearBtn = dueDateWrap.createEl("button", {
           cls: "belki-date-chip-clear",
-          text: "×",
           attr: { type: "button", "aria-label": "Clear due date" }
         });
+        createBelkiIcon(clearBtn, "close");
         clearBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           if (selectedRepeat) new Notice("Date and repeat rule removed.");
@@ -778,8 +776,7 @@ export class AddTaskComposer {
 
       datePopover.createDiv({ cls: "belki-date-divider" });
       const repeatHeader = datePopover.createDiv({ cls: "belki-repeat-header" });
-      const repeatIcon = repeatHeader.createSpan({ cls: "belki-chip-icon" });
-      setIcon(repeatIcon, "repeat");
+      createBelkiIcon(repeatHeader, "recurring", { className: "belki-chip-icon" });
       repeatHeader.createSpan({ text: "Repeat" });
 
       const presetDue = selectedDue || todayIso();
@@ -789,8 +786,7 @@ export class AddTaskComposer {
           cls: "belki-date-preset",
           attr: { type: "button" }
         });
-        const ri = btn.createSpan({ cls: "belki-chip-icon" });
-        setIcon(ri, "repeat");
+        createBelkiIcon(btn, "recurring", { className: "belki-chip-icon" });
         btn.createSpan({ text: preset.label });
         btn.toggleClass("is-active", repeatRulesEqual(preset.rule, selectedRepeat));
         btn.addEventListener("click", (e) => {
@@ -838,8 +834,7 @@ export class AddTaskComposer {
         cls: "belki-chip-button belki-repeat-chip is-active is-selected",
         attr: { type: "button", title: fullLabel, "aria-label": fullLabel }
       });
-      const ri = chip.createSpan({ cls: "belki-chip-icon" });
-      setIcon(ri, "repeat");
+      createBelkiIcon(chip, "recurring", { className: "belki-chip-icon" });
       chip.createSpan({ cls: "belki-chip-label", text: getRepeatChipLabel(selectedRepeat) });
       chip.addEventListener("click", () => {
         const shouldOpen = dueDateWrap.querySelector(".belki-date-popover:not(.is-hidden)") === null;
@@ -854,9 +849,9 @@ export class AddTaskComposer {
       });
       const clearRepeat = repeatChipWrap.createEl("button", {
         cls: "belki-date-chip-clear",
-        text: "×",
         attr: { type: "button", "aria-label": "Clear repeat" }
       });
+      createBelkiIcon(clearRepeat, "close");
       clearRepeat.addEventListener("click", (e) => {
         e.stopPropagation();
         selectedRepeat = undefined;
@@ -925,9 +920,7 @@ function createIcon(
   iconName: string,
   className = "belki-chip-icon"
 ): HTMLElement {
-  const icon = parent.createSpan({ cls: className });
-  setIcon(icon, iconName);
-  return icon;
+  return createBelkiIcon(parent, iconName, { className });
 }
 
 interface LocalPopoverOptions {

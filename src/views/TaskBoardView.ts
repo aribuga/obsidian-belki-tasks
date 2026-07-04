@@ -1,4 +1,4 @@
-import { App, ItemView, Modal, Platform, WorkspaceLeaf, setIcon } from "obsidian";
+import { App, ItemView, Modal, Platform, WorkspaceLeaf } from "obsidian";
 import { BELKI_COLOR_PALETTE, getLabelColor, getProjectColor } from "../colors";
 import {
   compareIsoDates,
@@ -35,6 +35,7 @@ import {
   projectDisplayName,
   uniqueRealProjects
 } from "../projects";
+import { createBelkiIcon } from "../ui/components/BelkiIcon";
 
 export const VIEW_TYPE_BELKI = "belki-task-board";
 
@@ -470,7 +471,7 @@ export class TaskBoardView extends ItemView {
     });
 
     const sidebarAdd = sidebar.createEl("button", { cls: "belki-add-sidebar" });
-    sidebarAdd.createSpan({ cls: "belki-add-plus", text: "+" });
+    createBelkiIcon(sidebarAdd, "add", { className: "belki-add-plus", size: 18 });
     sidebarAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
     sidebarAdd.addEventListener("click", () => {
       this.openAddComposer();
@@ -495,7 +496,7 @@ export class TaskBoardView extends ItemView {
       cls: "belki-sidebar-add-project",
       attr: { type: "button", "aria-label": "New project" }
     });
-    setIcon(addProjectBtn, "plus");
+    createBelkiIcon(addProjectBtn, "add");
     addProjectBtn.createSpan({ cls: "belki-sidebar-add-project-label", text: "Project" });
     addProjectBtn.addEventListener("click", () => {
       new CreateProjectModal(this.app, this.getKnownProjects(), (project) => {
@@ -549,7 +550,7 @@ export class TaskBoardView extends ItemView {
         cls: "belki-project-button belki-archived-button"
       });
       archiveButton.toggleClass("is-active", this.mode === "archived");
-      archiveButton.createSpan({ cls: "belki-project-dot" });
+      createBelkiIcon(archiveButton, "archive", { className: "belki-nav-icon", size: 18 });
       archiveButton.createEl("span", { cls: "belki-nav-label", text: "Archived" });
       archiveButton.createEl("span", { cls: "belki-count", text: String(this.settings.archivedProjects.length) });
       archiveButton.addEventListener("click", () => {
@@ -586,10 +587,10 @@ export class TaskBoardView extends ItemView {
           ? this.mode === "projects" && this.selectedProject === null
           : this.mode === mode;
     button.toggleClass("is-active", active);
-    button.createEl("span", {
-      cls: "belki-nav-icon",
-      text: iconKey ? this.settings.icons[iconKey] : ""
-    });
+    const iconEl = button.createEl("span", { cls: "belki-nav-icon" });
+    if (iconKey) {
+      createBelkiIcon(iconEl, iconKey, { size: 18 });
+    }
     button.createEl("span", { cls: "belki-nav-label", text: label });
 
     if (count !== undefined) {
@@ -654,7 +655,7 @@ export class TaskBoardView extends ItemView {
       });
     } else {
       const inlineAdd = addArea.createEl("button", { cls: "belki-add-inline" });
-      inlineAdd.createSpan({ cls: "belki-add-plus", text: "+" });
+      createBelkiIcon(inlineAdd, "add", { className: "belki-add-plus", size: 18 });
       inlineAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
       inlineAdd.addEventListener("click", () => {
         this.openAddComposer();
@@ -749,14 +750,14 @@ export class TaskBoardView extends ItemView {
         cls: "belki-mobile-quick-add-back",
         attr: { type: "button", "aria-label": "Back to tasks" }
       });
-      setIcon(backButton, "arrow-left");
+      createBelkiIcon(backButton, "back");
       backButton.addEventListener("click", () => this.closeMobileComposer());
       header.createDiv({ cls: "belki-mobile-quick-add-title", text: "Add task" });
       const closeButton = header.createEl("button", {
         cls: "belki-mobile-quick-add-close",
         attr: { type: "button", "aria-label": "Close add task" }
       });
-      setIcon(closeButton, "x");
+      createBelkiIcon(closeButton, "close");
       closeButton.addEventListener("click", () => this.closeMobileComposer());
 
       const body = screen.createDiv({ cls: "belki-mobile-quick-add-body" });
@@ -770,7 +771,7 @@ export class TaskBoardView extends ItemView {
       cls: "belki-mobile-quick-add-button",
       attr: { type: "button", "aria-label": "Add task" }
     });
-    setIcon(button, "plus");
+    createBelkiIcon(button, "add");
     button.addEventListener("click", () => this.openAddComposer());
   }
 
@@ -818,8 +819,7 @@ export class TaskBoardView extends ItemView {
         "aria-expanded": String(this.sortPopoverOpen)
       }
     });
-    const icon = button.createSpan({ cls: "belki-sorting-icon" });
-    setIcon(icon, "arrow-up-down");
+    createBelkiIcon(button, "sorting", { className: "belki-sorting-icon" });
     button.createSpan({ text: "Sorting" });
     button.addEventListener("click", (event) => {
       event.preventDefault();
@@ -1291,11 +1291,14 @@ export class TaskBoardView extends ItemView {
     const labelsSection = parent.createDiv({ cls: "belki-filter-section" });
     const labelsHeader = labelsSection.createDiv({ cls: "belki-labels-header" });
     labelsHeader.createEl("h2", { text: "Labels" });
-    labelsHeader
-      .createEl("button", { cls: "belki-label-add", text: "+", attr: { type: "button" } })
-      .addEventListener("click", () => {
-        this.createLabelFromPrompt();
-      });
+    const labelAddButton = labelsHeader.createEl("button", {
+      cls: "belki-label-add",
+      attr: { type: "button", "aria-label": "Create label" }
+    });
+    createBelkiIcon(labelAddButton, "add");
+    labelAddButton.addEventListener("click", () => {
+      this.createLabelFromPrompt();
+    });
 
     const labelList = labelsSection.createDiv({ cls: "belki-filter-list" });
     const labels = this.getAllLabels();
@@ -1334,11 +1337,12 @@ export class TaskBoardView extends ItemView {
   ): void {
     const row = parent.createEl("button", { cls: "belki-filter-row", attr: { type: "button" } });
     row.toggleClass("belki-label-row", Boolean(color));
-    const dot = row.createSpan({ cls: "belki-filter-dot", text: icon });
+    const dot = row.createSpan({ cls: "belki-filter-dot" });
     if (color) {
-      dot.setText("");
       dot.addClass("belki-label-dot");
       dot.setCssStyles({ backgroundColor: color });
+    } else if (icon) {
+      createBelkiIcon(dot, icon);
     }
     row.createSpan({ cls: "belki-filter-name", text: name });
     row.createSpan({ cls: "belki-row-count", text: String(count) });
@@ -1387,7 +1391,7 @@ export class TaskBoardView extends ItemView {
       cls: "belki-project-actions-button",
       attr: { type: "button", "aria-label": "Project actions" }
     });
-    button.createSpan({ text: "…" });
+    createBelkiIcon(button, "more");
 
     button.addEventListener("click", (event) => {
       event.preventDefault();
@@ -1763,12 +1767,12 @@ export class TaskBoardView extends ItemView {
 
     const dragHandle = row.createEl("button", {
       cls: "belki-task-drag-handle",
-      text: "⋮⋮",
       attr: {
         type: "button",
         "aria-label": `Drag ${task.title}`
       }
     });
+    createBelkiIcon(dragHandle, "dragHandle");
     if (task.completed || !this.hasDragTarget(task)) {
       dragHandle.addClass("is-disabled");
       dragHandle.setAttr("disabled", "true");
@@ -1841,8 +1845,7 @@ export class TaskBoardView extends ItemView {
         text: formatDueChip(task.due)
       });
       if (task.repeat) {
-        const ri = dateSpan.createSpan({ cls: "belki-task-repeat-icon" });
-        setIcon(ri, "repeat");
+        createBelkiIcon(dateSpan, "recurring", { className: "belki-task-repeat-icon" });
       }
     }
     if (task.deadline) {
@@ -1870,24 +1873,23 @@ export class TaskBoardView extends ItemView {
       }
     }
     if (task.attachments.length > 0) {
-      meta.createSpan({
-        cls: "belki-task-attachments",
-        text: `📎 ${task.attachments.length}`
-      });
+      const attachmentEl = meta.createSpan({ cls: "belki-task-attachments" });
+      createBelkiIcon(attachmentEl, "attachment", { className: "belki-chip-icon" });
+      attachmentEl.createSpan({ text: String(task.attachments.length) });
     }
     const allTasks = this.store.getTasks();
     const subTasks = allTasks.filter((t) => t.parentId === task.id);
     if (subTasks.length > 0) {
       const done = subTasks.filter((t) => t.completed).length;
       const counterEl = meta.createSpan({ cls: "belki-task-subtask-counter" });
-      setIcon(counterEl.createSpan({ cls: "belki-chip-icon" }), "list-checks");
+      createBelkiIcon(counterEl, "subtasks", { className: "belki-chip-icon" });
       counterEl.createSpan({ text: `${done}/${subTasks.length}` });
     }
 
     if (!task.completed && task.completedOccurrences && task.completedOccurrences.length > 0) {
       const last = task.completedOccurrences[task.completedOccurrences.length - 1];
       const lastSpan = meta.createSpan({ cls: "belki-task-last-completed" });
-      setIcon(lastSpan.createSpan({ cls: "belki-chip-icon" }), "check");
+      createBelkiIcon(lastSpan, "completed", { className: "belki-chip-icon" });
       lastSpan.createSpan({ text: formatDueChip(last) });
     }
 
@@ -1905,12 +1907,12 @@ export class TaskBoardView extends ItemView {
     const actions = row.createDiv({ cls: "belki-task-actions" });
     const actionButton = actions.createEl("button", {
       cls: "belki-task-actions-button",
-      text: "…",
       attr: {
         type: "button",
         "aria-label": "Task actions"
       }
     });
+    createBelkiIcon(actionButton, "more");
     actionButton.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -1924,19 +1926,18 @@ export class TaskBoardView extends ItemView {
       this.taskActionMenuEl = this.renderTaskActionMenu(task, actionButton);
     });
 
-    actions
-      .createEl("button", {
-        cls: "belki-task-delete",
-        text: "×",
-        attr: {
-          type: "button",
-          "aria-label": "Delete task"
-        }
-      })
-      .addEventListener("click", (event) => {
-        event.stopPropagation();
-        void this.store.deleteTask(task.id);
-      });
+    const deleteButton = actions.createEl("button", {
+      cls: "belki-task-delete",
+      attr: {
+        type: "button",
+        "aria-label": "Delete task"
+      }
+    });
+    createBelkiIcon(deleteButton, "delete");
+    deleteButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      void this.store.deleteTask(task.id);
+    });
   }
 
   private renderTaskActionMenu(task: BelkiTask, trigger: HTMLElement): HTMLElement {
@@ -2252,61 +2253,61 @@ export class TaskBoardView extends ItemView {
       {
         id: "p1",
         name: "Priority 1",
-        icon: "1",
+        icon: "priority",
         tasks: active.filter((task) => task.priority === "P1")
       },
       {
         id: "p2",
         name: "Priority 2",
-        icon: "2",
+        icon: "priority",
         tasks: active.filter((task) => task.priority === "P2")
       },
       {
         id: "p3",
         name: "Priority 3",
-        icon: "3",
+        icon: "priority",
         tasks: active.filter((task) => task.priority === "P3")
       },
       {
         id: "p4",
         name: "Priority",
-        icon: "4",
+        icon: "priority",
         tasks: active.filter((task) => isDefaultPriority(task.priority))
       },
       {
         id: "all",
         name: "View all",
-        icon: "•",
+        icon: "completed",
         tasks: active
       },
       {
         id: "no-due",
         name: "No due date",
-        icon: "○",
+        icon: "calendar",
         tasks: active.filter((task) => !task.due)
       },
       {
         id: "today",
         name: "Today",
-        icon: "●",
+        icon: "today",
         tasks: active.filter((task) => task.due === today)
       },
       {
         id: "overdue",
         name: "Overdue",
-        icon: "!",
+        icon: "overdue",
         tasks: active.filter((task) => task.due && task.due < today)
       },
       {
         id: "with-deadline",
         name: "With deadline",
-        icon: "◆",
+        icon: "deadline",
         tasks: active.filter((task) => Boolean(task.deadline))
       },
       {
         id: "no-label",
         name: "No label",
-        icon: "#",
+        icon: "labels",
         tasks: active.filter((task) => task.labels.length === 0)
       }
     ];
@@ -2982,7 +2983,7 @@ class CreateProjectModal extends Modal {
       cls: "belki-project-color-random",
       attr: { type: "button", "aria-label": "Choose another project color" }
     });
-    setIcon(randomButton, "refresh-cw");
+    createBelkiIcon(randomButton, "randomize");
 
     const customColor = colorControl.createEl("label", { cls: "belki-project-color-custom" });
     const customDot = customColor.createSpan({ cls: "belki-project-color-custom-dot" });

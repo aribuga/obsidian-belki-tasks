@@ -1,4 +1,4 @@
-import { setIcon } from "obsidian";
+import { createBelkiIcon } from "./ui/components/BelkiIcon";
 
 export type BelkiButtonVariant = "default" | "primary" | "danger" | "destructive" | "ghost";
 export type BelkiButtonSize = "sm" | "md";
@@ -78,7 +78,7 @@ export function createBelkiButton(
   });
 
   if (options.icon) {
-    createBelkiIcon(button, options.icon);
+    createBelkiIcon(button, options.icon, { className: "belki-ui-icon" });
   }
   if (options.text) {
     button.createSpan({ cls: "belki-ui-button-label", text: options.text });
@@ -115,7 +115,7 @@ export function createBelkiChip(parent: HTMLElement, options: BelkiChipOptions):
   });
 
   if (options.icon) {
-    createBelkiIcon(chip, options.icon);
+    createBelkiIcon(chip, options.icon, { className: "belki-ui-icon" });
   }
   if (options.text) {
     chip.createSpan({ cls: "belki-ui-chip-label", text: options.text });
@@ -155,12 +155,6 @@ export function createBelkiBottomBar(
   return parent.createDiv({
     cls: classNames("belki-ui-bottom-bar", options.className)
   });
-}
-
-function createBelkiIcon(parent: HTMLElement, iconName: string): HTMLElement {
-  const icon = parent.createSpan({ cls: "belki-ui-icon" });
-  setIcon(icon, iconName);
-  return icon;
 }
 
 function classNames(...parts: Array<string | undefined | false>): string {

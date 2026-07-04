@@ -1,7 +1,8 @@
-import { App, Modal, Notice, setIcon } from "obsidian";
+import { App, Modal, Notice } from "obsidian";
 import { RepeatFrequency, RepeatRule } from "../types";
 import { getRepeatLabel, getRepeatWeekdays, normalizeRepeatRule } from "../repeatUtils";
 import { createBelkiActionRow, createBelkiButton } from "../ui";
+import { createBelkiIcon } from "../ui/components/BelkiIcon";
 
 const FREQ_LABELS: Record<RepeatFrequency, string> = {
   daily: "Day",
@@ -163,8 +164,7 @@ export class CustomRepeatModal extends Modal {
 
     // Preview
     const preview = contentEl.createDiv({ cls: "belki-repeat-preview" });
-    const previewIcon = preview.createSpan({ cls: "belki-chip-icon" });
-    setIcon(previewIcon, "repeat");
+    createBelkiIcon(preview, "recurring", { className: "belki-chip-icon" });
     preview.createSpan({ text: getRepeatLabel(this.draft) });
 
     // Actions

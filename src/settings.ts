@@ -48,14 +48,14 @@ export const DEFAULT_SETTINGS: BelkiSettings = {
   dataFolderPath: DEFAULT_DATA_FOLDER_PATH,
   defaultProject: "",
   icons: {
-    search: "🔎",
-    inbox: "📥",
-    today: "📅",
-    upcoming: "🗓️",
-    filters: "🏷️",
-    projects: "📁",
-    activity: "📈",
-    completed: "✅"
+    search: "search",
+    inbox: "inbox",
+    today: "today",
+    upcoming: "upcoming",
+    filters: "filters",
+    projects: "projects",
+    activity: "activity",
+    completed: "completed"
   },
   projectColors: {},
   labelColors: {},
@@ -296,17 +296,6 @@ export class BelkiSettingTab extends PluginSettingTab {
       "labelFont"
     );
 
-    new Setting(containerEl).setName("Sidebar icons").setHeading();
-
-    this.addIconSetting("Search icon", "search");
-    this.addIconSetting("Inbox icon", "inbox");
-    this.addIconSetting("Today icon", "today");
-    this.addIconSetting("Upcoming icon", "upcoming");
-    this.addIconSetting("Filters icon", "filters");
-    this.addIconSetting("Projects icon", "projects");
-    this.addIconSetting("Activity icon", "activity");
-    this.addIconSetting("Completed icon", "completed");
-
     new Setting(containerEl).setName("Project colors").setHeading();
 
     const projects = this.plugin.getProjectNames();
@@ -336,20 +325,6 @@ export class BelkiSettingTab extends PluginSettingTab {
     for (const label of labels) {
       this.addLabelColorSetting(label);
     }
-  }
-
-  private addIconSetting(name: string, key: keyof BelkiIconSettings): void {
-    new Setting(this.containerEl)
-      .setName(name)
-      .addText((text) => {
-        text
-          .setValue(this.plugin.settings.icons[key])
-          .onChange(async (value) => {
-            this.plugin.settings.icons[key] = value.trim() || DEFAULT_SETTINGS.icons[key];
-            await this.plugin.saveSettings();
-            this.plugin.refreshBelkiViews();
-          });
-      });
   }
 
   private addFontSetting(
