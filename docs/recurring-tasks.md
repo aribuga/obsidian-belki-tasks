@@ -10,13 +10,17 @@ Open the task detail view. Click the **Repeat** chip in the date section. Choose
 
 - Daily
 - Weekly
+- Weekdays
 - Monthly
+- Yearly
 - Custom (set a specific interval and unit)
 
 Repeat rules can be calendar-based or completion-based:
 
 - **Calendar-based** — the next due date is calculated from the original due date regardless of when you completed it.
 - **Completion-based** — the next due date is calculated from the date you actually completed the task.
+
+For weekly scheduled-date repeats, you can select more than one weekday, such as Monday, Wednesday, and Friday.
 
 ---
 

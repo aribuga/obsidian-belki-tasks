@@ -44,6 +44,12 @@ Yes. belki is designed to work on both desktop and mobile. See [Mobile](mobile.m
 
 ---
 
+## Does belki track productivity or send analytics?
+
+No. The Activity view is calculated locally from completed tasks in your configured belki data folder. belki does not send analytics or telemetry.
+
+---
+
 ## What happens to sub-tasks if I delete a parent task?
 
 Currently, sub-tasks are not automatically deleted when the parent task is deleted. They become orphaned tasks without a parent. This behavior will be improved in a future version.

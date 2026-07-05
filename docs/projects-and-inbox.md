@@ -14,7 +14,9 @@ Projects appear in the sidebar under **Projects**. Each project has a colored do
 
 ### Creating a project
 
-You can create a project from the task detail view or quick-add composer using `//New project name`. Type the name and confirm with the ✓ button.
+You can create a project from the task detail view or quick-add composer using `//New project name`. You can also create one from the Projects section.
+
+When creating a project, choose a color or leave it on **Auto**. Auto uses a stable generated color based on the project name.
 
 ### Renaming a project
 
@@ -24,9 +26,13 @@ Open a project view and click the **⋯** menu next to the project title. Select
 
 Open the project **⋯** menu and select **Archive**. Archived projects move to the **Archived** section at the bottom of the sidebar. Tasks in archived projects are hidden from active views.
 
+### Deleting a project
+
+Open the project **⋯** menu and select **Delete**. Deleting a project does not delete its tasks; tasks are moved back to Inbox by clearing their project.
+
 ### Project colors
 
-Assign a color to each project in Settings → Project colors. Colors appear as dots in the sidebar and on task cards.
+Assign a color while creating a project, or later in Settings → Project colors. Colors appear as dots in the sidebar and on task cards.
 
 ---
 

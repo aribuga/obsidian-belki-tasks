@@ -74,4 +74,6 @@ Deleting a parent task does not automatically delete its sub-tasks. Sub-tasks be
 
 ## Drag and drop
 
-You can drag a task to a different position within a list. You can also drag a task onto a project section or a date group in Upcoming to update its project or due date.
+On desktop, you can drag a task onto a project or date group to update its project or due date. For example, dragging a task onto an Upcoming date group changes its due date to that date.
+
+On mobile, use the task action menu for move actions such as **Move to Today**, **Move to Tomorrow**, **Pick date**, and **Clear date**.

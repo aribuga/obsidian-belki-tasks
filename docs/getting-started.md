@@ -31,6 +31,8 @@ Run `belki: Open` from the command palette, or click the belki icon in the sideb
 3. Optionally set a project, due date, priority, or labels from the composer.
 4. Press Enter or click **Add task**.
 
+You can also run `belki: Add task` from the command palette to capture a task without opening the full board first.
+
 **Quick-add shortcuts in the title field:**
 
 | Type | Effect |
@@ -51,6 +53,7 @@ Example: `Write report #work //Client Work` — creates a task titled "Write rep
 | **Upcoming** | Future tasks grouped by date |
 | **Projects** | All projects or a single project |
 | **Filters & Labels** | Browse by priority, date, or label |
+| **Activity** | Completed task stats and history |
 | **Completed** | Done tasks grouped by completion date |
 
 ---

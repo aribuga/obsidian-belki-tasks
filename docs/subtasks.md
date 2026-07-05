@@ -21,8 +21,11 @@ The composer stays open so you can add multiple sub-tasks quickly. Click **Cance
 
 - Sub-tasks inherit the parent task's project.
 - Sub-tasks do not appear in top-level views (Today, Inbox, Upcoming, etc.) to avoid duplication.
-- Completing a sub-task moves it to the bottom of the sub-tasks list with a strikethrough.
+- Completing a sub-task keeps it in the current sub-task order and shows it with a strikethrough.
 - The parent task card shows a counter, for example `0/3`, in the metadata row.
+- Click the counter on the parent task card to expand a small inline preview of the sub-tasks.
+- In the inline preview, you can complete a sub-task or click it to open its detail view.
+- On desktop, sub-tasks can be reordered inside the parent task detail view.
 
 ---
 

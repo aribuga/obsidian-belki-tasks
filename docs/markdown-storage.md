@@ -82,11 +82,11 @@ A sub-task:
 | `deadline` | Deadline date (ISO 8601) |
 | `completed` | Completion date (ISO 8601) |
 | `project` | Project name |
-| `priority` | `P1`, `P2`, `P3`, `P4`, or `none` |
+| `priority` | `P1`, `P2`, `P3`, `P4`, or legacy `none` |
 | `description` | Single-line description |
 | `labels` | Comma-separated label names |
 | `attachments` | Comma-separated vault paths |
-| `repeat` | Repeat rule string |
+| `repeat` | Repeat rule string, including custom repeat rules |
 | `completedOccurrences` | Comma-separated completion dates for recurring tasks |
 | `parentId` | ID of the parent task (sub-tasks only) |
 
