@@ -18,6 +18,7 @@ belki is a calm Todoist-like task manager for Obsidian. Your tasks are stored as
 | [Labels and priorities](labels-and-priorities.md) | Labeling tasks and setting priority |
 | [Sorting and filtering](sorting-and-filtering.md) | Sorting, grouping, and filtering views |
 | [Attachments](attachments.md) | Adding files and images to tasks |
+| [Activity](activity.md) | Completed task history and stats |
 | [Mobile](mobile.md) | Using belki on mobile |
 | [Settings](settings.md) | Configuration options |
 | [Markdown storage](markdown-storage.md) | How belki stores task data on disk |

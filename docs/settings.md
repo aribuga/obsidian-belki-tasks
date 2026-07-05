@@ -12,29 +12,19 @@ Changing this after you have existing tasks will not move your data. Move the fo
 
 ---
 
-## Sidebar icons
-
-You can customize the emoji or icon shown next to each sidebar view:
-
-- Search
-- Inbox
-- Today
-- Upcoming
-- Filters & Labels
-- Projects
-- Completed
-
----
-
 ## Project colors
 
-Assign a color to each project. The color appears as a dot in the sidebar and on task cards. Click **+ Add color** next to a project name to set it.
+Assign a color to each project. The color appears as a dot in the sidebar and on task cards.
+
+Projects can also receive a color when they are created. Auto colors are generated from the project name; explicit color overrides are stored in settings.
 
 ---
 
 ## Label colors
 
 Assign a color to each label. If no color is set, belki assigns a stable muted color automatically based on the label name.
+
+You can also rename or delete labels from this section. Deleting a label removes it from tasks and settings, but does not delete tasks.
 
 ---
 

@@ -4,6 +4,66 @@ All notable changes to belki are documented here.
 
 ---
 
+## 0.4.0 — 2026-07-05
+
+This release focuses on project and label management, activity history, faster capture, cleaner navigation, and more useful sub-task visibility.
+
+### Highlights
+
+- Added an **Activity** view with completed-task stats and a 26-week completion heatmap.
+- Added command-palette quick add via `belki: Add task`.
+- Added expandable sub-task previews directly in the main task list.
+- Added label rename/delete management.
+- Added project color selection during project creation.
+- Refreshed the UI icon system with a centralized Lucide-based icon language.
+
+### New Features
+
+- **Activity view** — See completed task counts for today, yesterday, this week, this month, all time, and current streak, plus a contribution-style completed-task heatmap.
+- **Vault-wide quick add** — Capture a task from the command palette without opening the task board first.
+- **Expandable sub-task previews** — Click the sub-task counter on a parent task to preview sub-tasks inline and complete them without opening the detail view.
+- **Label management** — Rename or delete labels from Settings or Filters & Labels. Renaming updates tasks safely; deleting removes the label from tasks without deleting the tasks.
+- **Project color on creation** — Choose a project color when creating a project, or leave it on Auto for deterministic generated colors.
+
+### Improvements
+
+- Project colors are preserved when projects are renamed.
+- Project actions close their popover before opening rename/archive/delete dialogs.
+- Sidebar navigation uses lighter default states and clearer hover/active states.
+- Priority selectors render as one cohesive control in both the composer and task detail.
+- Repeat chips use shorter labels in compact task composer/detail spaces.
+- Task detail date and deadline popovers stay contained within the modal.
+- Task row checkmarks are smaller and visually centered.
+- Wikilinks in task list/detail surfaces open more reliably.
+
+### Mobile & Responsive
+
+- Added mobile task move actions: Move to Today, Move to Tomorrow, Pick date, and Clear date.
+- Improved mobile fallback behavior so users do not need drag-and-drop to move tasks.
+- Smoothed mobile sub-task preview updates to avoid list jitter.
+- Improved date, deadline, project, and action popover containment on small screens.
+
+### Fixes
+
+- Fixed overdue cards showing conflicting date/relative labels.
+- Fixed generated project color readability in dark and custom themes.
+- Fixed label chip color/readability issues.
+- Fixed project action popovers staying visible behind modal dialogs.
+- Fixed task detail close button alignment and date popover clipping.
+- Addressed Obsidian review warnings around direct style assignment, unsafe typings, and unnecessary assertions.
+
+### Internal
+
+- Added a small internal Belki UI primitive layer for shared controls.
+- Centralized icon rendering through Lucide-based `BelkiIcon` helpers.
+- Cleaned up review-related TypeScript and icon typing warnings.
+
+### Breaking Changes
+
+- None expected.
+
+---
+
 ## 0.3.1 — 2026-07-02
 
 ### Fixed
