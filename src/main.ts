@@ -15,8 +15,8 @@ import {
 import { dedupeLabels, normalizeLabelName } from "./labels";
 import { TaskStore } from "./taskStore";
 import { TaskBoardView, VIEW_TYPE_BELKI } from "./views/TaskBoardView";
-import { DEMO_LABELS } from "./demoData";
 import { cleanProjectName, uniqueRealProjects } from "./projects";
+import { QuickAddModal } from "./views/QuickAddModal";
 
 export default class BelkiPlugin extends Plugin {
   settings: BelkiSettings;
@@ -47,6 +47,23 @@ export default class BelkiPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: "quick-add-task",
+      name: "Quick Add Task",
+      hotkeys: [
+        {
+          modifiers: ["Mod", "Shift"],
+          key: "A"
+        }
+      ],
+      callback: () => {
+        new QuickAddModal(this.app, async (title) => {
+          await this.store.createTask({ title });
+          new Notice("Task added to Inbox");
+        }).open();
+      }
+    });
+
+    this.addCommand({
       id: "normalize-labels",
       name: "Normalize Labels",
       callback: async () => {
@@ -72,26 +89,6 @@ export default class BelkiPlugin extends Plugin {
         }
 
         new Notice(`belki migrated ${migratedCount} task${migratedCount === 1 ? "" : "s"}.`);
-      }
-    });
-
-    this.addCommand({
-      id: "reset-and-seed-demo-data",
-      name: "Reset and seed demo data",
-      callback: async () => {
-        try {
-          const taskCount = await this.store.resetAndSeedDemoData();
-          this.settings.labelRegistry = normalizeLabelRegistry([
-            ...this.settings.labelRegistry,
-            ...DEMO_LABELS
-          ]);
-          await this.saveSettings();
-          await this.activateView();
-          new Notice(`belki seeded ${taskCount} demo tasks.`);
-        } catch (error) {
-          new Notice("belki could not seed demo data.");
-          console.error(error);
-        }
       }
     });
 

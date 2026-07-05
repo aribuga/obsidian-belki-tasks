@@ -2193,6 +2193,57 @@ button.belki-add-inline {
   margin-bottom: 16px;
 }
 
+.belki-quick-add-modal {
+  --belki-surface: var(--background-primary);
+  --belki-hover: var(--background-modifier-hover);
+  --belki-border: var(--background-modifier-border);
+  --belki-text: var(--text-normal);
+  --belki-muted: var(--text-muted);
+  --belki-accent: var(--text-normal);
+  --belki-accent-hover: var(--text-normal);
+  --belki-on-accent: var(--background-primary);
+  min-width: min(420px, calc(100vw - 48px));
+}
+
+.belki-quick-add-modal h2 {
+  color: var(--belki-text);
+  font-size: 18px;
+  margin: 0 0 6px;
+}
+
+.belki-quick-add-desc {
+  color: var(--belki-muted);
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0 0 14px;
+}
+
+.belki-quick-add-input {
+  background: var(--belki-surface);
+  border: 1px solid var(--belki-border);
+  border-radius: 8px;
+  box-shadow: none;
+  color: var(--belki-text);
+  font: inherit;
+  font-size: 15px;
+  height: 40px;
+  margin: 0 0 14px;
+  outline: none;
+  padding: 0 12px;
+  width: 100%;
+}
+
+.belki-quick-add-input:focus {
+  border-color: var(--belki-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--belki-accent) 16%, transparent);
+}
+
+.belki-quick-add-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .belki-project-create-modal {
   min-width: min(420px, calc(100vw - 48px));
 }

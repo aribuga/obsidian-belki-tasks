@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => BelkiPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian11 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 
 // src/settings.ts
 var import_obsidian2 = require("obsidian");
@@ -1250,19 +1250,6 @@ function serializeDescriptionLines(description) {
 
 // src/demoData.ts
 var import_obsidian3 = require("obsidian");
-var DEMO_LABELS = [
-  "urgent",
-  "client",
-  "visual",
-  "admin",
-  "writing",
-  "research",
-  "errand",
-  "home",
-  "health",
-  "idea",
-  "review"
-];
 var DEMO_MAIN_CONTENT = [
   "# belki demo data",
   "",
@@ -8447,8 +8434,76 @@ function searchableText(task) {
   ].filter(Boolean).join(" ").toLowerCase();
 }
 
+// src/views/QuickAddModal.ts
+var import_obsidian11 = require("obsidian");
+var QuickAddModal = class extends import_obsidian11.Modal {
+  constructor(app, onSubmit) {
+    super(app);
+    this.onSubmit = onSubmit;
+    this.isSubmitting = false;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("belki-quick-add-modal");
+    contentEl.createEl("h2", { text: "Quick add task" });
+    contentEl.createEl("p", {
+      cls: "belki-quick-add-desc",
+      text: "Capture a task now. It will appear in Inbox."
+    });
+    const input = contentEl.createEl("input", {
+      cls: "belki-quick-add-input",
+      attr: {
+        type: "text",
+        placeholder: "Task title"
+      }
+    });
+    const actions = contentEl.createDiv({ cls: "belki-quick-add-actions" });
+    actions.createEl("button", {
+      cls: "belki-button",
+      text: "Cancel",
+      attr: { type: "button" }
+    }).addEventListener("click", () => this.close());
+    const addButton = actions.createEl("button", {
+      cls: "belki-button belki-button-primary",
+      text: "Add task",
+      attr: { type: "button" }
+    });
+    const submit = async () => {
+      const title = input.value.trim();
+      if (!title || this.isSubmitting) {
+        return;
+      }
+      this.isSubmitting = true;
+      addButton.disabled = true;
+      try {
+        await this.onSubmit(title);
+        this.close();
+      } finally {
+        this.isSubmitting = false;
+        addButton.disabled = false;
+      }
+    };
+    addButton.addEventListener("click", () => {
+      void submit();
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        this.close();
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        void submit();
+      }
+    });
+    input.focus();
+  }
+};
+
 // src/main.ts
-var BelkiPlugin = class extends import_obsidian11.Plugin {
+var BelkiPlugin = class extends import_obsidian12.Plugin {
   constructor() {
     super(...arguments);
     this.reloadDebounceTimer = null;
@@ -8471,6 +8526,22 @@ var BelkiPlugin = class extends import_obsidian11.Plugin {
       }
     });
     this.addCommand({
+      id: "quick-add-task",
+      name: "Quick Add Task",
+      hotkeys: [
+        {
+          modifiers: ["Mod", "Shift"],
+          key: "A"
+        }
+      ],
+      callback: () => {
+        new QuickAddModal(this.app, async (title) => {
+          await this.store.createTask({ title });
+          new import_obsidian12.Notice("Task added to Inbox");
+        }).open();
+      }
+    });
+    this.addCommand({
       id: "normalize-labels",
       name: "Normalize Labels",
       callback: async () => {
@@ -8481,7 +8552,7 @@ var BelkiPlugin = class extends import_obsidian11.Plugin {
           ...Object.keys(this.settings.labelColors)
         ]);
         await this.saveSettings();
-        new import_obsidian11.Notice("belki labels normalized.");
+        new import_obsidian12.Notice("belki labels normalized.");
       }
     });
     this.addCommand({
@@ -8490,29 +8561,10 @@ var BelkiPlugin = class extends import_obsidian11.Plugin {
       callback: async () => {
         const migratedCount = await this.store.migrateOldTaskFile();
         if (migratedCount === 0) {
-          new import_obsidian11.Notice("belki found no old tasks to migrate.");
+          new import_obsidian12.Notice("belki found no old tasks to migrate.");
           return;
         }
-        new import_obsidian11.Notice(`belki migrated ${migratedCount} task${migratedCount === 1 ? "" : "s"}.`);
-      }
-    });
-    this.addCommand({
-      id: "reset-and-seed-demo-data",
-      name: "Reset and seed demo data",
-      callback: async () => {
-        try {
-          const taskCount = await this.store.resetAndSeedDemoData();
-          this.settings.labelRegistry = normalizeLabelRegistry([
-            ...this.settings.labelRegistry,
-            ...DEMO_LABELS
-          ]);
-          await this.saveSettings();
-          await this.activateView();
-          new import_obsidian11.Notice(`belki seeded ${taskCount} demo tasks.`);
-        } catch (error) {
-          new import_obsidian11.Notice("belki could not seed demo data.");
-          console.error(error);
-        }
+        new import_obsidian12.Notice(`belki migrated ${migratedCount} task${migratedCount === 1 ? "" : "s"}.`);
       }
     });
     this.addSettingTab(new BelkiSettingTab(this.app, this));
@@ -8590,7 +8642,7 @@ var BelkiPlugin = class extends import_obsidian11.Plugin {
     try {
       await this.store.reloadFromDisk();
     } catch (error) {
-      new import_obsidian11.Notice("belki could not reload task data.");
+      new import_obsidian12.Notice("belki could not reload task data.");
       console.error(error);
     }
   }
@@ -8694,7 +8746,7 @@ var BelkiPlugin = class extends import_obsidian11.Plugin {
     try {
       await this.store.load();
     } catch (error) {
-      new import_obsidian11.Notice("belki could not initialize task storage. Open the developer console for details.");
+      new import_obsidian12.Notice("belki could not initialize task storage. Open the developer console for details.");
       console.error("[belki] Failed to initialize task storage.", error, {
         dataFolderPath: this.settings.dataFolderPath,
         tasksFilePath: this.settings.tasksFilePath
