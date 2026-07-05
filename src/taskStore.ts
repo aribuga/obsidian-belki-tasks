@@ -5,7 +5,7 @@ import { serializeTaskDocument } from "./serializer";
 import { isRepeatEnded, nextOccurrence } from "./repeatUtils";
 import { BelkiSettings, normalizeDataFolderPath } from "./settings";
 import { BelkiTask, CreateTaskInput, ParsedTaskDocument, TaskPatch } from "./types";
-import { dedupeLabels } from "./labels";
+import { dedupeLabels, normalizeLabelName } from "./labels";
 import { DEMO_MAIN_CONTENT, buildDemoSeedData } from "./demoData";
 import { normalizeTaskProject } from "./projects";
 
@@ -331,6 +331,59 @@ export class TaskStore {
       changedSources.add(sourcePath);
       return { ...task, project: undefined, sourcePath };
     });
+    await this.saveSources([...changedSources]);
+  }
+
+  async renameLabel(oldLabel: string, newLabel: string): Promise<void> {
+    const oldNormalized = normalizeLabelName(oldLabel);
+    const newNormalized = normalizeLabelName(newLabel);
+    if (!oldNormalized || !newNormalized || oldNormalized === newNormalized) {
+      return;
+    }
+
+    const changedSources = new Set<string>();
+    this.tasks = this.tasks.map((task) => {
+      if (!task.labels.some((label) => normalizeLabelName(label) === oldNormalized)) {
+        return task;
+      }
+
+      const sourcePath = task.sourcePath || this.monthlyPathForDate(task.created || todayIso());
+      changedSources.add(sourcePath);
+      return {
+        ...task,
+        labels: dedupeLabels(
+          task.labels.map((label) =>
+            normalizeLabelName(label) === oldNormalized ? newNormalized : label
+          )
+        ),
+        sourcePath
+      };
+    });
+
+    await this.saveSources([...changedSources]);
+  }
+
+  async deleteLabel(label: string): Promise<void> {
+    const normalized = normalizeLabelName(label);
+    if (!normalized) {
+      return;
+    }
+
+    const changedSources = new Set<string>();
+    this.tasks = this.tasks.map((task) => {
+      if (!task.labels.some((candidate) => normalizeLabelName(candidate) === normalized)) {
+        return task;
+      }
+
+      const sourcePath = task.sourcePath || this.monthlyPathForDate(task.created || todayIso());
+      changedSources.add(sourcePath);
+      return {
+        ...task,
+        labels: task.labels.filter((candidate) => normalizeLabelName(candidate) !== normalized),
+        sourcePath
+      };
+    });
+
     await this.saveSources([...changedSources]);
   }
 

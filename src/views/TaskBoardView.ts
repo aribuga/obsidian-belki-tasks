@@ -21,6 +21,7 @@ import { BelkiSortMode, BelkiTask, BoardViewMode, CreateTaskInput, OVERDUE_RANGE
 import { AddTaskComposer } from "./AddTaskComposer";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
 import { TaskDetailModal } from "./TaskDetailModal";
+import { DeleteLabelModal, RenameLabelModal } from "./LabelManagementModals";
 import {
   getPriorityClass,
   getPriorityColor,
@@ -208,8 +209,10 @@ export class TaskBoardView extends ItemView {
   private draggedTaskId: string | null = null;
   private sortPopoverOpen = false;
   private projectActionsOpen: string | null = null;
+  private labelActionsOpen: string | null = null;
   private taskActionsOpenId: string | null = null;
   private projectMenuEl: HTMLElement | null = null;
+  private labelMenuEl: HTMLElement | null = null;
   private taskActionMenuEl: HTMLElement | null = null;
   private sidebarScrollLeft = 0;
   private pendingScrollSnapshot: { top: number; left: number } | null = null;
@@ -217,19 +220,30 @@ export class TaskBoardView extends ItemView {
   private composerCleanup: (() => void) | null = null;
   private renderScheduled = false;
   private handleRootClick = (event: MouseEvent): void => {
-    if (!this.taskActionsOpenId) {
-      return;
-    }
-
     const target = event.target;
     if (
+      this.taskActionsOpenId &&
       target instanceof HTMLElement &&
       target.closest(".belki-task-actions, .belki-task-action-menu")
     ) {
       return;
     }
 
-    this.removeTaskActionMenu();
+    if (this.taskActionsOpenId) {
+      this.removeTaskActionMenu();
+    }
+
+    if (
+      this.labelActionsOpen &&
+      target instanceof HTMLElement &&
+      target.closest(".belki-label-actions-button, .belki-label-menu")
+    ) {
+      return;
+    }
+
+    if (this.labelActionsOpen) {
+      this.closeLabelActionsMenu();
+    }
   };
   private handleRootKeyDown = (event: KeyboardEvent): void => {
     if (event.key !== "Escape") {
@@ -246,6 +260,12 @@ export class TaskBoardView extends ItemView {
       this.stopEscape(event);
       this.projectActionsOpen = null;
       this.render();
+      return;
+    }
+
+    if (this.labelActionsOpen !== null) {
+      this.stopEscape(event);
+      this.closeLabelActionsMenu();
       return;
     }
 
@@ -337,6 +357,7 @@ export class TaskBoardView extends ItemView {
     this.composerCleanup?.();
     this.composerCleanup = null;
     this.removeProjectMenu();
+    this.removeLabelMenu();
     this.removeTaskActionMenu();
     this.containerEl.removeEventListener("keydown", this.handleRootKeyDown, true);
     this.containerEl.removeEventListener("click", this.handleRootClick, true);
@@ -348,6 +369,11 @@ export class TaskBoardView extends ItemView {
     this.projectMenuEl = null;
   }
 
+  private removeLabelMenu(): void {
+    this.labelMenuEl?.remove();
+    this.labelMenuEl = null;
+  }
+
   private removeTaskActionMenu(): void {
     this.taskActionMenuEl?.remove();
     this.taskActionMenuEl = null;
@@ -357,6 +383,11 @@ export class TaskBoardView extends ItemView {
   private closeProjectActionsMenu(): void {
     this.projectActionsOpen = null;
     this.removeProjectMenu();
+  }
+
+  private closeLabelActionsMenu(): void {
+    this.labelActionsOpen = null;
+    this.removeLabelMenu();
   }
 
   refresh(): void {
@@ -375,6 +406,7 @@ export class TaskBoardView extends ItemView {
     this.mobileComposerReturnScroll = null;
     this.sortPopoverOpen = false;
     this.projectActionsOpen = null;
+    this.labelActionsOpen = null;
     this.render();
   }
 
@@ -382,6 +414,7 @@ export class TaskBoardView extends ItemView {
     this.composerCleanup?.();
     this.composerCleanup = null;
     this.removeProjectMenu();
+    this.removeLabelMenu();
     this.removeTaskActionMenu();
     const { containerEl } = this;
     const sidebarScrollLeft =
@@ -1309,11 +1342,7 @@ export class TaskBoardView extends ItemView {
 
     for (const label of labels) {
       const count = allTasks.filter((task) => !task.completed && task.labels.includes(label)).length;
-      this.renderFilterRow(labelList, displayLabel(label), count, "", () => {
-        this.activeLabel = label;
-        this.activeFilter = null;
-        this.render();
-      }, getLabelColor(label, this.settings.labelColors).regular);
+      this.renderLabelRow(labelList, label, count);
     }
   }
 
@@ -1347,6 +1376,120 @@ export class TaskBoardView extends ItemView {
     row.createSpan({ cls: "belki-filter-name", text: name });
     row.createSpan({ cls: "belki-row-count", text: String(count) });
     row.addEventListener("click", onClick);
+  }
+
+  private renderLabelRow(parent: HTMLElement, label: string, count: number): void {
+    const color = getLabelColor(label, this.settings.labelColors).regular;
+    const row = parent.createDiv({ cls: "belki-filter-row belki-label-row belki-filter-row-with-actions" });
+    const main = row.createEl("button", {
+      cls: "belki-filter-row-main",
+      attr: { type: "button" }
+    });
+    const dot = main.createSpan({ cls: "belki-filter-dot belki-label-dot" });
+    dot.setCssStyles({ backgroundColor: color });
+    main.createSpan({ cls: "belki-filter-name", text: displayLabel(label) });
+    main.createSpan({ cls: "belki-row-count", text: String(count) });
+    main.addEventListener("click", () => {
+      this.activeLabel = label;
+      this.activeFilter = null;
+      this.closeLabelActionsMenu();
+      this.render();
+    });
+
+    this.renderLabelActionsButton(row, label, count);
+  }
+
+  private renderLabelActionsButton(parent: HTMLElement, label: string, taskCount: number): void {
+    const button = parent.createEl("button", {
+      cls: "belki-label-actions-button",
+      attr: { type: "button", "aria-label": `Actions for ${displayLabel(label)}` }
+    });
+    createBelkiIcon(button, "more");
+
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (this.labelActionsOpen === label) {
+        this.closeLabelActionsMenu();
+        return;
+      }
+
+      this.openLabelActionsMenu(button, label, taskCount);
+    });
+
+    if (this.labelActionsOpen === label && !this.labelMenuEl) {
+      this.openLabelActionsMenu(button, label, taskCount);
+    }
+  }
+
+  private openLabelActionsMenu(button: HTMLElement, label: string, taskCount: number): void {
+    this.removeLabelMenu();
+    this.labelActionsOpen = label;
+    const ownerDocument = button.ownerDocument;
+    const ownerWindow = ownerDocument.defaultView || window;
+
+    const menu = ownerDocument.body.createDiv({ cls: "belki-project-menu belki-label-menu" });
+    this.labelMenuEl = menu;
+    menu.setCssStyles({ visibility: "hidden" });
+
+    const renameItem = menu.createEl("button", {
+      cls: "belki-project-option belki-label-option",
+      text: "Rename label",
+      attr: { type: "button" }
+    });
+    renameItem.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.closeLabelActionsMenu();
+      new RenameLabelModal(this.app, label, this.getAllLabels(), async (newLabel) => {
+        await this.renameLabel(label, newLabel);
+      }).open();
+    });
+
+    const deleteItem = menu.createEl("button", {
+      cls: "belki-project-option belki-label-option is-destructive",
+      text: "Delete label",
+      attr: { type: "button" }
+    });
+    deleteItem.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.closeLabelActionsMenu();
+      new DeleteLabelModal(this.app, label, taskCount, async () => {
+        await this.deleteLabel(label);
+      }).open();
+    });
+
+    ownerWindow.requestAnimationFrame(() => {
+      if (!menu.isConnected) return;
+      const btnRect = button.getBoundingClientRect();
+      const margin = 8;
+      const menuW = menu.offsetWidth || 180;
+      const menuH = menu.offsetHeight || 90;
+
+      let left = btnRect.left;
+      if (left + menuW > ownerWindow.innerWidth - margin) {
+        left = btnRect.right - menuW;
+      }
+      left = Math.min(
+        Math.max(margin, left),
+        Math.max(margin, ownerWindow.innerWidth - menuW - margin)
+      );
+
+      const fitsBelow = btnRect.bottom + menuH + margin <= ownerWindow.innerHeight;
+      const fitsAbove = btnRect.top - menuH - margin >= 0;
+      if (!fitsBelow && fitsAbove) {
+        menu.setCssStyles({
+          left: `${left}px`,
+          bottom: `${ownerWindow.innerHeight - btnRect.top + 4}px`,
+          visibility: ""
+        });
+      } else {
+        menu.setCssStyles({
+          left: `${left}px`,
+          top: `${btnRect.bottom + 4}px`,
+          visibility: ""
+        });
+      }
+    });
   }
 
   private createSection(
@@ -2514,6 +2657,50 @@ export class TaskBoardView extends ItemView {
         this.render();
       })();
     }).open();
+  }
+
+  private async renameLabel(oldLabel: string, newLabel: string): Promise<void> {
+    const oldNormalized = normalizeLabelName(oldLabel);
+    const newNormalized = normalizeLabelName(newLabel);
+    if (!oldNormalized || !newNormalized || oldNormalized === newNormalized) {
+      return;
+    }
+
+    await this.store.renameLabel(oldNormalized, newNormalized);
+    const preservedColor = this.settings.labelColors[oldNormalized];
+    if (preservedColor) {
+      this.settings.labelColors[newNormalized] = preservedColor;
+    }
+    delete this.settings.labelColors[oldNormalized];
+    this.settings.labelRegistry = dedupeLabels([
+      ...this.settings.labelRegistry.filter(
+        (label) => normalizeLabelName(label) !== oldNormalized
+      ),
+      newNormalized
+    ]);
+    if (this.activeLabel === oldNormalized) {
+      this.activeLabel = newNormalized;
+    }
+    await this.saveSettings();
+    this.render();
+  }
+
+  private async deleteLabel(label: string): Promise<void> {
+    const normalized = normalizeLabelName(label);
+    if (!normalized) {
+      return;
+    }
+
+    await this.store.deleteLabel(normalized);
+    delete this.settings.labelColors[normalized];
+    this.settings.labelRegistry = this.settings.labelRegistry.filter(
+      (candidate) => normalizeLabelName(candidate) !== normalized
+    );
+    if (this.activeLabel === normalized) {
+      this.activeLabel = null;
+    }
+    await this.saveSettings();
+    this.render();
   }
 
   private stopEscape(event: KeyboardEvent): void {

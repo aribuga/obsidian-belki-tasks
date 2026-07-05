@@ -2,6 +2,7 @@ import { App, normalizePath, Plugin, PluginSettingTab, Setting } from "obsidian"
 import { colorForName } from "./colors";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "./labels";
 import { normalizeTaskProject } from "./projects";
+import { DeleteLabelModal, RenameLabelModal } from "./views/LabelManagementModals";
 import {
   BelkiFontOption,
   BelkiSortMode,
@@ -193,6 +194,9 @@ interface BelkiSettingsPlugin extends Plugin {
   refreshBelkiViews(): void;
   getProjectNames(): string[];
   getLabelNames(): string[];
+  getLabelTaskCount(label: string): number;
+  renameLabel(oldLabel: string, newLabel: string): Promise<void>;
+  deleteLabel(label: string): Promise<void>;
 }
 
 export class BelkiSettingTab extends PluginSettingTab {
@@ -419,6 +423,27 @@ export class BelkiSettingTab extends PluginSettingTab {
           this.plugin.settings.labelColors[label] = value;
           await this.plugin.saveSettings();
           this.plugin.refreshBelkiViews();
+        });
+      })
+      .addButton((button) => {
+        button.setButtonText("Rename").onClick(() => {
+          new RenameLabelModal(this.app, label, this.plugin.getLabelNames(), async (newLabel) => {
+            await this.plugin.renameLabel(label, newLabel);
+            this.display();
+          }).open();
+        });
+      })
+      .addButton((button) => {
+        button.setButtonText("Delete").onClick(() => {
+          new DeleteLabelModal(
+            this.app,
+            label,
+            this.plugin.getLabelTaskCount(label),
+            async () => {
+              await this.plugin.deleteLabel(label);
+              this.display();
+            }
+          ).open();
         });
       })
       .addButton((button) => {

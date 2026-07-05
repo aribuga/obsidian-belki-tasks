@@ -2129,6 +2129,10 @@ button.belki-add-inline {
   background: color-mix(in srgb, var(--color-red, #e05252) 10%, transparent);
 }
 
+.belki-label-option {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .belki-archived-badge {
   background: var(--belki-hover);
   border-radius: 4px;
@@ -2817,6 +2821,68 @@ button.belki-add-inline {
 
 .belki-filter-row:hover {
   background: var(--belki-hover);
+}
+
+.belki-filter-row-with-actions {
+  grid-template-columns: minmax(0, 1fr) auto;
+  overflow: visible;
+  padding: 0;
+}
+
+.belki-filter-row-main,
+button.belki-filter-row-main {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  min-height: 48px;
+  min-width: 0;
+  padding: 0 0 0 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.belki-filter-row-main:hover,
+button.belki-filter-row-main:hover,
+button.belki-filter-row-main:focus-visible {
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+}
+
+.belki-label-actions-button,
+button.belki-label-actions-button {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  box-shadow: none;
+  color: var(--belki-muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: 32px;
+  justify-content: center;
+  margin: 0 8px;
+  padding: 0;
+  width: 32px;
+}
+
+.belki-label-actions-button:hover,
+button.belki-label-actions-button:hover,
+.belki-label-actions-button:focus-visible,
+button.belki-label-actions-button:focus-visible {
+  background: var(--belki-hover);
+  box-shadow: none;
+  color: var(--belki-text);
+  outline: none;
 }
 
 .belki-filter-dot {

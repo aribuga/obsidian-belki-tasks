@@ -23,10 +23,10 @@ __export(main_exports, {
   default: () => BelkiPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian10 = require("obsidian");
+var import_obsidian11 = require("obsidian");
 
 // src/settings.ts
-var import_obsidian = require("obsidian");
+var import_obsidian2 = require("obsidian");
 
 // src/labels.ts
 function normalizeLabelName(label) {
@@ -166,6 +166,106 @@ function uniqueRealProjects(projects) {
   return [...new Set(projects.map(normalizeTaskProject).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
+// src/views/LabelManagementModals.ts
+var import_obsidian = require("obsidian");
+var RenameLabelModal = class extends import_obsidian.Modal {
+  constructor(app, currentLabel, existingLabels, onSubmit) {
+    super(app);
+    this.currentLabel = currentLabel;
+    this.existingLabels = existingLabels;
+    this.onSubmit = onSubmit;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("belki-label-prompt");
+    contentEl.createEl("h2", { text: "Rename label" });
+    const input = contentEl.createEl("input", {
+      cls: "belki-label-prompt-input",
+      attr: {
+        type: "text",
+        value: displayLabel(this.currentLabel)
+      }
+    });
+    input.select();
+    let errorEl = null;
+    const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
+    const showError = (message) => {
+      if (!errorEl) {
+        errorEl = contentEl.createDiv({ cls: "belki-modal-error" });
+        actions.before(errorEl);
+      }
+      errorEl.setText(message);
+    };
+    actions.createEl("button", {
+      cls: "belki-button",
+      text: "Cancel",
+      attr: { type: "button" }
+    }).addEventListener("click", () => this.close());
+    const submitButton = actions.createEl("button", {
+      cls: "belki-button belki-button-primary",
+      text: "Rename",
+      attr: { type: "button" }
+    });
+    const submit = () => {
+      const current = normalizeLabelName(this.currentLabel);
+      const next = normalizeLabelName(input.value);
+      if (!next) {
+        showError("Label name cannot be empty.");
+        return;
+      }
+      if (next === current) {
+        this.close();
+        return;
+      }
+      if (this.existingLabels.some(
+        (label) => normalizeLabelName(label) === next && normalizeLabelName(label) !== current
+      )) {
+        showError("A label with that name already exists.");
+        return;
+      }
+      void this.onSubmit(next).then(() => this.close());
+    };
+    submitButton.addEventListener("click", submit);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        submit();
+      }
+    });
+    input.focus();
+  }
+};
+var DeleteLabelModal = class extends import_obsidian.Modal {
+  constructor(app, label, taskCount, onConfirm) {
+    super(app);
+    this.label = label;
+    this.taskCount = taskCount;
+    this.onConfirm = onConfirm;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("belki-label-prompt");
+    contentEl.createEl("h2", { text: `Delete ${displayLabel(this.label)}?` });
+    const desc = this.taskCount > 0 ? `This will remove ${displayLabel(this.label)} from ${this.taskCount} task${this.taskCount === 1 ? "" : "s"}. Tasks will not be deleted.` : "This label is not assigned to any tasks.";
+    contentEl.createEl("p", { text: desc, cls: "belki-modal-desc" });
+    const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
+    actions.createEl("button", {
+      cls: "belki-button",
+      text: "Cancel",
+      attr: { type: "button" }
+    }).addEventListener("click", () => this.close());
+    actions.createEl("button", {
+      cls: "belki-button belki-button-destructive",
+      text: "Delete label",
+      attr: { type: "button" }
+    }).addEventListener("click", () => {
+      void this.onConfirm().then(() => this.close());
+    });
+  }
+};
+
 // src/types.ts
 var PRIORITIES = ["none", "P1", "P2", "P3", "P4"];
 var SORT_MODES = [
@@ -277,7 +377,7 @@ function normalizeProjectRegistry(projects) {
 }
 function normalizeDataFolderPath(value) {
   const trimmed = (value || "").trim().replace(/^\/+/, "");
-  const normalized = (0, import_obsidian.normalizePath)(trimmed || DEFAULT_DATA_FOLDER_PATH).replace(/^\/+/, "").replace(/\/+$/, "");
+  const normalized = (0, import_obsidian2.normalizePath)(trimmed || DEFAULT_DATA_FOLDER_PATH).replace(/^\/+/, "").replace(/\/+$/, "");
   return normalized || DEFAULT_DATA_FOLDER_PATH;
 }
 function normalizeSortMode(value) {
@@ -309,7 +409,7 @@ function applyBelkiFontSettings(element, settings) {
     "--belki-font-label": fontStackForOption(settings.labelFont)
   });
 }
-var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
+var BelkiSettingTab = class extends import_obsidian2.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -318,14 +418,14 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     applyBelkiFontSettings(containerEl, this.plugin.settings);
-    new import_obsidian.Setting(containerEl).setName("Old task file").setDesc("Legacy Markdown file used by older belki versions.").addText((text) => {
+    new import_obsidian2.Setting(containerEl).setName("Old task file").setDesc("Legacy Markdown file used by older belki versions.").addText((text) => {
       text.setPlaceholder("belki/tasks.md").setValue(this.plugin.settings.tasksFilePath).onChange(async (value) => {
         this.plugin.settings.tasksFilePath = value.trim() || DEFAULT_SETTINGS.tasksFilePath;
         await this.plugin.saveSettings();
         await this.plugin.reloadTasks();
       });
     });
-    new import_obsidian.Setting(containerEl).setName("Data folder").setDesc("Folder where belki stores task data and attachments.").addText((text) => {
+    new import_obsidian2.Setting(containerEl).setName("Data folder").setDesc("Folder where belki stores task data and attachments.").addText((text) => {
       let draftPath = this.plugin.settings.dataFolderPath;
       const commitPathChange = async () => {
         const normalizedPath = normalizeDataFolderPath(draftPath);
@@ -352,7 +452,7 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
         text.inputEl.blur();
       });
     });
-    new import_obsidian.Setting(containerEl).setName("Default overdue range").setDesc("Default range used by the Today overdue section.").addDropdown((dropdown) => {
+    new import_obsidian2.Setting(containerEl).setName("Default overdue range").setDesc("Default range used by the Today overdue section.").addDropdown((dropdown) => {
       for (const range of OVERDUE_RANGES) {
         dropdown.addOption(range, overdueRangeLabel(range));
       }
@@ -362,7 +462,7 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
         this.plugin.refreshBelkiViews();
       });
     });
-    new import_obsidian.Setting(containerEl).setName("Fonts").setHeading();
+    new import_obsidian2.Setting(containerEl).setName("Fonts").setHeading();
     this.addFontSetting(
       "UI Font",
       "Used for sidebar, headings, buttons, settings, and the general interface.",
@@ -383,7 +483,7 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
       "Used for label chip text.",
       "labelFont"
     );
-    new import_obsidian.Setting(containerEl).setName("Project colors").setHeading();
+    new import_obsidian2.Setting(containerEl).setName("Project colors").setHeading();
     const projects = this.plugin.getProjectNames();
     if (projects.length === 0) {
       containerEl.createDiv({
@@ -394,7 +494,7 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
     for (const project of projects) {
       this.addProjectColorSetting(project);
     }
-    new import_obsidian.Setting(containerEl).setName("Label colors").setHeading();
+    new import_obsidian2.Setting(containerEl).setName("Label colors").setHeading();
     this.addLabelRegistrySetting();
     const labels = this.plugin.getLabelNames();
     if (labels.length === 0) {
@@ -408,7 +508,7 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
     }
   }
   addFontSetting(name, description, key) {
-    new import_obsidian.Setting(this.containerEl).setName(name).setDesc(description).addDropdown((dropdown) => {
+    new import_obsidian2.Setting(this.containerEl).setName(name).setDesc(description).addDropdown((dropdown) => {
       for (const option of FONT_OPTIONS) {
         dropdown.addOption(option, fontOptionLabel(option));
       }
@@ -423,7 +523,7 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
   addProjectColorSetting(project) {
     const automaticColor = colorForName(project).regular;
     const override = this.plugin.settings.projectColors[project];
-    new import_obsidian.Setting(this.containerEl).setName(project).setDesc(override ? "Custom color override" : "Automatic palette color").addColorPicker((picker) => {
+    new import_obsidian2.Setting(this.containerEl).setName(project).setDesc(override ? "Custom color override" : "Automatic palette color").addColorPicker((picker) => {
       picker.setValue(override || automaticColor).onChange(async (value) => {
         this.plugin.settings.projectColors[project] = value;
         await this.plugin.saveSettings();
@@ -442,7 +542,7 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
   }
   addLabelRegistrySetting() {
     let pendingLabel = "";
-    new import_obsidian.Setting(this.containerEl).setName("Add label").setDesc("Create a label without assigning it to a task yet.").addText((text) => {
+    new import_obsidian2.Setting(this.containerEl).setName("Add label").setDesc("Create a label without assigning it to a task yet.").addText((text) => {
       text.setPlaceholder("#label").onChange((value) => {
         pendingLabel = value;
       });
@@ -467,11 +567,30 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
   addLabelColorSetting(label) {
     const automaticColor = colorForName(label).regular;
     const override = this.plugin.settings.labelColors[label];
-    new import_obsidian.Setting(this.containerEl).setName(displayLabel(label)).setDesc(override ? "Custom color override" : "Automatic palette color").addColorPicker((picker) => {
+    new import_obsidian2.Setting(this.containerEl).setName(displayLabel(label)).setDesc(override ? "Custom color override" : "Automatic palette color").addColorPicker((picker) => {
       picker.setValue(override || automaticColor).onChange(async (value) => {
         this.plugin.settings.labelColors[label] = value;
         await this.plugin.saveSettings();
         this.plugin.refreshBelkiViews();
+      });
+    }).addButton((button) => {
+      button.setButtonText("Rename").onClick(() => {
+        new RenameLabelModal(this.app, label, this.plugin.getLabelNames(), async (newLabel) => {
+          await this.plugin.renameLabel(label, newLabel);
+          this.display();
+        }).open();
+      });
+    }).addButton((button) => {
+      button.setButtonText("Delete").onClick(() => {
+        new DeleteLabelModal(
+          this.app,
+          label,
+          this.plugin.getLabelTaskCount(label),
+          async () => {
+            await this.plugin.deleteLabel(label);
+            this.display();
+          }
+        ).open();
       });
     }).addButton((button) => {
       button.setButtonText("Reset").onClick(() => {
@@ -487,7 +606,7 @@ var BelkiSettingTab = class extends import_obsidian.PluginSettingTab {
 };
 
 // src/taskStore.ts
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 
 // src/dateUtils.ts
 var ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -1130,7 +1249,7 @@ function serializeDescriptionLines(description) {
 }
 
 // src/demoData.ts
-var import_obsidian2 = require("obsidian");
+var import_obsidian3 = require("obsidian");
 var DEMO_LABELS = [
   "urgent",
   "client",
@@ -1462,7 +1581,7 @@ function taskFromSpec(spec, order, sourcePath, created) {
   };
 }
 function attachmentPath(attachmentsDir, taskId, filename) {
-  return (0, import_obsidian2.normalizePath)(`${attachmentsDir}/${taskId}/${filename}`);
+  return (0, import_obsidian3.normalizePath)(`${attachmentsDir}/${taskId}/${filename}`);
 }
 function moodboardSvg() {
   return [
@@ -1532,25 +1651,25 @@ var TaskStore = class {
     this.writingPaths = /* @__PURE__ */ new Set();
   }
   get filePath() {
-    return (0, import_obsidian3.normalizePath)(this.settings.tasksFilePath);
+    return (0, import_obsidian4.normalizePath)(this.settings.tasksFilePath);
   }
   get rootDir() {
     return normalizeDataFolderPath(this.settings.dataFolderPath);
   }
   get mainFilePath() {
-    return (0, import_obsidian3.normalizePath)(`${this.rootDir}/main.md`);
+    return (0, import_obsidian4.normalizePath)(`${this.rootDir}/main.md`);
   }
   get dataDir() {
-    return (0, import_obsidian3.normalizePath)(`${this.rootDir}/Data`);
+    return (0, import_obsidian4.normalizePath)(`${this.rootDir}/Data`);
   }
   get attachmentsDir() {
-    return (0, import_obsidian3.normalizePath)(`${this.rootDir}/Attachments`);
+    return (0, import_obsidian4.normalizePath)(`${this.rootDir}/Attachments`);
   }
   isCurrentlyWriting(path) {
-    return this.writingPaths.has((0, import_obsidian3.normalizePath)(path));
+    return this.writingPaths.has((0, import_obsidian4.normalizePath)(path));
   }
   isTaskStorageFile(path) {
-    const normalizedPath = (0, import_obsidian3.normalizePath)(path);
+    const normalizedPath = (0, import_obsidian4.normalizePath)(path);
     return normalizedPath === this.filePath || normalizedPath.startsWith(`${this.dataDir}/`) && MONTHLY_FILE_PATTERN.test(normalizedPath.split("/").pop() || "");
   }
   getTasks() {
@@ -1621,7 +1740,7 @@ var TaskStore = class {
     const sourcePath = this.monthlyPathForDate(created);
     const sourceReady = await this.ensureSourceDocument(sourcePath);
     if (!sourceReady) {
-      new import_obsidian3.Notice("belki could not create the task data file. Check the console for details.");
+      new import_obsidian4.Notice("belki could not create the task data file. Check the console for details.");
       return;
     }
     const attachments = normalizeAttachments(input.attachments || []);
@@ -1696,7 +1815,7 @@ var TaskStore = class {
           completedOccurrences: occurrences,
           due: nextDue
         });
-        new import_obsidian3.Notice(`Recurring task rescheduled to ${formatDueDateChip(nextDue)}`);
+        new import_obsidian4.Notice(`Recurring task rescheduled to ${formatDueDateChip(nextDue)}`);
       }
       return;
     }
@@ -1772,6 +1891,51 @@ var TaskStore = class {
     });
     await this.saveSources([...changedSources]);
   }
+  async renameLabel(oldLabel, newLabel) {
+    const oldNormalized = normalizeLabelName(oldLabel);
+    const newNormalized = normalizeLabelName(newLabel);
+    if (!oldNormalized || !newNormalized || oldNormalized === newNormalized) {
+      return;
+    }
+    const changedSources = /* @__PURE__ */ new Set();
+    this.tasks = this.tasks.map((task) => {
+      if (!task.labels.some((label) => normalizeLabelName(label) === oldNormalized)) {
+        return task;
+      }
+      const sourcePath = task.sourcePath || this.monthlyPathForDate(task.created || todayIso());
+      changedSources.add(sourcePath);
+      return {
+        ...task,
+        labels: dedupeLabels(
+          task.labels.map(
+            (label) => normalizeLabelName(label) === oldNormalized ? newNormalized : label
+          )
+        ),
+        sourcePath
+      };
+    });
+    await this.saveSources([...changedSources]);
+  }
+  async deleteLabel(label) {
+    const normalized = normalizeLabelName(label);
+    if (!normalized) {
+      return;
+    }
+    const changedSources = /* @__PURE__ */ new Set();
+    this.tasks = this.tasks.map((task) => {
+      if (!task.labels.some((candidate) => normalizeLabelName(candidate) === normalized)) {
+        return task;
+      }
+      const sourcePath = task.sourcePath || this.monthlyPathForDate(task.created || todayIso());
+      changedSources.add(sourcePath);
+      return {
+        ...task,
+        labels: task.labels.filter((candidate) => normalizeLabelName(candidate) !== normalized),
+        sourcePath
+      };
+    });
+    await this.saveSources([...changedSources]);
+  }
   async rescheduleOverdueToToday() {
     const today = todayIso();
     const changedSources = /* @__PURE__ */ new Set();
@@ -1807,7 +1971,7 @@ var TaskStore = class {
     return targetPath;
   }
   async copyAttachmentFile(taskId, file) {
-    const folderPath = (0, import_obsidian3.normalizePath)(`${this.attachmentsDir}/${taskId}`);
+    const folderPath = (0, import_obsidian4.normalizePath)(`${this.attachmentsDir}/${taskId}`);
     const folderReady = await this.ensureFolder(folderPath);
     if (!folderReady) {
       throw new Error(`belki cannot use attachment folder: ${folderPath}`);
@@ -1887,11 +2051,11 @@ var TaskStore = class {
       if (!file) {
         continue;
       }
-      this.writingPaths.add((0, import_obsidian3.normalizePath)(sourcePath));
+      this.writingPaths.add((0, import_obsidian4.normalizePath)(sourcePath));
       try {
         await this.app.vault.modify(file, content);
       } finally {
-        this.writingPaths.delete((0, import_obsidian3.normalizePath)(sourcePath));
+        this.writingPaths.delete((0, import_obsidian4.normalizePath)(sourcePath));
       }
       this.documents.set(sourcePath, parseTaskDocument(content, sourcePath));
     }
@@ -1944,7 +2108,7 @@ var TaskStore = class {
   }
   getDataFiles() {
     return this.app.vault.getFiles().filter((file) => {
-      const path = (0, import_obsidian3.normalizePath)(file.path);
+      const path = (0, import_obsidian4.normalizePath)(file.path);
       return path.startsWith(`${this.dataDir}/`) && MONTHLY_FILE_PATTERN.test(file.name);
     }).sort((a, b) => a.path.localeCompare(b.path));
   }
@@ -1954,7 +2118,7 @@ var TaskStore = class {
       return null;
     }
     const existing = this.app.vault.getAbstractFileByPath(path);
-    return existing instanceof import_obsidian3.TFile ? existing : null;
+    return existing instanceof import_obsidian4.TFile ? existing : null;
   }
   async ensureSourceDocument(sourcePath) {
     if (this.documents.has(sourcePath)) {
@@ -1970,9 +2134,9 @@ var TaskStore = class {
     return true;
   }
   async ensureFile(path, content) {
-    const normalizedPath = (0, import_obsidian3.normalizePath)(path);
+    const normalizedPath = (0, import_obsidian4.normalizePath)(path);
     const existing = this.app.vault.getAbstractFileByPath(normalizedPath);
-    if (existing instanceof import_obsidian3.TFile) {
+    if (existing instanceof import_obsidian4.TFile) {
       return existing;
     }
     if (existing) {
@@ -1990,7 +2154,7 @@ var TaskStore = class {
         throw error;
       }
       const created = this.app.vault.getAbstractFileByPath(normalizedPath);
-      if (created instanceof import_obsidian3.TFile) {
+      if (created instanceof import_obsidian4.TFile) {
         return created;
       }
       if (created) {
@@ -2012,7 +2176,7 @@ var TaskStore = class {
     return file;
   }
   async ensureParentFolders(path) {
-    const parts = (0, import_obsidian3.normalizePath)(path).split("/");
+    const parts = (0, import_obsidian4.normalizePath)(path).split("/");
     parts.pop();
     let current = "";
     for (const part of parts) {
@@ -2025,9 +2189,9 @@ var TaskStore = class {
     return true;
   }
   async ensureFolder(path) {
-    const normalizedPath = (0, import_obsidian3.normalizePath)(path);
+    const normalizedPath = (0, import_obsidian4.normalizePath)(path);
     const existing = this.app.vault.getAbstractFileByPath(normalizedPath);
-    if (existing instanceof import_obsidian3.TFolder) {
+    if (existing instanceof import_obsidian4.TFolder) {
       return true;
     }
     if (existing) {
@@ -2046,7 +2210,7 @@ var TaskStore = class {
         throw error;
       }
       const created = this.app.vault.getAbstractFileByPath(normalizedPath);
-      if (created instanceof import_obsidian3.TFolder) {
+      if (created instanceof import_obsidian4.TFolder) {
         return true;
       }
       if (created) {
@@ -2084,9 +2248,9 @@ var TaskStore = class {
       return;
     }
     this.warnedStorageIssues.add(key);
-    const actualType = existing instanceof import_obsidian3.TFolder ? "folder" : "file";
+    const actualType = existing instanceof import_obsidian4.TFolder ? "folder" : "file";
     const message = `belki expected a ${expectedType} at "${path}", but found a ${actualType}.`;
-    new import_obsidian3.Notice(`${message} Please rename or move the conflicting vault item.`);
+    new import_obsidian4.Notice(`${message} Please rename or move the conflicting vault item.`);
     console.warn("[belki] Storage path type mismatch.", {
       path,
       expectedType,
@@ -2099,16 +2263,16 @@ var TaskStore = class {
     const extensionStart = safeName.lastIndexOf(".");
     const base = extensionStart > 0 ? safeName.slice(0, extensionStart) : safeName;
     const extension = extensionStart > 0 ? safeName.slice(extensionStart) : "";
-    let candidate = (0, import_obsidian3.normalizePath)(`${folderPath}/${safeName}`);
+    let candidate = (0, import_obsidian4.normalizePath)(`${folderPath}/${safeName}`);
     let index = 2;
     while (this.app.vault.getAbstractFileByPath(candidate)) {
-      candidate = (0, import_obsidian3.normalizePath)(`${folderPath}/${base}-${index}${extension}`);
+      candidate = (0, import_obsidian4.normalizePath)(`${folderPath}/${base}-${index}${extension}`);
       index += 1;
     }
     return candidate;
   }
   async nextBackupPath(path) {
-    const normalizedPath = (0, import_obsidian3.normalizePath)(path);
+    const normalizedPath = (0, import_obsidian4.normalizePath)(path);
     const extensionStart = normalizedPath.lastIndexOf(".md");
     const base = extensionStart > -1 ? normalizedPath.slice(0, extensionStart) : normalizedPath;
     let candidate = `${base}.migrated-backup.md`;
@@ -2132,7 +2296,7 @@ var TaskStore = class {
   }
   monthlyPathForDate(value) {
     const month = /^\d{4}-\d{2}/.test(value) ? value.slice(0, 7) : todayIso().slice(0, 7);
-    return (0, import_obsidian3.normalizePath)(`${this.dataDir}/${month}.md`);
+    return (0, import_obsidian4.normalizePath)(`${this.dataDir}/${month}.md`);
   }
 };
 function normalizeTaskForSave(task, sourcePath) {
@@ -2181,10 +2345,10 @@ function cloneTask(task) {
 }
 
 // src/views/TaskBoardView.ts
-var import_obsidian9 = require("obsidian");
+var import_obsidian10 = require("obsidian");
 
 // src/views/AddTaskComposer.ts
-var import_obsidian6 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 
 // src/priority.ts
 var PRIORITY_COLORS = {
@@ -2228,10 +2392,10 @@ function getPriorityClass(priority) {
 }
 
 // src/views/CustomRepeatModal.ts
-var import_obsidian5 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/ui/components/BelkiIcon.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 
 // src/ui/icons/belkiIcons.ts
 var BELKI_ICON_MAP = {
@@ -2277,7 +2441,7 @@ function createBelkiIcon(parent, icon, options = {}) {
     cls: classNames("belki-icon", options.className),
     attr: options.ariaLabel ? { "aria-label": options.ariaLabel, role: "img" } : { "aria-hidden": "true" }
   });
-  (0, import_obsidian4.setIcon)(iconEl, resolveBelkiIcon(icon));
+  (0, import_obsidian5.setIcon)(iconEl, resolveBelkiIcon(icon));
   applyIconOptions(iconEl, options);
   return iconEl;
 }
@@ -2360,7 +2524,7 @@ var DISPLAY_DAYS = [
   { label: "Sat", value: 6 },
   { label: "Sun", value: 0 }
 ];
-var CustomRepeatModal = class extends import_obsidian5.Modal {
+var CustomRepeatModal = class extends import_obsidian6.Modal {
   constructor(app, current, onSave) {
     super(app);
     this.onSave = onSave;
@@ -2488,7 +2652,7 @@ var CustomRepeatModal = class extends import_obsidian5.Modal {
     cancelBtn.addEventListener("click", () => this.close());
     saveBtn.addEventListener("click", () => {
       if (this.requiresWeekdays() && getRepeatWeekdays(this.draft).length === 0) {
-        new import_obsidian5.Notice("Choose at least one weekday.");
+        new import_obsidian6.Notice("Choose at least one weekday.");
         return;
       }
       const v = parseInt(intervalInput.value);
@@ -2964,7 +3128,7 @@ var AddTaskComposer = class {
       attachmentInput.value = "";
       renderPendingAttachments();
     });
-    const mobilePanelSide = import_obsidian6.Platform.isMobile ? "above" : "below";
+    const mobilePanelSide = import_obsidian7.Platform.isMobile ? "above" : "below";
     const labelsWrap = chipRow.createDiv({ cls: "belki-composer-labels-wrap" });
     const labelsButton = createChipButton(labelsWrap, "Labels", "tag");
     const deadlineWrap = chipRow.createDiv({ cls: "belki-composer-deadline-wrap" });
@@ -3062,7 +3226,7 @@ var AddTaskComposer = class {
         panel.addClass("is-hidden");
         panel.removeClass("is-calendar-open");
       };
-      let canSelectDeadline = !import_obsidian6.Platform.isMobile;
+      let canSelectDeadline = !import_obsidian7.Platform.isMobile;
       const selectDeadline = (value) => {
         if (!canSelectDeadline) {
           return;
@@ -3095,12 +3259,12 @@ var AddTaskComposer = class {
         const shouldOpen = panel.hasClass("is-hidden");
         closeComposerPopovers();
         if (shouldOpen) {
-          canSelectDeadline = !import_obsidian6.Platform.isMobile;
+          canSelectDeadline = !import_obsidian7.Platform.isMobile;
           const ownerWindow = btn.ownerDocument.defaultView || window;
           ownerWindow.setTimeout(() => {
             panel.removeClass("is-hidden");
             watchLocalPopover(deadlineWrap, panel, { preferredSide: mobilePanelSide });
-            if (import_obsidian6.Platform.isMobile) {
+            if (import_obsidian7.Platform.isMobile) {
               ownerWindow.setTimeout(() => {
                 canSelectDeadline = true;
               }, 250);
@@ -3447,7 +3611,7 @@ var AddTaskComposer = class {
         createBelkiIcon(clearBtn, "close");
         clearBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          if (selectedRepeat) new import_obsidian6.Notice("Date and repeat rule removed.");
+          if (selectedRepeat) new import_obsidian7.Notice("Date and repeat rule removed.");
           selectedDue = "";
           selectedRepeat = void 0;
           closeDueDatePopover();
@@ -3800,11 +3964,11 @@ function isImageFile(file) {
 }
 
 // src/views/TaskDetailModal.ts
-var import_obsidian8 = require("obsidian");
+var import_obsidian9 = require("obsidian");
 
 // src/views/ImagePreviewModal.ts
-var import_obsidian7 = require("obsidian");
-var ImagePreviewModal = class extends import_obsidian7.Modal {
+var import_obsidian8 = require("obsidian");
+var ImagePreviewModal = class extends import_obsidian8.Modal {
   constructor(app, file, label) {
     super(app);
     this.file = file;
@@ -3876,7 +4040,7 @@ var DESCRIPTION_FORMAT_ACTIONS = [
   { id: "numbered-list", label: "1.", title: "Numbered list" },
   { id: "link", label: "\u2197", title: "Link" }
 ];
-var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
+var TaskDetailModal = class _TaskDetailModal extends import_obsidian9.Modal {
   constructor(app, options) {
     super(app);
     this.options = options;
@@ -3922,7 +4086,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
     this.modalEl.addClass("belki-modal-detail");
     this.containerEl.addClass("belki-modal-detail-container");
     (_a = this.markdownRenderComponent) == null ? void 0 : _a.unload();
-    this.markdownRenderComponent = new import_obsidian8.Component();
+    this.markdownRenderComponent = new import_obsidian9.Component();
     this.markdownRenderComponent.load();
     applyBelkiFontSettings(contentEl, this.options.settings);
     this.modalEl.addEventListener("keydown", this.handleEscape, true);
@@ -4028,7 +4192,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
       }
       const renderTarget = descRendered.createDiv({ cls: "belki-detail-description-content" });
       try {
-        await import_obsidian8.MarkdownRenderer.render(
+        await import_obsidian9.MarkdownRenderer.render(
           this.app,
           markdown,
           renderTarget,
@@ -4159,7 +4323,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
     createBelkiButton(footerActions, { text: "Save", variant: "primary" }).addEventListener("click", () => {
       void this.save();
     });
-    if (!import_obsidian8.Platform.isMobile) {
+    if (!import_obsidian9.Platform.isMobile) {
       titleInput.focus();
     }
   }
@@ -4265,7 +4429,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
     const toolbarWidth = toolbar.offsetWidth;
     const toolbarHeight = toolbar.offsetHeight;
     const textareaRect = textarea.getBoundingClientRect();
-    const anchor = import_obsidian8.Platform.isMobile ? {
+    const anchor = import_obsidian9.Platform.isMobile ? {
       left: textareaRect.left + 8,
       top: textareaRect.top,
       bottom: textareaRect.bottom
@@ -4335,7 +4499,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
       list.empty();
       const imagePaths = this.draft.attachments.filter((path) => {
         const file = this.app.vault.getAbstractFileByPath(path);
-        return isImagePath(path) && file instanceof import_obsidian8.TFile;
+        return isImagePath(path) && file instanceof import_obsidian9.TFile;
       });
       if (this.draft.attachments.length === 0) {
         list.createDiv({
@@ -4354,7 +4518,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
         item.setAttr("tabindex", "0");
         const openAttachment = () => {
           const file = this.app.vault.getAbstractFileByPath(path);
-          if (isImagePath(path) && file instanceof import_obsidian8.TFile) {
+          if (isImagePath(path) && file instanceof import_obsidian9.TFile) {
             new ImagePreviewModal(this.app, file, attachmentName(path)).open();
             return;
           }
@@ -4443,7 +4607,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
     });
     for (const path of imagePaths) {
       const file = this.app.vault.getAbstractFileByPath(path);
-      if (!(file instanceof import_obsidian8.TFile)) {
+      if (!(file instanceof import_obsidian9.TFile)) {
         continue;
       }
       const preview = gallery.createDiv({ cls: "belki-image-attachment-card" });
@@ -4509,7 +4673,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
   }
   async downloadAttachment(path) {
     const file = this.app.vault.getAbstractFileByPath(path);
-    if (!(file instanceof import_obsidian8.TFile)) {
+    if (!(file instanceof import_obsidian9.TFile)) {
       await this.app.workspace.openLinkText(path, "", false);
       return;
     }
@@ -5001,7 +5165,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian8.Modal {
         createBelkiIcon(clearBtn, "close");
         clearBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          if (this.draft.repeat) new import_obsidian8.Notice("Date and repeat rule removed.");
+          if (this.draft.repeat) new import_obsidian9.Notice("Date and repeat rule removed.");
           this.draft.due = void 0;
           this.draft.repeat = void 0;
           closePopover();
@@ -5683,7 +5847,7 @@ var SORT_OPTIONS = [
   { mode: "project", label: "Project" },
   { mode: "alphabetical", label: "Alphabetical" }
 ];
-var TaskBoardView = class extends import_obsidian9.ItemView {
+var TaskBoardView = class extends import_obsidian10.ItemView {
   constructor(leaf, store, settings, saveSettings) {
     super(leaf);
     this.store = store;
@@ -5703,8 +5867,10 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
     this.draggedTaskId = null;
     this.sortPopoverOpen = false;
     this.projectActionsOpen = null;
+    this.labelActionsOpen = null;
     this.taskActionsOpenId = null;
     this.projectMenuEl = null;
+    this.labelMenuEl = null;
     this.taskActionMenuEl = null;
     this.sidebarScrollLeft = 0;
     this.pendingScrollSnapshot = null;
@@ -5712,14 +5878,19 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
     this.composerCleanup = null;
     this.renderScheduled = false;
     this.handleRootClick = (event) => {
-      if (!this.taskActionsOpenId) {
-        return;
-      }
       const target = event.target;
-      if (target instanceof HTMLElement && target.closest(".belki-task-actions, .belki-task-action-menu")) {
+      if (this.taskActionsOpenId && target instanceof HTMLElement && target.closest(".belki-task-actions, .belki-task-action-menu")) {
         return;
       }
-      this.removeTaskActionMenu();
+      if (this.taskActionsOpenId) {
+        this.removeTaskActionMenu();
+      }
+      if (this.labelActionsOpen && target instanceof HTMLElement && target.closest(".belki-label-actions-button, .belki-label-menu")) {
+        return;
+      }
+      if (this.labelActionsOpen) {
+        this.closeLabelActionsMenu();
+      }
     };
     this.handleRootKeyDown = (event) => {
       if (event.key !== "Escape") {
@@ -5734,6 +5905,11 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
         this.stopEscape(event);
         this.projectActionsOpen = null;
         this.render();
+        return;
+      }
+      if (this.labelActionsOpen !== null) {
+        this.stopEscape(event);
+        this.closeLabelActionsMenu();
         return;
       }
       const openProjectInput = this.containerEl.querySelector(
@@ -5805,6 +5981,7 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
     (_a = this.composerCleanup) == null ? void 0 : _a.call(this);
     this.composerCleanup = null;
     this.removeProjectMenu();
+    this.removeLabelMenu();
     this.removeTaskActionMenu();
     this.containerEl.removeEventListener("keydown", this.handleRootKeyDown, true);
     this.containerEl.removeEventListener("click", this.handleRootClick, true);
@@ -5815,6 +5992,11 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
     (_a = this.projectMenuEl) == null ? void 0 : _a.remove();
     this.projectMenuEl = null;
   }
+  removeLabelMenu() {
+    var _a;
+    (_a = this.labelMenuEl) == null ? void 0 : _a.remove();
+    this.labelMenuEl = null;
+  }
   removeTaskActionMenu() {
     var _a;
     (_a = this.taskActionMenuEl) == null ? void 0 : _a.remove();
@@ -5824,6 +6006,10 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
   closeProjectActionsMenu() {
     this.projectActionsOpen = null;
     this.removeProjectMenu();
+  }
+  closeLabelActionsMenu() {
+    this.labelActionsOpen = null;
+    this.removeLabelMenu();
   }
   refresh() {
     this.render();
@@ -5840,6 +6026,7 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
     this.mobileComposerReturnScroll = null;
     this.sortPopoverOpen = false;
     this.projectActionsOpen = null;
+    this.labelActionsOpen = null;
     this.render();
   }
   render() {
@@ -5847,13 +6034,14 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
     (_a = this.composerCleanup) == null ? void 0 : _a.call(this);
     this.composerCleanup = null;
     this.removeProjectMenu();
+    this.removeLabelMenu();
     this.removeTaskActionMenu();
     const { containerEl } = this;
     const sidebarScrollLeft = (_c = (_b = containerEl.querySelector(".belki-sidebar")) == null ? void 0 : _b.scrollLeft) != null ? _c : this.sidebarScrollLeft;
     containerEl.empty();
     containerEl.addClass("belki-root");
     containerEl.addClass("belki-view");
-    containerEl.toggleClass("is-mobile", import_obsidian9.Platform.isMobile);
+    containerEl.toggleClass("is-mobile", import_obsidian10.Platform.isMobile);
     applyBelkiFontSettings(containerEl, this.settings);
     containerEl.addEventListener("keydown", this.handleRootKeyDown, true);
     containerEl.addEventListener("click", this.handleRootClick, true);
@@ -6092,7 +6280,7 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
     this.projectActionsOpen = null;
     this.searchOpen = false;
     this.searchQuery = "";
-    if (import_obsidian9.Platform.isMobile) {
+    if (import_obsidian10.Platform.isMobile) {
       this.mobileComposerReturnScroll = this.getMainScrollSnapshot();
       this.mobileComposerOpen = true;
       this.composerOpen = false;
@@ -6130,11 +6318,11 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
         await this.createTaskFromComposer(input);
         onClose();
       },
-      presentation: import_obsidian9.Platform.isMobile ? "mobile-screen" : "default"
+      presentation: import_obsidian10.Platform.isMobile ? "mobile-screen" : "default"
     });
     const ownerWindow = parent.ownerDocument.defaultView || window;
     ownerWindow.requestAnimationFrame(() => {
-      if (import_obsidian9.Platform.isMobile) {
+      if (import_obsidian10.Platform.isMobile) {
         composer.focusTitleForMobileCapture();
       } else {
         composer.focus();
@@ -6640,11 +6828,7 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
     }
     for (const label of labels) {
       const count = allTasks.filter((task) => !task.completed && task.labels.includes(label)).length;
-      this.renderFilterRow(labelList, displayLabel(label), count, "", () => {
-        this.activeLabel = label;
-        this.activeFilter = null;
-        this.render();
-      }, getLabelColor(label, this.settings.labelColors).regular);
+      this.renderLabelRow(labelList, label, count);
     }
   }
   renderBackToFilters(parent) {
@@ -6667,6 +6851,107 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
     row.createSpan({ cls: "belki-filter-name", text: name });
     row.createSpan({ cls: "belki-row-count", text: String(count) });
     row.addEventListener("click", onClick);
+  }
+  renderLabelRow(parent, label, count) {
+    const color = getLabelColor(label, this.settings.labelColors).regular;
+    const row = parent.createDiv({ cls: "belki-filter-row belki-label-row belki-filter-row-with-actions" });
+    const main = row.createEl("button", {
+      cls: "belki-filter-row-main",
+      attr: { type: "button" }
+    });
+    const dot = main.createSpan({ cls: "belki-filter-dot belki-label-dot" });
+    dot.setCssStyles({ backgroundColor: color });
+    main.createSpan({ cls: "belki-filter-name", text: displayLabel(label) });
+    main.createSpan({ cls: "belki-row-count", text: String(count) });
+    main.addEventListener("click", () => {
+      this.activeLabel = label;
+      this.activeFilter = null;
+      this.closeLabelActionsMenu();
+      this.render();
+    });
+    this.renderLabelActionsButton(row, label, count);
+  }
+  renderLabelActionsButton(parent, label, taskCount) {
+    const button = parent.createEl("button", {
+      cls: "belki-label-actions-button",
+      attr: { type: "button", "aria-label": `Actions for ${displayLabel(label)}` }
+    });
+    createBelkiIcon(button, "more");
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (this.labelActionsOpen === label) {
+        this.closeLabelActionsMenu();
+        return;
+      }
+      this.openLabelActionsMenu(button, label, taskCount);
+    });
+    if (this.labelActionsOpen === label && !this.labelMenuEl) {
+      this.openLabelActionsMenu(button, label, taskCount);
+    }
+  }
+  openLabelActionsMenu(button, label, taskCount) {
+    this.removeLabelMenu();
+    this.labelActionsOpen = label;
+    const ownerDocument = button.ownerDocument;
+    const ownerWindow = ownerDocument.defaultView || window;
+    const menu = ownerDocument.body.createDiv({ cls: "belki-project-menu belki-label-menu" });
+    this.labelMenuEl = menu;
+    menu.setCssStyles({ visibility: "hidden" });
+    const renameItem = menu.createEl("button", {
+      cls: "belki-project-option belki-label-option",
+      text: "Rename label",
+      attr: { type: "button" }
+    });
+    renameItem.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.closeLabelActionsMenu();
+      new RenameLabelModal(this.app, label, this.getAllLabels(), async (newLabel) => {
+        await this.renameLabel(label, newLabel);
+      }).open();
+    });
+    const deleteItem = menu.createEl("button", {
+      cls: "belki-project-option belki-label-option is-destructive",
+      text: "Delete label",
+      attr: { type: "button" }
+    });
+    deleteItem.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.closeLabelActionsMenu();
+      new DeleteLabelModal(this.app, label, taskCount, async () => {
+        await this.deleteLabel(label);
+      }).open();
+    });
+    ownerWindow.requestAnimationFrame(() => {
+      if (!menu.isConnected) return;
+      const btnRect = button.getBoundingClientRect();
+      const margin = 8;
+      const menuW = menu.offsetWidth || 180;
+      const menuH = menu.offsetHeight || 90;
+      let left = btnRect.left;
+      if (left + menuW > ownerWindow.innerWidth - margin) {
+        left = btnRect.right - menuW;
+      }
+      left = Math.min(
+        Math.max(margin, left),
+        Math.max(margin, ownerWindow.innerWidth - menuW - margin)
+      );
+      const fitsBelow = btnRect.bottom + menuH + margin <= ownerWindow.innerHeight;
+      const fitsAbove = btnRect.top - menuH - margin >= 0;
+      if (!fitsBelow && fitsAbove) {
+        menu.setCssStyles({
+          left: `${left}px`,
+          bottom: `${ownerWindow.innerHeight - btnRect.top + 4}px`,
+          visibility: ""
+        });
+      } else {
+        menu.setCssStyles({
+          left: `${left}px`,
+          top: `${btnRect.bottom + 4}px`,
+          visibility: ""
+        });
+      }
+    });
   }
   createSection(parent, title, count, renderHeaderAction) {
     const section = parent.createDiv({ cls: "belki-section" });
@@ -7660,13 +7945,53 @@ var TaskBoardView = class extends import_obsidian9.ItemView {
       })();
     }).open();
   }
+  async renameLabel(oldLabel, newLabel) {
+    const oldNormalized = normalizeLabelName(oldLabel);
+    const newNormalized = normalizeLabelName(newLabel);
+    if (!oldNormalized || !newNormalized || oldNormalized === newNormalized) {
+      return;
+    }
+    await this.store.renameLabel(oldNormalized, newNormalized);
+    const preservedColor = this.settings.labelColors[oldNormalized];
+    if (preservedColor) {
+      this.settings.labelColors[newNormalized] = preservedColor;
+    }
+    delete this.settings.labelColors[oldNormalized];
+    this.settings.labelRegistry = dedupeLabels([
+      ...this.settings.labelRegistry.filter(
+        (label) => normalizeLabelName(label) !== oldNormalized
+      ),
+      newNormalized
+    ]);
+    if (this.activeLabel === oldNormalized) {
+      this.activeLabel = newNormalized;
+    }
+    await this.saveSettings();
+    this.render();
+  }
+  async deleteLabel(label) {
+    const normalized = normalizeLabelName(label);
+    if (!normalized) {
+      return;
+    }
+    await this.store.deleteLabel(normalized);
+    delete this.settings.labelColors[normalized];
+    this.settings.labelRegistry = this.settings.labelRegistry.filter(
+      (candidate) => normalizeLabelName(candidate) !== normalized
+    );
+    if (this.activeLabel === normalized) {
+      this.activeLabel = null;
+    }
+    await this.saveSettings();
+    this.render();
+  }
   stopEscape(event) {
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
   }
 };
-var RenameProjectModal = class extends import_obsidian9.Modal {
+var RenameProjectModal = class extends import_obsidian10.Modal {
   constructor(app, currentName, existingProjects, onSubmit) {
     super(app);
     this.currentName = currentName;
@@ -7724,7 +8049,7 @@ var RenameProjectModal = class extends import_obsidian9.Modal {
     input.focus();
   }
 };
-var DeleteProjectModal = class extends import_obsidian9.Modal {
+var DeleteProjectModal = class extends import_obsidian10.Modal {
   constructor(app, projectName, taskCount, onConfirm) {
     super(app);
     this.projectName = projectName;
@@ -7749,7 +8074,7 @@ var DeleteProjectModal = class extends import_obsidian9.Modal {
     });
   }
 };
-var LabelPromptModal = class extends import_obsidian9.Modal {
+var LabelPromptModal = class extends import_obsidian10.Modal {
   constructor(app, onSubmit) {
     super(app);
     this.onSubmit = onSubmit;
@@ -7988,7 +8313,7 @@ function groupByDueDate(tasks) {
   }
   return [...map.entries()];
 }
-var CreateProjectModal = class extends import_obsidian9.Modal {
+var CreateProjectModal = class extends import_obsidian10.Modal {
   constructor(app, existingProjects, onSubmit) {
     super(app);
     this.existingProjects = existingProjects;
@@ -8123,7 +8448,7 @@ function searchableText(task) {
 }
 
 // src/main.ts
-var BelkiPlugin = class extends import_obsidian10.Plugin {
+var BelkiPlugin = class extends import_obsidian11.Plugin {
   constructor() {
     super(...arguments);
     this.reloadDebounceTimer = null;
@@ -8156,7 +8481,7 @@ var BelkiPlugin = class extends import_obsidian10.Plugin {
           ...Object.keys(this.settings.labelColors)
         ]);
         await this.saveSettings();
-        new import_obsidian10.Notice("belki labels normalized.");
+        new import_obsidian11.Notice("belki labels normalized.");
       }
     });
     this.addCommand({
@@ -8165,10 +8490,10 @@ var BelkiPlugin = class extends import_obsidian10.Plugin {
       callback: async () => {
         const migratedCount = await this.store.migrateOldTaskFile();
         if (migratedCount === 0) {
-          new import_obsidian10.Notice("belki found no old tasks to migrate.");
+          new import_obsidian11.Notice("belki found no old tasks to migrate.");
           return;
         }
-        new import_obsidian10.Notice(`belki migrated ${migratedCount} task${migratedCount === 1 ? "" : "s"}.`);
+        new import_obsidian11.Notice(`belki migrated ${migratedCount} task${migratedCount === 1 ? "" : "s"}.`);
       }
     });
     this.addCommand({
@@ -8183,9 +8508,9 @@ var BelkiPlugin = class extends import_obsidian10.Plugin {
           ]);
           await this.saveSettings();
           await this.activateView();
-          new import_obsidian10.Notice(`belki seeded ${taskCount} demo tasks.`);
+          new import_obsidian11.Notice(`belki seeded ${taskCount} demo tasks.`);
         } catch (error) {
-          new import_obsidian10.Notice("belki could not seed demo data.");
+          new import_obsidian11.Notice("belki could not seed demo data.");
           console.error(error);
         }
       }
@@ -8265,7 +8590,7 @@ var BelkiPlugin = class extends import_obsidian10.Plugin {
     try {
       await this.store.reloadFromDisk();
     } catch (error) {
-      new import_obsidian10.Notice("belki could not reload task data.");
+      new import_obsidian11.Notice("belki could not reload task data.");
       console.error(error);
     }
   }
@@ -8292,6 +8617,47 @@ var BelkiPlugin = class extends import_obsidian10.Plugin {
       ...Object.keys(this.settings.labelColors),
       ...taskLabels
     ]).sort((a, b) => a.localeCompare(b));
+  }
+  getLabelTaskCount(label) {
+    const normalized = normalizeLabelName(label);
+    if (!normalized) {
+      return 0;
+    }
+    return this.store.getTasks().filter((task) => task.labels.some((candidate) => normalizeLabelName(candidate) === normalized)).length;
+  }
+  async renameLabel(oldLabel, newLabel) {
+    const oldNormalized = normalizeLabelName(oldLabel);
+    const newNormalized = normalizeLabelName(newLabel);
+    if (!oldNormalized || !newNormalized || oldNormalized === newNormalized) {
+      return;
+    }
+    await this.store.renameLabel(oldNormalized, newNormalized);
+    const preservedColor = this.settings.labelColors[oldNormalized];
+    if (preservedColor) {
+      this.settings.labelColors[newNormalized] = preservedColor;
+    }
+    delete this.settings.labelColors[oldNormalized];
+    this.settings.labelRegistry = dedupeLabels([
+      ...this.settings.labelRegistry.filter(
+        (label) => normalizeLabelName(label) !== oldNormalized
+      ),
+      newNormalized
+    ]);
+    await this.saveSettings();
+    this.refreshBelkiViews();
+  }
+  async deleteLabel(label) {
+    const normalized = normalizeLabelName(label);
+    if (!normalized) {
+      return;
+    }
+    await this.store.deleteLabel(normalized);
+    delete this.settings.labelColors[normalized];
+    this.settings.labelRegistry = this.settings.labelRegistry.filter(
+      (candidate) => normalizeLabelName(candidate) !== normalized
+    );
+    await this.saveSettings();
+    this.refreshBelkiViews();
   }
   async activateView() {
     const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_BELKI);
@@ -8325,7 +8691,7 @@ var BelkiPlugin = class extends import_obsidian10.Plugin {
     try {
       await this.store.load();
     } catch (error) {
-      new import_obsidian10.Notice("belki could not initialize task storage. Open the developer console for details.");
+      new import_obsidian11.Notice("belki could not initialize task storage. Open the developer console for details.");
       console.error("[belki] Failed to initialize task storage.", error, {
         dataFolderPath: this.settings.dataFolderPath,
         tasksFilePath: this.settings.tasksFilePath

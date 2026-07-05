@@ -12,7 +12,7 @@ import {
   normalizeSortMode,
   normalizeProjectRegistry
 } from "./settings";
-import { dedupeLabels } from "./labels";
+import { dedupeLabels, normalizeLabelName } from "./labels";
 import { TaskStore } from "./taskStore";
 import { TaskBoardView, VIEW_TYPE_BELKI } from "./views/TaskBoardView";
 import { DEMO_LABELS } from "./demoData";
@@ -215,6 +215,57 @@ export default class BelkiPlugin extends Plugin {
       ...Object.keys(this.settings.labelColors),
       ...taskLabels
     ]).sort((a, b) => a.localeCompare(b));
+  }
+
+  getLabelTaskCount(label: string): number {
+    const normalized = normalizeLabelName(label);
+    if (!normalized) {
+      return 0;
+    }
+
+    return this.store
+      .getTasks()
+      .filter((task) => task.labels.some((candidate) => normalizeLabelName(candidate) === normalized))
+      .length;
+  }
+
+  async renameLabel(oldLabel: string, newLabel: string): Promise<void> {
+    const oldNormalized = normalizeLabelName(oldLabel);
+    const newNormalized = normalizeLabelName(newLabel);
+    if (!oldNormalized || !newNormalized || oldNormalized === newNormalized) {
+      return;
+    }
+
+    await this.store.renameLabel(oldNormalized, newNormalized);
+
+    const preservedColor = this.settings.labelColors[oldNormalized];
+    if (preservedColor) {
+      this.settings.labelColors[newNormalized] = preservedColor;
+    }
+    delete this.settings.labelColors[oldNormalized];
+    this.settings.labelRegistry = dedupeLabels([
+      ...this.settings.labelRegistry.filter(
+        (label) => normalizeLabelName(label) !== oldNormalized
+      ),
+      newNormalized
+    ]);
+    await this.saveSettings();
+    this.refreshBelkiViews();
+  }
+
+  async deleteLabel(label: string): Promise<void> {
+    const normalized = normalizeLabelName(label);
+    if (!normalized) {
+      return;
+    }
+
+    await this.store.deleteLabel(normalized);
+    delete this.settings.labelColors[normalized];
+    this.settings.labelRegistry = this.settings.labelRegistry.filter(
+      (candidate) => normalizeLabelName(candidate) !== normalized
+    );
+    await this.saveSettings();
+    this.refreshBelkiViews();
   }
 
   private async activateView(): Promise<void> {
