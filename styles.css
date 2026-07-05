@@ -556,6 +556,10 @@ button.belki-project-button.is-active {
   display: grid;
 }
 
+.belki-task-item {
+  display: grid;
+}
+
 .belki-task-row {
   align-items: flex-start;
   border-bottom: 1px solid var(--belki-border);
@@ -598,6 +602,16 @@ button.belki-project-button.is-active {
 
 .belki-drag-preview .belki-task-drag-handle {
   opacity: 1;
+}
+
+.belki-root button.belki-task-subtask-counter,
+.belki-root button.belki-task-subtask-counter:hover,
+.belki-root button.belki-task-subtask-counter:active,
+.belki-root button.belki-task-subtask-counter:focus-visible {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
 .belki-task-drag-handle {
@@ -734,6 +748,53 @@ button.belki-project-button.is-active {
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.belki-task-subtask-preview {
+  display: grid;
+  margin-left: 48px;
+}
+
+.belki-task-subtask-preview-row {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--belki-border);
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 20px minmax(0, 1fr);
+  padding: 11px 16px 11px 42px;
+}
+
+.belki-task-subtask-preview-row:hover {
+  background: var(--belki-hover);
+}
+
+.belki-subtask-preview-checkbox {
+  margin-top: 1px;
+}
+
+.belki-subtask-preview-content {
+  min-width: 0;
+}
+
+.belki-subtask-preview-title {
+  color: var(--belki-text);
+  font-size: 15px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.belki-task-subtask-preview-row.is-completed .belki-subtask-preview-title {
+  color: var(--belki-muted);
+  text-decoration: line-through;
+}
+
+.belki-subtask-preview-meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
 }
 
 .belki-task-meta,
@@ -2193,6 +2254,57 @@ button.belki-add-inline {
   margin-bottom: 16px;
 }
 
+.belki-quick-add-modal {
+  --belki-surface: var(--background-primary);
+  --belki-hover: var(--background-modifier-hover);
+  --belki-border: var(--background-modifier-border);
+  --belki-text: var(--text-normal);
+  --belki-muted: var(--text-muted);
+  --belki-accent: var(--text-normal);
+  --belki-accent-hover: var(--text-normal);
+  --belki-on-accent: var(--background-primary);
+  min-width: min(420px, calc(100vw - 48px));
+}
+
+.belki-quick-add-modal h2 {
+  color: var(--belki-text);
+  font-size: 18px;
+  margin: 0 0 6px;
+}
+
+.belki-quick-add-desc {
+  color: var(--belki-muted);
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0 0 14px;
+}
+
+.belki-quick-add-input {
+  background: var(--belki-surface);
+  border: 1px solid var(--belki-border);
+  border-radius: 8px;
+  box-shadow: none;
+  color: var(--belki-text);
+  font: inherit;
+  font-size: 15px;
+  height: 40px;
+  margin: 0 0 14px;
+  outline: none;
+  padding: 0 12px;
+  width: 100%;
+}
+
+.belki-quick-add-input:focus {
+  border-color: var(--belki-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--belki-accent) 16%, transparent);
+}
+
+.belki-quick-add-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .belki-project-create-modal {
   min-width: min(420px, calc(100vw - 48px));
 }
@@ -2749,10 +2861,25 @@ button.belki-add-inline {
 
 .belki-task-subtask-counter {
   align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
   color: var(--belki-muted);
+  cursor: pointer;
   display: inline-flex;
   font-size: 11px;
   gap: 3px;
+  line-height: 1.2;
+  padding: 0;
+}
+
+.belki-task-subtask-counter:hover,
+.belki-task-subtask-counter.is-expanded {
+  background: transparent;
+  box-shadow: none;
+  color: var(--belki-text);
 }
 
 .belki-task-subtask-counter .belki-chip-icon {
@@ -4498,6 +4625,22 @@ button.belki-search-result.is-selected {
     justify-self: start;
     margin-top: 0;
     max-width: 100%;
+  }
+
+  .belki-task-subtask-preview {
+    margin-left: 0;
+  }
+
+  .belki-task-subtask-preview-row {
+    gap: 10px;
+    grid-template-columns: 24px minmax(0, 1fr);
+    padding: 12px 0 12px 34px;
+  }
+
+  .belki-subtask-preview-checkbox {
+    height: 24px;
+    min-height: 24px;
+    width: 24px;
   }
 
   .belki-task-project span:last-child {

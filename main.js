@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => BelkiPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian11 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 
 // src/settings.ts
 var import_obsidian2 = require("obsidian");
@@ -1250,19 +1250,6 @@ function serializeDescriptionLines(description) {
 
 // src/demoData.ts
 var import_obsidian3 = require("obsidian");
-var DEMO_LABELS = [
-  "urgent",
-  "client",
-  "visual",
-  "admin",
-  "writing",
-  "research",
-  "errand",
-  "home",
-  "health",
-  "idea",
-  "review"
-];
 var DEMO_MAIN_CONTENT = [
   "# belki demo data",
   "",
@@ -5869,6 +5856,8 @@ var TaskBoardView = class extends import_obsidian10.ItemView {
     this.projectActionsOpen = null;
     this.labelActionsOpen = null;
     this.taskActionsOpenId = null;
+    this.expandedSubtaskPreviewIds = /* @__PURE__ */ new Set();
+    this.suppressNextStoreRender = false;
     this.projectMenuEl = null;
     this.labelMenuEl = null;
     this.taskActionMenuEl = null;
@@ -5973,7 +5962,13 @@ var TaskBoardView = class extends import_obsidian10.ItemView {
     return "check-circle-2";
   }
   async onOpen() {
-    this.unsubscribe = this.store.subscribe(() => this.renderPreservingMainScroll());
+    this.unsubscribe = this.store.subscribe(() => {
+      if (this.suppressNextStoreRender) {
+        this.suppressNextStoreRender = false;
+        return;
+      }
+      this.renderPreservingMainScroll();
+    });
     this.render();
   }
   async onClose() {
@@ -7283,15 +7278,33 @@ var TaskBoardView = class extends import_obsidian10.ItemView {
       list.createDiv({ cls: "belki-empty belki-empty-small", text: "Nothing here." });
       return;
     }
+    const subTasksByParent = /* @__PURE__ */ new Map();
+    for (const task of this.store.getTasks()) {
+      if (!task.parentId) continue;
+      const subTasks = subTasksByParent.get(task.parentId) || [];
+      subTasks.push(task);
+      subTasksByParent.set(task.parentId, subTasks);
+    }
     for (const task of tasks) {
-      this.renderTaskRow(list, task);
+      const subTasks = (subTasksByParent.get(task.id) || []).sort(byOrder);
+      this.renderTaskItem(list, task, subTasks);
     }
   }
-  renderTaskRow(parent, task) {
+  renderTaskItem(parent, task, subTasks) {
+    const item = parent.createDiv({ cls: "belki-task-item" });
+    item.toggleClass("has-subtasks", subTasks.length > 0);
+    item.toggleClass("is-subtasks-expanded", this.expandedSubtaskPreviewIds.has(task.id));
+    this.renderTaskRow(item, task, subTasks);
+    if (subTasks.length > 0 && this.expandedSubtaskPreviewIds.has(task.id)) {
+      this.renderSubtaskPreview(item, subTasks);
+    }
+  }
+  renderTaskRow(parent, task, subTasks = []) {
     const row = parent.createDiv({ cls: "belki-task-row" });
     row.dataset.taskId = task.id;
     row.toggleClass("is-completed", task.completed);
     row.toggleClass("is-highlighted", this.highlightedTaskId === task.id);
+    row.toggleClass("has-subtasks", subTasks.length > 0);
     row.addEventListener("click", (event) => {
       if (event.target instanceof HTMLElement && event.target.closest("a")) {
         return;
@@ -7407,13 +7420,25 @@ var TaskBoardView = class extends import_obsidian10.ItemView {
       createBelkiIcon(attachmentEl, "attachment", { className: "belki-chip-icon" });
       attachmentEl.createSpan({ text: String(task.attachments.length) });
     }
-    const allTasks = this.store.getTasks();
-    const subTasks = allTasks.filter((t) => t.parentId === task.id);
     if (subTasks.length > 0) {
+      const isExpanded = this.expandedSubtaskPreviewIds.has(task.id);
       const done = subTasks.filter((t) => t.completed).length;
-      const counterEl = meta.createSpan({ cls: "belki-task-subtask-counter" });
+      const counterEl = meta.createEl("button", {
+        cls: "belki-task-subtask-counter",
+        attr: {
+          type: "button",
+          "aria-label": isExpanded ? "Collapse sub-tasks" : "Expand sub-tasks",
+          "aria-expanded": String(isExpanded)
+        }
+      });
+      counterEl.toggleClass("is-expanded", isExpanded);
       createBelkiIcon(counterEl, "subtasks", { className: "belki-chip-icon" });
       counterEl.createSpan({ text: `${done}/${subTasks.length}` });
+      counterEl.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.toggleSubtaskPreview(task.id, parent, subTasks);
+      });
     }
     if (!task.completed && task.completedOccurrences && task.completedOccurrences.length > 0) {
       const last = task.completedOccurrences[task.completedOccurrences.length - 1];
@@ -7461,6 +7486,111 @@ var TaskBoardView = class extends import_obsidian10.ItemView {
       event.stopPropagation();
       void this.store.deleteTask(task.id);
     });
+  }
+  toggleSubtaskPreview(taskId, item, subTasks) {
+    var _a;
+    const willExpand = !this.expandedSubtaskPreviewIds.has(taskId);
+    if (willExpand) {
+      this.expandedSubtaskPreviewIds.add(taskId);
+    } else {
+      this.expandedSubtaskPreviewIds.delete(taskId);
+    }
+    if (item && subTasks) {
+      item.toggleClass("is-subtasks-expanded", willExpand);
+      (_a = item.querySelector(":scope > .belki-task-subtask-preview")) == null ? void 0 : _a.remove();
+      const expandButton = item.querySelector(".belki-task-expand-toggle");
+      if (expandButton) {
+        expandButton.empty();
+        expandButton.setAttr("aria-label", willExpand ? "Collapse sub-tasks" : "Expand sub-tasks");
+        expandButton.setAttr("aria-expanded", String(willExpand));
+        createBelkiIcon(expandButton, willExpand ? "expand" : "collapse");
+      }
+      const counterEl = item.querySelector(".belki-task-subtask-counter");
+      if (counterEl) {
+        counterEl.toggleClass("is-expanded", willExpand);
+        counterEl.setAttr("aria-label", willExpand ? "Collapse sub-tasks" : "Expand sub-tasks");
+        counterEl.setAttr("aria-expanded", String(willExpand));
+      }
+      if (willExpand) {
+        this.renderSubtaskPreview(item, subTasks);
+      }
+      return;
+    }
+    this.renderPreservingMainScroll();
+  }
+  renderSubtaskPreview(parent, subTasks) {
+    const preview = parent.createDiv({ cls: "belki-task-subtask-preview" });
+    for (const subTask of subTasks) {
+      const row = preview.createDiv({ cls: "belki-task-subtask-preview-row" });
+      row.dataset.taskId = subTask.id;
+      row.toggleClass("is-completed", subTask.completed);
+      row.addEventListener("click", (event) => {
+        if (event.target instanceof HTMLElement && event.target.closest("a")) {
+          return;
+        }
+        event.stopPropagation();
+        this.openTaskDetail(subTask);
+      });
+      const checkbox = row.createEl("button", {
+        cls: `belki-task-checkbox belki-subtask-preview-checkbox ${getPriorityClass(subTask.priority)}`,
+        attr: {
+          type: "button",
+          "aria-label": subTask.completed ? "Mark sub-task incomplete" : "Complete sub-task"
+        }
+      });
+      const checkboxPriorityColor = getPriorityColor(subTask.priority);
+      checkbox.setCssProps({
+        "--belki-priority-text": checkboxPriorityColor.color,
+        "--belki-priority-bg": checkboxPriorityColor.light
+      });
+      checkbox.toggleClass("is-checked", subTask.completed);
+      checkbox.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const nextCompleted = !subTask.completed;
+        subTask.completed = nextCompleted;
+        row.toggleClass("is-completed", nextCompleted);
+        checkbox.toggleClass("is-checked", nextCompleted);
+        this.updateSubtaskPreviewCounter(parent);
+        this.suppressNextStoreRender = true;
+        void this.store.toggleComplete(subTask.id).catch((error) => {
+          console.error("[belki] Failed to toggle sub-task completion.", error);
+          this.suppressNextStoreRender = false;
+          this.renderPreservingMainScroll();
+        });
+      });
+      const content = row.createDiv({ cls: "belki-subtask-preview-content" });
+      renderLinkedText(subTask.title, content.createDiv({ cls: "belki-subtask-preview-title" }), {
+        app: this.app,
+        sourcePath: subTask.sourcePath
+      });
+      const meta = content.createDiv({ cls: "belki-subtask-preview-meta" });
+      if (subTask.due) {
+        meta.createSpan({
+          cls: `belki-task-date${isBeforeToday(subTask.due) ? " is-overdue" : ""}`,
+          text: formatDueChip(subTask.due)
+        });
+      }
+      if (subTask.labels.length > 0) {
+        for (const label of subTask.labels.slice(0, 3)) {
+          const chip = meta.createSpan({ cls: "belki-task-label", text: displayLabel(label) });
+          const labelColor = getLabelColor(label, this.settings.labelColors);
+          chip.setCssStyles({
+            borderColor: labelColor.light,
+            backgroundColor: labelColor.light
+          });
+        }
+      }
+    }
+  }
+  updateSubtaskPreviewCounter(item) {
+    const counterEl = item.querySelector(".belki-task-subtask-counter");
+    if (!counterEl) return;
+    const total = item.querySelectorAll(".belki-task-subtask-preview-row").length;
+    const done = item.querySelectorAll(".belki-task-subtask-preview-row.is-completed").length;
+    const textEl = counterEl.querySelector("span:last-child");
+    if (textEl) {
+      textEl.textContent = `${done}/${total}`;
+    }
   }
   renderTaskActionMenu(task, trigger) {
     const menu = this.containerEl.createDiv({ cls: "belki-task-action-menu" });
@@ -8447,8 +8577,76 @@ function searchableText(task) {
   ].filter(Boolean).join(" ").toLowerCase();
 }
 
+// src/views/QuickAddModal.ts
+var import_obsidian11 = require("obsidian");
+var QuickAddModal = class extends import_obsidian11.Modal {
+  constructor(app, onSubmit) {
+    super(app);
+    this.onSubmit = onSubmit;
+    this.isSubmitting = false;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("belki-quick-add-modal");
+    contentEl.createEl("h2", { text: "Quick add task" });
+    contentEl.createEl("p", {
+      cls: "belki-quick-add-desc",
+      text: "Capture a task now. It will appear in Inbox."
+    });
+    const input = contentEl.createEl("input", {
+      cls: "belki-quick-add-input",
+      attr: {
+        type: "text",
+        placeholder: "Task title"
+      }
+    });
+    const actions = contentEl.createDiv({ cls: "belki-quick-add-actions" });
+    actions.createEl("button", {
+      cls: "belki-button",
+      text: "Cancel",
+      attr: { type: "button" }
+    }).addEventListener("click", () => this.close());
+    const addButton = actions.createEl("button", {
+      cls: "belki-button belki-button-primary",
+      text: "Add task",
+      attr: { type: "button" }
+    });
+    const submit = async () => {
+      const title = input.value.trim();
+      if (!title || this.isSubmitting) {
+        return;
+      }
+      this.isSubmitting = true;
+      addButton.disabled = true;
+      try {
+        await this.onSubmit(title);
+        this.close();
+      } finally {
+        this.isSubmitting = false;
+        addButton.disabled = false;
+      }
+    };
+    addButton.addEventListener("click", () => {
+      void submit();
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        this.close();
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        void submit();
+      }
+    });
+    input.focus();
+  }
+};
+
 // src/main.ts
-var BelkiPlugin = class extends import_obsidian11.Plugin {
+var BelkiPlugin = class extends import_obsidian12.Plugin {
   constructor() {
     super(...arguments);
     this.reloadDebounceTimer = null;
@@ -8471,6 +8669,22 @@ var BelkiPlugin = class extends import_obsidian11.Plugin {
       }
     });
     this.addCommand({
+      id: "quick-add-task",
+      name: "Quick Add Task",
+      hotkeys: [
+        {
+          modifiers: ["Mod", "Shift"],
+          key: "A"
+        }
+      ],
+      callback: () => {
+        new QuickAddModal(this.app, async (title) => {
+          await this.store.createTask({ title });
+          new import_obsidian12.Notice("Task added to Inbox");
+        }).open();
+      }
+    });
+    this.addCommand({
       id: "normalize-labels",
       name: "Normalize Labels",
       callback: async () => {
@@ -8481,7 +8695,7 @@ var BelkiPlugin = class extends import_obsidian11.Plugin {
           ...Object.keys(this.settings.labelColors)
         ]);
         await this.saveSettings();
-        new import_obsidian11.Notice("belki labels normalized.");
+        new import_obsidian12.Notice("belki labels normalized.");
       }
     });
     this.addCommand({
@@ -8490,29 +8704,10 @@ var BelkiPlugin = class extends import_obsidian11.Plugin {
       callback: async () => {
         const migratedCount = await this.store.migrateOldTaskFile();
         if (migratedCount === 0) {
-          new import_obsidian11.Notice("belki found no old tasks to migrate.");
+          new import_obsidian12.Notice("belki found no old tasks to migrate.");
           return;
         }
-        new import_obsidian11.Notice(`belki migrated ${migratedCount} task${migratedCount === 1 ? "" : "s"}.`);
-      }
-    });
-    this.addCommand({
-      id: "reset-and-seed-demo-data",
-      name: "Reset and seed demo data",
-      callback: async () => {
-        try {
-          const taskCount = await this.store.resetAndSeedDemoData();
-          this.settings.labelRegistry = normalizeLabelRegistry([
-            ...this.settings.labelRegistry,
-            ...DEMO_LABELS
-          ]);
-          await this.saveSettings();
-          await this.activateView();
-          new import_obsidian11.Notice(`belki seeded ${taskCount} demo tasks.`);
-        } catch (error) {
-          new import_obsidian11.Notice("belki could not seed demo data.");
-          console.error(error);
-        }
+        new import_obsidian12.Notice(`belki migrated ${migratedCount} task${migratedCount === 1 ? "" : "s"}.`);
       }
     });
     this.addSettingTab(new BelkiSettingTab(this.app, this));
@@ -8590,7 +8785,7 @@ var BelkiPlugin = class extends import_obsidian11.Plugin {
     try {
       await this.store.reloadFromDisk();
     } catch (error) {
-      new import_obsidian11.Notice("belki could not reload task data.");
+      new import_obsidian12.Notice("belki could not reload task data.");
       console.error(error);
     }
   }
@@ -8694,7 +8889,7 @@ var BelkiPlugin = class extends import_obsidian11.Plugin {
     try {
       await this.store.load();
     } catch (error) {
-      new import_obsidian11.Notice("belki could not initialize task storage. Open the developer console for details.");
+      new import_obsidian12.Notice("belki could not initialize task storage. Open the developer console for details.");
       console.error("[belki] Failed to initialize task storage.", error, {
         dataFolderPath: this.settings.dataFolderPath,
         tasksFilePath: this.settings.tasksFilePath
