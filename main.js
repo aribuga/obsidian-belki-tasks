@@ -5856,6 +5856,8 @@ var TaskBoardView = class extends import_obsidian10.ItemView {
     this.projectActionsOpen = null;
     this.labelActionsOpen = null;
     this.taskActionsOpenId = null;
+    this.expandedSubtaskPreviewIds = /* @__PURE__ */ new Set();
+    this.suppressNextStoreRender = false;
     this.projectMenuEl = null;
     this.labelMenuEl = null;
     this.taskActionMenuEl = null;
@@ -5960,7 +5962,13 @@ var TaskBoardView = class extends import_obsidian10.ItemView {
     return "check-circle-2";
   }
   async onOpen() {
-    this.unsubscribe = this.store.subscribe(() => this.renderPreservingMainScroll());
+    this.unsubscribe = this.store.subscribe(() => {
+      if (this.suppressNextStoreRender) {
+        this.suppressNextStoreRender = false;
+        return;
+      }
+      this.renderPreservingMainScroll();
+    });
     this.render();
   }
   async onClose() {
@@ -7270,15 +7278,33 @@ var TaskBoardView = class extends import_obsidian10.ItemView {
       list.createDiv({ cls: "belki-empty belki-empty-small", text: "Nothing here." });
       return;
     }
+    const subTasksByParent = /* @__PURE__ */ new Map();
+    for (const task of this.store.getTasks()) {
+      if (!task.parentId) continue;
+      const subTasks = subTasksByParent.get(task.parentId) || [];
+      subTasks.push(task);
+      subTasksByParent.set(task.parentId, subTasks);
+    }
     for (const task of tasks) {
-      this.renderTaskRow(list, task);
+      const subTasks = (subTasksByParent.get(task.id) || []).sort(byOrder);
+      this.renderTaskItem(list, task, subTasks);
     }
   }
-  renderTaskRow(parent, task) {
+  renderTaskItem(parent, task, subTasks) {
+    const item = parent.createDiv({ cls: "belki-task-item" });
+    item.toggleClass("has-subtasks", subTasks.length > 0);
+    item.toggleClass("is-subtasks-expanded", this.expandedSubtaskPreviewIds.has(task.id));
+    this.renderTaskRow(item, task, subTasks);
+    if (subTasks.length > 0 && this.expandedSubtaskPreviewIds.has(task.id)) {
+      this.renderSubtaskPreview(item, subTasks);
+    }
+  }
+  renderTaskRow(parent, task, subTasks = []) {
     const row = parent.createDiv({ cls: "belki-task-row" });
     row.dataset.taskId = task.id;
     row.toggleClass("is-completed", task.completed);
     row.toggleClass("is-highlighted", this.highlightedTaskId === task.id);
+    row.toggleClass("has-subtasks", subTasks.length > 0);
     row.addEventListener("click", (event) => {
       if (event.target instanceof HTMLElement && event.target.closest("a")) {
         return;
@@ -7394,13 +7420,25 @@ var TaskBoardView = class extends import_obsidian10.ItemView {
       createBelkiIcon(attachmentEl, "attachment", { className: "belki-chip-icon" });
       attachmentEl.createSpan({ text: String(task.attachments.length) });
     }
-    const allTasks = this.store.getTasks();
-    const subTasks = allTasks.filter((t) => t.parentId === task.id);
     if (subTasks.length > 0) {
+      const isExpanded = this.expandedSubtaskPreviewIds.has(task.id);
       const done = subTasks.filter((t) => t.completed).length;
-      const counterEl = meta.createSpan({ cls: "belki-task-subtask-counter" });
+      const counterEl = meta.createEl("button", {
+        cls: "belki-task-subtask-counter",
+        attr: {
+          type: "button",
+          "aria-label": isExpanded ? "Collapse sub-tasks" : "Expand sub-tasks",
+          "aria-expanded": String(isExpanded)
+        }
+      });
+      counterEl.toggleClass("is-expanded", isExpanded);
       createBelkiIcon(counterEl, "subtasks", { className: "belki-chip-icon" });
       counterEl.createSpan({ text: `${done}/${subTasks.length}` });
+      counterEl.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.toggleSubtaskPreview(task.id, parent, subTasks);
+      });
     }
     if (!task.completed && task.completedOccurrences && task.completedOccurrences.length > 0) {
       const last = task.completedOccurrences[task.completedOccurrences.length - 1];
@@ -7448,6 +7486,111 @@ var TaskBoardView = class extends import_obsidian10.ItemView {
       event.stopPropagation();
       void this.store.deleteTask(task.id);
     });
+  }
+  toggleSubtaskPreview(taskId, item, subTasks) {
+    var _a;
+    const willExpand = !this.expandedSubtaskPreviewIds.has(taskId);
+    if (willExpand) {
+      this.expandedSubtaskPreviewIds.add(taskId);
+    } else {
+      this.expandedSubtaskPreviewIds.delete(taskId);
+    }
+    if (item && subTasks) {
+      item.toggleClass("is-subtasks-expanded", willExpand);
+      (_a = item.querySelector(":scope > .belki-task-subtask-preview")) == null ? void 0 : _a.remove();
+      const expandButton = item.querySelector(".belki-task-expand-toggle");
+      if (expandButton) {
+        expandButton.empty();
+        expandButton.setAttr("aria-label", willExpand ? "Collapse sub-tasks" : "Expand sub-tasks");
+        expandButton.setAttr("aria-expanded", String(willExpand));
+        createBelkiIcon(expandButton, willExpand ? "expand" : "collapse");
+      }
+      const counterEl = item.querySelector(".belki-task-subtask-counter");
+      if (counterEl) {
+        counterEl.toggleClass("is-expanded", willExpand);
+        counterEl.setAttr("aria-label", willExpand ? "Collapse sub-tasks" : "Expand sub-tasks");
+        counterEl.setAttr("aria-expanded", String(willExpand));
+      }
+      if (willExpand) {
+        this.renderSubtaskPreview(item, subTasks);
+      }
+      return;
+    }
+    this.renderPreservingMainScroll();
+  }
+  renderSubtaskPreview(parent, subTasks) {
+    const preview = parent.createDiv({ cls: "belki-task-subtask-preview" });
+    for (const subTask of subTasks) {
+      const row = preview.createDiv({ cls: "belki-task-subtask-preview-row" });
+      row.dataset.taskId = subTask.id;
+      row.toggleClass("is-completed", subTask.completed);
+      row.addEventListener("click", (event) => {
+        if (event.target instanceof HTMLElement && event.target.closest("a")) {
+          return;
+        }
+        event.stopPropagation();
+        this.openTaskDetail(subTask);
+      });
+      const checkbox = row.createEl("button", {
+        cls: `belki-task-checkbox belki-subtask-preview-checkbox ${getPriorityClass(subTask.priority)}`,
+        attr: {
+          type: "button",
+          "aria-label": subTask.completed ? "Mark sub-task incomplete" : "Complete sub-task"
+        }
+      });
+      const checkboxPriorityColor = getPriorityColor(subTask.priority);
+      checkbox.setCssProps({
+        "--belki-priority-text": checkboxPriorityColor.color,
+        "--belki-priority-bg": checkboxPriorityColor.light
+      });
+      checkbox.toggleClass("is-checked", subTask.completed);
+      checkbox.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const nextCompleted = !subTask.completed;
+        subTask.completed = nextCompleted;
+        row.toggleClass("is-completed", nextCompleted);
+        checkbox.toggleClass("is-checked", nextCompleted);
+        this.updateSubtaskPreviewCounter(parent);
+        this.suppressNextStoreRender = true;
+        void this.store.toggleComplete(subTask.id).catch((error) => {
+          console.error("[belki] Failed to toggle sub-task completion.", error);
+          this.suppressNextStoreRender = false;
+          this.renderPreservingMainScroll();
+        });
+      });
+      const content = row.createDiv({ cls: "belki-subtask-preview-content" });
+      renderLinkedText(subTask.title, content.createDiv({ cls: "belki-subtask-preview-title" }), {
+        app: this.app,
+        sourcePath: subTask.sourcePath
+      });
+      const meta = content.createDiv({ cls: "belki-subtask-preview-meta" });
+      if (subTask.due) {
+        meta.createSpan({
+          cls: `belki-task-date${isBeforeToday(subTask.due) ? " is-overdue" : ""}`,
+          text: formatDueChip(subTask.due)
+        });
+      }
+      if (subTask.labels.length > 0) {
+        for (const label of subTask.labels.slice(0, 3)) {
+          const chip = meta.createSpan({ cls: "belki-task-label", text: displayLabel(label) });
+          const labelColor = getLabelColor(label, this.settings.labelColors);
+          chip.setCssStyles({
+            borderColor: labelColor.light,
+            backgroundColor: labelColor.light
+          });
+        }
+      }
+    }
+  }
+  updateSubtaskPreviewCounter(item) {
+    const counterEl = item.querySelector(".belki-task-subtask-counter");
+    if (!counterEl) return;
+    const total = item.querySelectorAll(".belki-task-subtask-preview-row").length;
+    const done = item.querySelectorAll(".belki-task-subtask-preview-row.is-completed").length;
+    const textEl = counterEl.querySelector("span:last-child");
+    if (textEl) {
+      textEl.textContent = `${done}/${total}`;
+    }
   }
   renderTaskActionMenu(task, trigger) {
     const menu = this.containerEl.createDiv({ cls: "belki-task-action-menu" });
