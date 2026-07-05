@@ -31,6 +31,8 @@ export type BelkiIconName =
   | "today"
   | "upcoming";
 
+export type BelkiIconInput = BelkiIconName | (string & {});
+
 export const BELKI_ICON_MAP: Record<BelkiIconName, string> = {
   activity: "chart-no-axes-column",
   add: "plus",
@@ -65,6 +67,6 @@ export const BELKI_ICON_MAP: Record<BelkiIconName, string> = {
   upcoming: "calendar-clock"
 };
 
-export function resolveBelkiIcon(icon: BelkiIconName | string): string {
+export function resolveBelkiIcon(icon: BelkiIconInput): string {
   return BELKI_ICON_MAP[icon as BelkiIconName] || icon;
 }

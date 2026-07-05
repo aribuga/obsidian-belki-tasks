@@ -1,5 +1,5 @@
 import { setIcon } from "obsidian";
-import { BelkiIconName, resolveBelkiIcon } from "../icons/belkiIcons";
+import { BelkiIconInput, resolveBelkiIcon } from "../icons/belkiIcons";
 
 interface BelkiIconOptions {
   ariaLabel?: string;
@@ -10,7 +10,7 @@ interface BelkiIconOptions {
 
 export function createBelkiIcon(
   parent: HTMLElement,
-  icon: BelkiIconName | string,
+  icon: BelkiIconInput,
   options: BelkiIconOptions = {}
 ): HTMLElement {
   const iconEl = parent.createSpan({
@@ -27,7 +27,7 @@ export function createBelkiIcon(
 
 export function setBelkiIcon(
   el: HTMLElement,
-  icon: BelkiIconName | string,
+  icon: BelkiIconInput,
   options: BelkiIconOptions = {}
 ): void {
   el.empty();

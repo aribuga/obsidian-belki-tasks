@@ -8611,7 +8611,10 @@ var BelkiPlugin = class extends import_obsidian11.Plugin {
     ]);
   }
   getLabelNames() {
-    const taskLabels = this.store.getTasks().flatMap((task) => task.labels);
+    const taskLabels = [];
+    for (const task of this.store.getTasks()) {
+      taskLabels.push(...task.labels);
+    }
     return dedupeLabels([
       ...this.settings.labelRegistry,
       ...Object.keys(this.settings.labelColors),
