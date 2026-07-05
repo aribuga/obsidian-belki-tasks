@@ -206,9 +206,10 @@ export default class BelkiPlugin extends Plugin {
   }
 
   getLabelNames(): string[] {
-    const taskLabels = this.store
-      .getTasks()
-      .flatMap((task) => task.labels);
+    const taskLabels: string[] = [];
+    for (const task of this.store.getTasks()) {
+      taskLabels.push(...task.labels);
+    }
 
     return dedupeLabels([
       ...this.settings.labelRegistry,
@@ -318,5 +319,5 @@ function toSettingsData(value: unknown): Partial<BelkiSettings> {
     return {};
   }
 
-  return value as Partial<BelkiSettings>;
+  return value;
 }

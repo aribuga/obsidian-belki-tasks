@@ -81,12 +81,12 @@ export function parseRepeat(value: string | undefined): RepeatRule | undefined {
       return normalizeRepeatRule({
         frequency: obj.f as RepeatFrequency,
         interval: (obj.i as number) ?? 1,
-        mode: (obj.m === "c" ? "completedDate" : "scheduledDate") as RepeatMode,
+        mode: obj.m === "c" ? "completedDate" : "scheduledDate",
         weekday: obj.w as number | undefined,
         weekdays: normalizeWeekdays(obj.ws),
         dayOfMonth: obj.dom as number | undefined,
         month: obj.mo as number | undefined,
-        ends: (obj.e === "d" ? "onDate" : obj.e === "o" ? "afterOccurrences" : "never") as RepeatEndsType,
+        ends: obj.e === "d" ? "onDate" : obj.e === "o" ? "afterOccurrences" : "never",
         endsDate: obj.ed as string | undefined,
         endsCount: obj.ec as number | undefined,
       });
