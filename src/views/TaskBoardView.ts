@@ -428,12 +428,14 @@ export class TaskBoardView extends ItemView {
       this.sidebarScrollLeft = sidebar.scrollLeft;
     });
 
-    const sidebarAdd = sidebar.createEl("button", { cls: "belki-add-sidebar" });
-    createBelkiIcon(sidebarAdd, "add", { className: "belki-add-plus", size: 18 });
-    sidebarAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
-    sidebarAdd.addEventListener("click", () => {
-      this.openAddComposer();
-    });
+    if (this.shouldShowContextualAddTask()) {
+      const sidebarAdd = sidebar.createEl("button", { cls: "belki-add-sidebar" });
+      createBelkiIcon(sidebarAdd, "add", { className: "belki-add-plus", size: 18 });
+      sidebarAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
+      sidebarAdd.addEventListener("click", () => {
+        this.openAddComposer();
+      });
+    }
 
     const tasks = this.store.getTasks();
     const activeTopLevel = this.getActiveTopLevelTasks(tasks);
@@ -601,7 +603,7 @@ export class TaskBoardView extends ItemView {
 
     this.renderTaskSections(sections, tasks);
 
-    if (this.mode === "activity" || this.mode === "daily-note") {
+    if (!this.shouldShowContextualAddTask()) {
       return;
     }
 
@@ -629,6 +631,10 @@ export class TaskBoardView extends ItemView {
   }
 
   private openAddComposer(): void {
+    if (!this.shouldShowContextualAddTask()) {
+      return;
+    }
+
     this.sortPopoverOpen = false;
     this.projectActionsOpen = null;
     this.searchOpen = false;
@@ -666,7 +672,7 @@ export class TaskBoardView extends ItemView {
       labelColors: this.settings.labelColors,
       projectColors: this.settings.projectColors,
       defaultProject: this.selectedProject || "",
-      defaultDue: this.mode === "today" ? todayIso() : undefined,
+      defaultDue: this.getComposerDefaultDue(),
       onCancel: onClose,
       onEnsureLabel: (label) => {
         this.ensureLabelColor(label);
@@ -697,7 +703,7 @@ export class TaskBoardView extends ItemView {
   }
 
   private renderMobileQuickAdd(parent: HTMLElement): void {
-    if (this.searchOpen) {
+    if (this.searchOpen || !this.shouldShowContextualAddTask()) {
       return;
     }
 
@@ -731,6 +737,26 @@ export class TaskBoardView extends ItemView {
     });
     createBelkiIcon(button, "add");
     button.addEventListener("click", () => this.openAddComposer());
+  }
+
+  private shouldShowContextualAddTask(): boolean {
+    if (this.mode === "projects") {
+      return Boolean(this.selectedProject);
+    }
+
+    return this.mode === "inbox" || this.mode === "today" || this.mode === "upcoming";
+  }
+
+  private getComposerDefaultDue(): string | undefined {
+    if (this.mode === "today") {
+      return todayIso();
+    }
+
+    if (this.mode === "upcoming") {
+      return addDaysIso(1);
+    }
+
+    return undefined;
   }
 
   private groupTasks(tasks: BelkiTask[]): Map<string, BelkiTask[]> {
