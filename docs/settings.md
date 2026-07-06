@@ -45,6 +45,18 @@ Sets the default sort order for task lists. This can also be changed per-session
 
 ---
 
+## Daily Notes
+
+**Enable Daily Notes integration** allows belki to show completed tasks for the active daily note date.
+
+**Daily note date format** controls how belki matches a note path to a date. Default: `YYYY-MM-DD`.
+
+**Auto-add completed tasks block** appends a `belki-completed` code block to daily notes that do not already have one. This is disabled by default.
+
+belki can show completed tasks in its own Daily Note panel or with a `belki-completed` Markdown code block. Auto-insert only writes the code block wrapper, not a static list of tasks.
+
+---
+
 ## Fonts
 
 Set the font used for different text areas inside belki:

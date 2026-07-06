@@ -1,4 +1,11 @@
 import { App, ItemView, Modal, Platform, WorkspaceLeaf } from "obsidian";
+import {
+  ActivityData,
+  buildActivityData,
+  formatActivityDate,
+  formatActivityDayHeading,
+  getActivityDataSignature
+} from "../activityData";
 import { BELKI_COLOR_PALETTE, getLabelColor, getProjectColor } from "../colors";
 import {
   compareIsoDates,
@@ -37,128 +44,10 @@ import {
   uniqueRealProjects
 } from "../projects";
 import { createBelkiIcon } from "../ui/components/BelkiIcon";
+import { renderLinkedText, stripInlineMarkdownPreservingLinks } from "./linkedText";
+import { compareTasksByMode } from "../taskSorting";
 
 export const VIEW_TYPE_BELKI = "belki-task-board";
-
-// Groups: 1=wikilink full, 2=note path, 3=heading, 4=alias | 5=md link full, 6=md text, 7=md target | 8=https url | 9=www url
-const LINK_RE = /(\[\[([^\]|#\n]+?)(?:#([^\]|\n]+?))?(?:\|([^\]\n]+?))?\]\])|(\[([^\]]+)\]\(([^)\n]+)\))|(https?:\/\/[^\s<>"')\]]+)|(www\.[a-zA-Z0-9][^\s<>"')\]]*)/g;
-
-interface RenderLinkedTextOptions {
-  app: App;
-  sourcePath?: string;
-}
-
-interface ActivityDay {
-  count: number;
-  date: string;
-  level: number;
-}
-
-interface ActivityData {
-  allTimeCount: number;
-  byDate: Map<string, BelkiTask[]>;
-  currentStreak: number;
-  defaultSelectedDate: string | null;
-  heatmapDays: ActivityDay[];
-  monthCount: number;
-  todayCount: number;
-  weekCount: number;
-  yesterdayCount: number;
-}
-
-export function renderLinkedText(
-  text: string,
-  el: HTMLElement,
-  options?: RenderLinkedTextOptions
-): void {
-  LINK_RE.lastIndex = 0;
-  let last = 0;
-  let match: RegExpExecArray | null;
-  while ((match = LINK_RE.exec(text)) !== null) {
-    if (match.index > last) el.appendText(text.slice(last, match.index));
-    if (match[1]) {
-      // Wikilink [[Note#Heading|Alias]]
-      const notePath = match[2];
-      const heading = match[3];
-      const alias = match[4];
-      const displayText = alias || notePath.split("/").pop() || notePath;
-      const linkTarget = heading ? `${notePath}#${heading}` : notePath;
-      if (options?.app) {
-        createInternalLink(el, displayText, linkTarget, options);
-      } else {
-        el.appendText(displayText);
-      }
-      last = match.index + match[1].length;
-    } else if (match[5]) {
-      const target = match[7].trim();
-      if (options?.app && !isExternalLinkTarget(target)) {
-        createInternalLink(el, match[6], target, options);
-      } else {
-        createExternalLink(el, match[6], normalizeExternalHref(target));
-      }
-      last = match.index + match[5].length;
-    } else {
-      // Raw https:// or www. URL
-      const full = match[0];
-      const url = full.replace(/[.,;:!?)\]]+$/, "");
-      const trailing = full.slice(url.length);
-      const href = url.startsWith("www.") ? `https://${url}` : url;
-      createExternalLink(el, url, href);
-      if (trailing) el.appendText(trailing);
-      last = match.index + full.length;
-    }
-  }
-  if (last < text.length) el.appendText(text.slice(last));
-}
-
-function createInternalLink(
-  parent: HTMLElement,
-  text: string,
-  linkTarget: string,
-  options: RenderLinkedTextOptions
-): void {
-  const link = parent.createEl("a", {
-    text,
-    cls: "internal-link",
-    href: linkTarget
-  });
-  link.setAttribute("data-href", linkTarget);
-  const open = (event: MouseEvent | TouchEvent, openInNewLeaf = false) => {
-    event.preventDefault();
-    event.stopPropagation();
-    void options.app.workspace.openLinkText(
-      linkTarget,
-      options.sourcePath || "",
-      openInNewLeaf
-    );
-  };
-  link.addEventListener("pointerdown", (event) => event.stopPropagation());
-  link.addEventListener("touchstart", (event) => event.stopPropagation());
-  link.addEventListener("touchend", (event) => open(event));
-  link.addEventListener("click", (event) => {
-    open(event, event.metaKey || event.ctrlKey || event.button === 1);
-  });
-  link.addEventListener("auxclick", (event) => {
-    if (event.button === 1) open(event, true);
-  });
-}
-
-function createExternalLink(parent: HTMLElement, text: string, href: string): void {
-  const link = parent.createEl("a", { text, href, cls: "external-link" });
-  link.setAttribute("rel", "noopener noreferrer");
-  link.addEventListener("pointerdown", (event) => event.stopPropagation());
-  link.addEventListener("touchstart", (event) => event.stopPropagation());
-  link.addEventListener("click", (event) => event.stopPropagation());
-  link.addEventListener("auxclick", (event) => event.stopPropagation());
-}
-
-function isExternalLinkTarget(target: string): boolean {
-  return /^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("www.");
-}
-
-function normalizeExternalHref(target: string): string {
-  return target.startsWith("www.") ? `https://${target}` : target;
-}
 
 function markdownPreviewText(text: string): string {
   return text
@@ -173,12 +62,7 @@ function markdownPreviewText(text: string): string {
     )
     .filter(Boolean)
     .join(" ")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/__([^_]+)__/g, "$1")
-    .replace(/~~([^~]+)~~/g, "$1")
-    .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1$2")
-    .replace(/(^|[^_])_([^_\n]+)_/g, "$1$2")
+    .replace(/^(.*)$/s, (_, value: string) => stripInlineMarkdownPreservingLinks(value))
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -204,6 +88,8 @@ export class TaskBoardView extends ItemView {
   private highlightedTaskId: string | null = null;
   private activeFilter: string | null = null;
   private activeLabel: string | null = null;
+  private dailyNoteDate: string | null = null;
+  private dailyNoteSourcePath: string | null = null;
   private activitySelectedDate: string | null = null;
   private activityCache: { signature: string; data: ActivityData } | null = null;
   private draggedTaskId: string | null = null;
@@ -407,6 +293,8 @@ export class TaskBoardView extends ItemView {
     this.selectedProject = null;
     this.activeFilter = null;
     this.activeLabel = null;
+    this.dailyNoteDate = null;
+    this.dailyNoteSourcePath = null;
     this.searchOpen = false;
     this.searchQuery = "";
     this.composerOpen = false;
@@ -416,6 +304,28 @@ export class TaskBoardView extends ItemView {
     this.projectActionsOpen = null;
     this.labelActionsOpen = null;
     this.render();
+  }
+
+  openDailyNote(date: string, sourcePath: string): void {
+    this.mode = "daily-note";
+    this.dailyNoteDate = date;
+    this.dailyNoteSourcePath = sourcePath;
+    this.selectedProject = null;
+    this.activeFilter = null;
+    this.activeLabel = null;
+    this.searchOpen = false;
+    this.searchQuery = "";
+    this.composerOpen = false;
+    this.mobileComposerOpen = false;
+    this.mobileComposerReturnScroll = null;
+    this.sortPopoverOpen = false;
+    this.projectActionsOpen = null;
+    this.labelActionsOpen = null;
+    this.render();
+  }
+
+  isDailyNoteView(): boolean {
+    return this.mode === "daily-note";
   }
 
   private render(): void {
@@ -579,6 +489,8 @@ export class TaskBoardView extends ItemView {
       button.addEventListener("click", () => {
         this.mode = "projects";
         this.selectedProject = cleanProject;
+        this.dailyNoteDate = null;
+        this.dailyNoteSourcePath = null;
         this.composerOpen = false;
         this.mobileComposerOpen = false;
         this.mobileComposerReturnScroll = null;
@@ -597,6 +509,8 @@ export class TaskBoardView extends ItemView {
       archiveButton.addEventListener("click", () => {
         this.mode = "archived";
         this.selectedProject = null;
+        this.dailyNoteDate = null;
+        this.dailyNoteSourcePath = null;
         this.composerOpen = false;
         this.mobileComposerOpen = false;
         this.mobileComposerReturnScroll = null;
@@ -651,6 +565,8 @@ export class TaskBoardView extends ItemView {
       this.selectedProject = null;
       this.activeFilter = null;
       this.activeLabel = null;
+      this.dailyNoteDate = null;
+      this.dailyNoteSourcePath = null;
       this.composerOpen = false;
       this.mobileComposerOpen = false;
       this.mobileComposerReturnScroll = null;
@@ -676,7 +592,7 @@ export class TaskBoardView extends ItemView {
         ? `${activityData.allTimeCount} completed task${activityData.allTimeCount === 1 ? "" : "s"}`
         : `${visible.length} task${visible.length === 1 ? "" : "s"}`
     });
-    if (this.mode !== "activity") {
+    if (this.mode !== "activity" && this.mode !== "daily-note") {
       this.renderSortingControl(header);
     }
 
@@ -684,7 +600,7 @@ export class TaskBoardView extends ItemView {
 
     this.renderTaskSections(sections, tasks);
 
-    if (this.mode === "activity") {
+    if (this.mode === "activity" || this.mode === "daily-note") {
       return;
     }
 
@@ -1027,6 +943,11 @@ export class TaskBoardView extends ItemView {
       return;
     }
 
+    if (this.mode === "daily-note") {
+      this.renderDailyNoteView(parent);
+      return;
+    }
+
     if (this.mode === "completed") {
       this.renderCompletedView(parent, allTasks);
       return;
@@ -1146,6 +1067,49 @@ export class TaskBoardView extends ItemView {
     }
   }
 
+  private renderDailyNoteView(parent: HTMLElement): void {
+    const date = this.dailyNoteDate;
+    const daily = parent.createDiv({ cls: "belki-daily-note" });
+
+    if (!date) {
+      daily.createDiv({
+        cls: "belki-empty belki-empty-small",
+        text: "Open a daily note and run the belki Daily Notes command to see completed tasks."
+      });
+      return;
+    }
+
+    const tasks = this.store.getCompletedTasksForDate(date);
+    const panel = daily.createDiv({ cls: "belki-daily-note-panel" });
+    const header = panel.createDiv({ cls: "belki-daily-note-header" });
+    header.createEl("h2", {
+      text: formatActivityDayHeading(date, tasks.length)
+    });
+    header.createSpan({
+      text: tasks.length === 1 ? "1 completed task" : `${tasks.length} completed tasks`
+    });
+
+    if (this.dailyNoteSourcePath) {
+      panel.createDiv({
+        cls: "belki-daily-note-source",
+        text: this.dailyNoteSourcePath
+      });
+    }
+
+    if (tasks.length === 0) {
+      panel.createDiv({
+        cls: "belki-empty belki-empty-small",
+        text: "No tasks completed on this daily note date."
+      });
+      return;
+    }
+
+    const list = panel.createDiv({ cls: "belki-activity-list" });
+    for (const task of tasks) {
+      this.renderActivityFeedRow(list, task);
+    }
+  }
+
   private renderActivitySummaryCard(
     parent: HTMLElement,
     label: string,
@@ -1220,77 +1184,12 @@ export class TaskBoardView extends ItemView {
   }
 
   private getActivityData(allTasks: BelkiTask[]): ActivityData {
-    const completedTasks = allTasks.filter((task) =>
-      task.completed &&
-      Boolean(task.completedDate) &&
-      parseIsoDate(task.completedDate || "") !== null
-    );
-    const signature = completedTasks
-      .map((task) => [
-        task.id,
-        task.completedDate,
-        task.title,
-        normalizeTaskProject(task.project) || "",
-        task.priority,
-        task.labels.join(",")
-      ].join(":"))
-      .join("|");
-
+    const signature = getActivityDataSignature(allTasks);
     if (this.activityCache?.signature === signature) {
       return this.activityCache.data;
     }
 
-    const byDate = new Map<string, BelkiTask[]>();
-    for (const task of completedTasks) {
-      const date = task.completedDate!;
-      const group = byDate.get(date) || [];
-      group.push(task);
-      byDate.set(date, group);
-    }
-
-    for (const tasks of byDate.values()) {
-      tasks.sort(byOrder);
-    }
-
-    const today = todayIso();
-    const yesterday = yesterdayIso();
-    const weekStart = startOfWeekIso(today);
-    const monthPrefix = today.slice(0, 7);
-    const heatmapDays: ActivityDay[] = [];
-    for (let offset = -181; offset <= 0; offset += 1) {
-      const date = addDaysToIso(today, offset);
-      const count = byDate.get(date)?.length || 0;
-      heatmapDays.push({
-        count,
-        date,
-        level: activityLevel(count)
-      });
-    }
-
-    let currentStreak = 0;
-    for (let date = today; (byDate.get(date)?.length || 0) > 0; date = addDaysToIso(date, -1)) {
-      currentStreak += 1;
-    }
-
-    const sortedDates = [...byDate.keys()].sort((a, b) => b.localeCompare(a));
-    const defaultSelectedDate =
-      (byDate.get(today)?.length || 0) > 0 ? today : sortedDates[0] || null;
-
-    const data: ActivityData = {
-      allTimeCount: completedTasks.length,
-      byDate,
-      currentStreak,
-      defaultSelectedDate,
-      heatmapDays,
-      monthCount: completedTasks.filter((task) => task.completedDate?.startsWith(monthPrefix)).length,
-      todayCount: byDate.get(today)?.length || 0,
-      weekCount: completedTasks.filter((task) => {
-        const date = task.completedDate || "";
-        return date >= weekStart && date <= today;
-      }).length,
-      yesterdayCount: byDate.get(yesterday)?.length || 0
-    };
-
+    const data = buildActivityData(allTasks);
     this.activityCache = { signature, data };
     return data;
   }
@@ -2386,6 +2285,12 @@ export class TaskBoardView extends ItemView {
       return [];
     }
 
+    if (this.mode === "daily-note") {
+      return this.dailyNoteDate
+        ? this.store.getCompletedTasksForDate(this.dailyNoteDate)
+        : [];
+    }
+
     if (this.mode === "projects") {
       return this.sortTasks(this.selectedProject
         ? active.filter((task) => normalizeTaskProject(task.project) === this.selectedProject)
@@ -2521,6 +2426,9 @@ export class TaskBoardView extends ItemView {
     }
     if (this.mode === "activity") {
       return "Activity";
+    }
+    if (this.mode === "daily-note") {
+      return "Daily Note";
     }
     if (this.mode === "archived") {
       return "Archived projects";
@@ -3020,110 +2928,6 @@ function byOrder(a: BelkiTask, b: BelkiTask): number {
   return a.order - b.order;
 }
 
-function compareTasksByMode(a: BelkiTask, b: BelkiTask, mode: BelkiSortMode): number {
-  if (mode === "due") {
-    return (
-      compareOptionalDateAsc(a.due, b.due) ||
-      byOrder(a, b)
-    );
-  }
-
-  if (mode === "priority") {
-    return (
-      comparePriority(a, b) ||
-      compareOptionalDateAsc(a.deadline, b.deadline) ||
-      compareOptionalDateAsc(a.due, b.due) ||
-      byOrder(a, b)
-    );
-  }
-
-  if (mode === "deadline") {
-    return (
-      compareOptionalDateAsc(a.deadline, b.deadline) ||
-      byOrder(a, b)
-    );
-  }
-
-  if (mode === "created") {
-    return (
-      compareOptionalDateDesc(a.created, b.created) ||
-      byOrder(a, b)
-    );
-  }
-
-  if (mode === "project") {
-    return (
-      projectDisplayName(a.project).localeCompare(projectDisplayName(b.project)) ||
-      compareSmart(a, b)
-    );
-  }
-
-  if (mode === "alphabetical") {
-    return a.title.localeCompare(b.title) || byOrder(a, b);
-  }
-
-  return compareSmart(a, b);
-}
-
-function compareSmart(a: BelkiTask, b: BelkiTask): number {
-  return (
-    comparePriority(a, b) ||
-    compareOptionalDateAsc(a.deadline, b.deadline) ||
-    compareOptionalDateAsc(a.due, b.due) ||
-    compareOptionalDateAsc(a.created, b.created) ||
-    byOrder(a, b)
-  );
-}
-
-function comparePriority(a: BelkiTask, b: BelkiTask): number {
-  return priorityRank(a.priority) - priorityRank(b.priority);
-}
-
-function priorityRank(priority: BelkiTask["priority"]): number {
-  if (priority === "P1") {
-    return 0;
-  }
-  if (priority === "P2") {
-    return 1;
-  }
-  if (priority === "P3") {
-    return 2;
-  }
-  return 3;
-}
-
-function compareOptionalDateAsc(
-  a: string | undefined,
-  b: string | undefined
-): number {
-  if (a && b) {
-    return compareIsoDates(a, b);
-  }
-  if (a) {
-    return -1;
-  }
-  if (b) {
-    return 1;
-  }
-  return 0;
-}
-
-function compareOptionalDateDesc(
-  a: string | undefined,
-  b: string | undefined
-): number {
-  if (a && b) {
-    return compareIsoDates(b, a);
-  }
-  if (a) {
-    return -1;
-  }
-  if (b) {
-    return 1;
-  }
-  return 0;
-}
-
 function formatDueChip(value: string): string {
   const today = todayIso();
   const diffFromToday = daysBetweenIsoDates(today, value);
@@ -3204,60 +3008,6 @@ function parseIsoDate(value: string): Date | null {
 function addDaysIso(offset: number): string {
   const date = new Date();
   date.setDate(date.getDate() + offset);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function addDaysToIso(value: string, offset: number): string {
-  const date = parseIsoDate(value);
-  if (!date) {
-    return value;
-  }
-
-  date.setDate(date.getDate() + offset);
-  return toLocalIsoDate(date);
-}
-
-function startOfWeekIso(value: string): string {
-  const date = parseIsoDate(value);
-  if (!date) {
-    return value;
-  }
-
-  const day = date.getDay();
-  const mondayOffset = day === 0 ? -6 : 1 - day;
-  date.setDate(date.getDate() + mondayOffset);
-  return toLocalIsoDate(date);
-}
-
-function activityLevel(count: number): number {
-  if (count <= 0) return 0;
-  if (count === 1) return 1;
-  if (count <= 3) return 2;
-  if (count <= 6) return 3;
-  return 4;
-}
-
-function formatActivityDate(value: string): string {
-  const date = parseIsoDate(value);
-  if (!date) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-  }).format(date);
-}
-
-function formatActivityDayHeading(date: string, count: number): string {
-  return `${formatShortDate(date)} · ${formatWeekday(date)} · ${count}`;
-}
-
-function toLocalIsoDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");

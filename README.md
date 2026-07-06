@@ -62,6 +62,7 @@ belki aims to sit between lightweight checkbox-based task plugins and heavier ta
 - **Activity** — completed-task stats and a 26-week activity heatmap.
 - **Completed** — completed tasks grouped by completion date.
 - **Search** — quick overlay search across task title, description, project, and labels.
+- **Daily Notes** — show completed tasks for a daily note in a belki panel or `belki-completed` code block, with optional auto-insert.
 
 ### Task Management
 
@@ -207,6 +208,7 @@ See [Getting started](docs/getting-started.md) for a walkthrough.
 | [Sorting and filtering](docs/sorting-and-filtering.md) | Sorting, grouping, and filtering |
 | [Attachments](docs/attachments.md) | Adding files and images to tasks |
 | [Activity](docs/activity.md) | Completed task history and stats |
+| [Daily Notes](docs/daily-notes.md) | Show completed tasks for a daily note date |
 | [Mobile](docs/mobile.md) | Using belki on mobile |
 | [Settings](docs/settings.md) | Configuration options |
 | [Markdown storage](docs/markdown-storage.md) | How belki stores task data |

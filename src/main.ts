@@ -1,4 +1,6 @@
-import { Notice, Plugin, TAbstractFile, WorkspaceLeaf } from "obsidian";
+import { Notice, Plugin, TAbstractFile, TFile, WorkspaceLeaf } from "obsidian";
+import type { MarkdownPostProcessorContext } from "obsidian";
+import { dailyNoteDateFromPath, normalizeDailyNoteDateFormat } from "./dailyNotes";
 import {
   BelkiSettingTab,
   BelkiSettings,
@@ -17,6 +19,10 @@ import { TaskStore } from "./taskStore";
 import { TaskBoardView, VIEW_TYPE_BELKI } from "./views/TaskBoardView";
 import { cleanProjectName, uniqueRealProjects } from "./projects";
 import { QuickAddModal } from "./views/QuickAddModal";
+import { DailyNoteCompletedBlock } from "./views/DailyNoteCompletedBlock";
+
+const BELKI_COMPLETED_CODE_BLOCK = "```belki-completed\n```";
+const BELKI_COMPLETED_CODE_BLOCK_RE = /```belki-completed\b[\s\S]*?```/i;
 
 export default class BelkiPlugin extends Plugin {
   settings: BelkiSettings;
@@ -60,6 +66,22 @@ export default class BelkiPlugin extends Plugin {
           await this.store.createTask({ title });
           new Notice("Task added to Inbox");
         }).open();
+      }
+    });
+
+    this.addCommand({
+      id: "show-active-daily-note-completed-tasks",
+      name: "Show Completed Tasks for Active Daily Note",
+      callback: () => {
+        void this.openActiveDailyNoteCompletedTasks();
+      }
+    });
+
+    this.addCommand({
+      id: "insert-active-daily-note-completed-block",
+      name: "Insert Completed Tasks Block in Active Daily Note",
+      callback: () => {
+        void this.insertActiveDailyNoteCompletedBlock();
       }
     });
 
@@ -125,6 +147,16 @@ export default class BelkiPlugin extends Plugin {
       })
     );
 
+    this.registerEvent(
+      this.app.workspace.on("file-open", (file) => {
+        void this.handleDailyNoteFileOpen(file);
+      })
+    );
+
+    this.registerMarkdownCodeBlockProcessor("belki-completed", (source, el, ctx) => {
+      this.renderCompletedTasksCodeBlock(source, el, ctx);
+    });
+
     void this.initializeStore();
   }
 
@@ -167,7 +199,13 @@ export default class BelkiPlugin extends Plugin {
       uiFont: normalizeFontOption(saved?.uiFont),
       taskTitleFont: normalizeFontOption(saved?.taskTitleFont),
       taskDescriptionFont: normalizeFontOption(saved?.taskDescriptionFont),
-      labelFont: normalizeFontOption(saved?.labelFont)
+      labelFont: normalizeFontOption(saved?.labelFont),
+      dailyNotesIntegrationEnabled:
+        saved?.dailyNotesIntegrationEnabled ?? DEFAULT_SETTINGS.dailyNotesIntegrationEnabled,
+      dailyNotesAutoInsertCompletedBlock:
+        saved?.dailyNotesAutoInsertCompletedBlock ??
+        DEFAULT_SETTINGS.dailyNotesAutoInsertCompletedBlock,
+      dailyNoteDateFormat: normalizeDailyNoteDateFormat(saved?.dailyNoteDateFormat)
     };
   }
 
@@ -280,6 +318,144 @@ export default class BelkiPlugin extends Plugin {
     const leaf = this.app.workspace.getLeaf(true);
     await leaf.setViewState({ type: VIEW_TYPE_BELKI, active: true });
     this.app.workspace.setActiveLeaf(leaf, { focus: true });
+  }
+
+  private async activateDailyNoteView(date: string, sourcePath: string): Promise<void> {
+    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_BELKI);
+    if (leaves.length > 0) {
+      const view = leaves[0].view;
+      if (view instanceof TaskBoardView) {
+        view.openDailyNote(date, sourcePath);
+      }
+      this.app.workspace.setActiveLeaf(leaves[0], { focus: true });
+      return;
+    }
+
+    const leaf = this.app.workspace.getLeaf(true);
+    await leaf.setViewState({ type: VIEW_TYPE_BELKI, active: true });
+    const view = leaf.view;
+    if (view instanceof TaskBoardView) {
+      view.openDailyNote(date, sourcePath);
+    }
+    this.app.workspace.setActiveLeaf(leaf, { focus: true });
+  }
+
+  private async openActiveDailyNoteCompletedTasks(): Promise<void> {
+    if (!this.settings.dailyNotesIntegrationEnabled) {
+      new Notice("belki Daily Notes integration is disabled in settings.");
+      return;
+    }
+
+    const file = this.app.workspace.getActiveFile();
+    if (!file) {
+      new Notice("Open a daily note first.");
+      return;
+    }
+
+    const date = this.dateFromDailyNoteFile(file);
+    if (!date) {
+      new Notice("belki could not detect a date from the active note.");
+      return;
+    }
+
+    await this.activateDailyNoteView(date, file.path);
+  }
+
+  private async insertActiveDailyNoteCompletedBlock(): Promise<void> {
+    if (!this.settings.dailyNotesIntegrationEnabled) {
+      new Notice("belki Daily Notes integration is disabled in settings.");
+      return;
+    }
+
+    const file = this.app.workspace.getActiveFile();
+    if (!file) {
+      new Notice("Open a daily note first.");
+      return;
+    }
+
+    if (!this.dateFromDailyNoteFile(file)) {
+      new Notice("belki could not detect a date from the active note.");
+      return;
+    }
+
+    const result = await this.ensureDailyNoteCompletedBlock(file);
+    if (result === "inserted") {
+      new Notice("belki completed tasks block added.");
+    } else if (result === "exists") {
+      new Notice("This note already has a belki completed tasks block.");
+    }
+  }
+
+  private async handleDailyNoteFileOpen(file: TFile | null): Promise<void> {
+    this.refreshDailyNoteViews(file);
+
+    if (!this.settings.dailyNotesAutoInsertCompletedBlock || !file) {
+      return;
+    }
+
+    const date = this.dateFromDailyNoteFile(file);
+    if (!date) {
+      return;
+    }
+
+    await this.ensureDailyNoteCompletedBlock(file);
+  }
+
+  private refreshDailyNoteViews(file: TFile | null): void {
+    if (!this.settings.dailyNotesIntegrationEnabled || !file) {
+      return;
+    }
+
+    const date = this.dateFromDailyNoteFile(file);
+    if (!date) {
+      return;
+    }
+
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_BELKI)) {
+      const view = leaf.view;
+      if (view instanceof TaskBoardView) {
+        view.openDailyNote(date, file.path);
+      }
+    }
+  }
+
+  private async ensureDailyNoteCompletedBlock(file: TFile): Promise<"inserted" | "exists" | "skipped"> {
+    if (!this.settings.dailyNotesIntegrationEnabled || !file.path.toLowerCase().endsWith(".md")) {
+      return "skipped";
+    }
+
+    const content = await this.app.vault.read(file);
+    if (BELKI_COMPLETED_CODE_BLOCK_RE.test(content)) {
+      return "exists";
+    }
+
+    const separator = content.trim().length > 0
+      ? content.endsWith("\n") ? "\n" : "\n\n"
+      : "";
+    await this.app.vault.modify(file, `${content}${separator}${BELKI_COMPLETED_CODE_BLOCK}\n`);
+    return "inserted";
+  }
+
+  private renderCompletedTasksCodeBlock(
+    source: string,
+    el: HTMLElement,
+    ctx: MarkdownPostProcessorContext
+  ): void {
+    ctx.addChild(new DailyNoteCompletedBlock({
+      app: this.app,
+      containerEl: el,
+      source,
+      sourcePath: ctx.sourcePath,
+      store: this.store,
+      settings: this.settings,
+      openDailyNote: (date, sourcePath) => {
+        void this.activateDailyNoteView(date, sourcePath);
+      }
+    }));
+  }
+
+  private dateFromDailyNoteFile(file: TFile): string | null {
+    return dailyNoteDateFromPath(file.path, this.settings.dailyNoteDateFormat);
   }
 
   private scheduleReload(): void {
