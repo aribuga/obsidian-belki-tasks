@@ -59,6 +59,25 @@ export class TaskStore {
     return this.tasks.map((task) => cloneTask(task));
   }
 
+  getCompletedTasksForDate(date: string): BelkiTask[] {
+    const seen = new Set<string>();
+    const completed: BelkiTask[] = [];
+
+    for (const task of this.tasks) {
+      const completedOnDate =
+        task.completedDate === date ||
+        Boolean(task.completedOccurrences?.includes(date));
+      if (!completedOnDate || seen.has(task.id)) {
+        continue;
+      }
+
+      seen.add(task.id);
+      completed.push(cloneTask(task));
+    }
+
+    return completed.sort((a, b) => (a.order || 0) - (b.order || 0));
+  }
+
   getProjects(): string[] {
     const projects = new Set<string>();
     for (const task of this.tasks) {

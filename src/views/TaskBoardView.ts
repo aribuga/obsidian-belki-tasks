@@ -204,6 +204,8 @@ export class TaskBoardView extends ItemView {
   private highlightedTaskId: string | null = null;
   private activeFilter: string | null = null;
   private activeLabel: string | null = null;
+  private dailyNoteDate: string | null = null;
+  private dailyNoteSourcePath: string | null = null;
   private activitySelectedDate: string | null = null;
   private activityCache: { signature: string; data: ActivityData } | null = null;
   private draggedTaskId: string | null = null;
@@ -407,6 +409,8 @@ export class TaskBoardView extends ItemView {
     this.selectedProject = null;
     this.activeFilter = null;
     this.activeLabel = null;
+    this.dailyNoteDate = null;
+    this.dailyNoteSourcePath = null;
     this.searchOpen = false;
     this.searchQuery = "";
     this.composerOpen = false;
@@ -416,6 +420,28 @@ export class TaskBoardView extends ItemView {
     this.projectActionsOpen = null;
     this.labelActionsOpen = null;
     this.render();
+  }
+
+  openDailyNote(date: string, sourcePath: string): void {
+    this.mode = "daily-note";
+    this.dailyNoteDate = date;
+    this.dailyNoteSourcePath = sourcePath;
+    this.selectedProject = null;
+    this.activeFilter = null;
+    this.activeLabel = null;
+    this.searchOpen = false;
+    this.searchQuery = "";
+    this.composerOpen = false;
+    this.mobileComposerOpen = false;
+    this.mobileComposerReturnScroll = null;
+    this.sortPopoverOpen = false;
+    this.projectActionsOpen = null;
+    this.labelActionsOpen = null;
+    this.render();
+  }
+
+  isDailyNoteView(): boolean {
+    return this.mode === "daily-note";
   }
 
   private render(): void {
@@ -579,6 +605,8 @@ export class TaskBoardView extends ItemView {
       button.addEventListener("click", () => {
         this.mode = "projects";
         this.selectedProject = cleanProject;
+        this.dailyNoteDate = null;
+        this.dailyNoteSourcePath = null;
         this.composerOpen = false;
         this.mobileComposerOpen = false;
         this.mobileComposerReturnScroll = null;
@@ -597,6 +625,8 @@ export class TaskBoardView extends ItemView {
       archiveButton.addEventListener("click", () => {
         this.mode = "archived";
         this.selectedProject = null;
+        this.dailyNoteDate = null;
+        this.dailyNoteSourcePath = null;
         this.composerOpen = false;
         this.mobileComposerOpen = false;
         this.mobileComposerReturnScroll = null;
@@ -651,6 +681,8 @@ export class TaskBoardView extends ItemView {
       this.selectedProject = null;
       this.activeFilter = null;
       this.activeLabel = null;
+      this.dailyNoteDate = null;
+      this.dailyNoteSourcePath = null;
       this.composerOpen = false;
       this.mobileComposerOpen = false;
       this.mobileComposerReturnScroll = null;
@@ -676,7 +708,7 @@ export class TaskBoardView extends ItemView {
         ? `${activityData.allTimeCount} completed task${activityData.allTimeCount === 1 ? "" : "s"}`
         : `${visible.length} task${visible.length === 1 ? "" : "s"}`
     });
-    if (this.mode !== "activity") {
+    if (this.mode !== "activity" && this.mode !== "daily-note") {
       this.renderSortingControl(header);
     }
 
@@ -684,7 +716,7 @@ export class TaskBoardView extends ItemView {
 
     this.renderTaskSections(sections, tasks);
 
-    if (this.mode === "activity") {
+    if (this.mode === "activity" || this.mode === "daily-note") {
       return;
     }
 
@@ -1027,6 +1059,11 @@ export class TaskBoardView extends ItemView {
       return;
     }
 
+    if (this.mode === "daily-note") {
+      this.renderDailyNoteView(parent);
+      return;
+    }
+
     if (this.mode === "completed") {
       this.renderCompletedView(parent, allTasks);
       return;
@@ -1142,6 +1179,49 @@ export class TaskBoardView extends ItemView {
 
     const list = feed.createDiv({ cls: "belki-activity-list" });
     for (const task of selectedTasks) {
+      this.renderActivityFeedRow(list, task);
+    }
+  }
+
+  private renderDailyNoteView(parent: HTMLElement): void {
+    const date = this.dailyNoteDate;
+    const daily = parent.createDiv({ cls: "belki-daily-note" });
+
+    if (!date) {
+      daily.createDiv({
+        cls: "belki-empty belki-empty-small",
+        text: "Open a daily note and run the belki Daily Notes command to see completed tasks."
+      });
+      return;
+    }
+
+    const tasks = this.store.getCompletedTasksForDate(date);
+    const panel = daily.createDiv({ cls: "belki-daily-note-panel" });
+    const header = panel.createDiv({ cls: "belki-daily-note-header" });
+    header.createEl("h2", {
+      text: formatActivityDayHeading(date, tasks.length)
+    });
+    header.createSpan({
+      text: tasks.length === 1 ? "1 completed task" : `${tasks.length} completed tasks`
+    });
+
+    if (this.dailyNoteSourcePath) {
+      panel.createDiv({
+        cls: "belki-daily-note-source",
+        text: this.dailyNoteSourcePath
+      });
+    }
+
+    if (tasks.length === 0) {
+      panel.createDiv({
+        cls: "belki-empty belki-empty-small",
+        text: "No tasks completed on this daily note date."
+      });
+      return;
+    }
+
+    const list = panel.createDiv({ cls: "belki-activity-list" });
+    for (const task of tasks) {
       this.renderActivityFeedRow(list, task);
     }
   }
@@ -2386,6 +2466,12 @@ export class TaskBoardView extends ItemView {
       return [];
     }
 
+    if (this.mode === "daily-note") {
+      return this.dailyNoteDate
+        ? this.store.getCompletedTasksForDate(this.dailyNoteDate)
+        : [];
+    }
+
     if (this.mode === "projects") {
       return this.sortTasks(this.selectedProject
         ? active.filter((task) => normalizeTaskProject(task.project) === this.selectedProject)
@@ -2521,6 +2607,9 @@ export class TaskBoardView extends ItemView {
     }
     if (this.mode === "activity") {
       return "Activity";
+    }
+    if (this.mode === "daily-note") {
+      return "Daily Note";
     }
     if (this.mode === "archived") {
       return "Archived projects";

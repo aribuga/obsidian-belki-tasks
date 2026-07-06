@@ -1,5 +1,9 @@
 import { App, normalizePath, Plugin, PluginSettingTab, Setting } from "obsidian";
 import { colorForName } from "./colors";
+import {
+  DEFAULT_DAILY_NOTE_DATE_FORMAT,
+  normalizeDailyNoteDateFormat
+} from "./dailyNotes";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "./labels";
 import { normalizeTaskProject } from "./projects";
 import { DeleteLabelModal, RenameLabelModal } from "./views/LabelManagementModals";
@@ -31,6 +35,9 @@ export interface BelkiSettings {
   taskDescriptionFont: BelkiFontOption;
   labelFont: BelkiFontOption;
   archivedProjects: string[];
+  dailyNotesIntegrationEnabled: boolean;
+  dailyNotesAutoInsertCompletedBlock: boolean;
+  dailyNoteDateFormat: string;
 }
 
 export interface BelkiIconSettings {
@@ -69,7 +76,10 @@ export const DEFAULT_SETTINGS: BelkiSettings = {
   uiFont: "system",
   taskTitleFont: "system",
   taskDescriptionFont: "system",
-  labelFont: "system"
+  labelFont: "system",
+  dailyNotesIntegrationEnabled: true,
+  dailyNotesAutoInsertCompletedBlock: false,
+  dailyNoteDateFormat: DEFAULT_DAILY_NOTE_DATE_FORMAT
 };
 
 const OVERDUE_RANGE_LABELS: Record<OverdueRange, string> = {
@@ -274,6 +284,66 @@ export class BelkiSettingTab extends PluginSettingTab {
             this.plugin.settings.defaultOverdueRange = normalizeOverdueRange(value);
             await this.plugin.saveSettings();
             this.plugin.refreshBelkiViews();
+          });
+      });
+
+    new Setting(containerEl).setName("Daily Notes").setHeading();
+
+    new Setting(containerEl)
+      .setName("Enable Daily Notes integration")
+      .setDesc("Allow belki to show completed tasks for the active daily note date.")
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.dailyNotesIntegrationEnabled)
+          .onChange(async (value) => {
+            this.plugin.settings.dailyNotesIntegrationEnabled = value;
+            await this.plugin.saveSettings();
+            this.plugin.refreshBelkiViews();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("Daily note date format")
+      .setDesc("Used to match the active note file to a date. Default: YYYY-MM-DD.")
+      .addText((text) => {
+        let draftFormat = this.plugin.settings.dailyNoteDateFormat;
+        const commitFormat = async () => {
+          const normalized = normalizeDailyNoteDateFormat(draftFormat);
+          this.plugin.settings.dailyNoteDateFormat = normalized;
+          text.setValue(normalized);
+          await this.plugin.saveSettings();
+          this.plugin.refreshBelkiViews();
+        };
+
+        text
+          .setPlaceholder(DEFAULT_DAILY_NOTE_DATE_FORMAT)
+          .setValue(this.plugin.settings.dailyNoteDateFormat)
+          .onChange((value) => {
+            draftFormat = value;
+          });
+
+        text.inputEl.addEventListener("blur", () => {
+          void commitFormat();
+        });
+        text.inputEl.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter") {
+            return;
+          }
+
+          event.preventDefault();
+          text.inputEl.blur();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName("Auto-add completed tasks block")
+      .setDesc("When a daily note is opened, append a belki-completed code block if the note does not already have one.")
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.dailyNotesAutoInsertCompletedBlock)
+          .onChange(async (value) => {
+            this.plugin.settings.dailyNotesAutoInsertCompletedBlock = value;
+            await this.plugin.saveSettings();
           });
       });
 
