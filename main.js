@@ -6428,6 +6428,80 @@ var CreateProjectModal = class extends import_obsidian11.Modal {
   }
 };
 
+// src/views/projects/projectActions.ts
+function renderProjectActionsMenu(options) {
+  const wrapper = options.header.createDiv({ cls: "belki-project-actions-wrap" });
+  const button = wrapper.createEl("button", {
+    cls: "belki-project-actions-button",
+    attr: { type: "button", "aria-label": "Project actions" }
+  });
+  createBelkiIcon(button, "more");
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    options.onToggle();
+  });
+  if (!options.isOpen) return;
+  const menu = activeDocument.body.createDiv({ cls: "belki-project-menu" });
+  options.onMenuCreated(menu);
+  menu.setCssStyles({ visibility: "hidden" });
+  const renameItem = menu.createEl("button", {
+    cls: "belki-project-option",
+    text: "Rename project",
+    attr: { type: "button" }
+  });
+  renameItem.addEventListener("click", (event) => {
+    event.stopPropagation();
+    options.onRename();
+  });
+  const archiveItem = menu.createEl("button", {
+    cls: "belki-project-option",
+    text: "Archive project",
+    attr: { type: "button" }
+  });
+  archiveItem.addEventListener("click", (event) => {
+    event.stopPropagation();
+    options.onArchive();
+  });
+  const deleteItem = menu.createEl("button", {
+    cls: "belki-project-option is-destructive",
+    text: "Delete project",
+    attr: { type: "button" }
+  });
+  deleteItem.addEventListener("click", (event) => {
+    event.stopPropagation();
+    options.onDelete();
+  });
+  window.requestAnimationFrame(() => {
+    if (!menu.isConnected) return;
+    const btnRect = button.getBoundingClientRect();
+    const margin = 8;
+    const menuW = menu.offsetWidth || 220;
+    const menuH = menu.offsetHeight || 120;
+    let left = btnRect.left;
+    if (left + menuW > window.innerWidth - margin) {
+      left = btnRect.right - menuW;
+    }
+    const fitsBelow = btnRect.bottom + menuH + margin <= window.innerHeight;
+    const fitsAbove = btnRect.top - menuH - margin >= 0;
+    if (!fitsBelow && fitsAbove) {
+      menu.setCssStyles({
+        left: `${Math.max(margin, left)}px`,
+        bottom: `${window.innerHeight - btnRect.top + 4}px`,
+        visibility: ""
+      });
+      menu.addClass("is-open-up");
+    } else {
+      menu.setCssStyles({
+        left: `${Math.max(margin, left)}px`,
+        top: `${btnRect.bottom + 4}px`,
+        visibility: ""
+      });
+      menu.addClass("is-open-down");
+    }
+  });
+}
+
 // src/views/TaskBoardView.ts
 var VIEW_TYPE_BELKI = "belki-task-board";
 function markdownPreviewText(text) {
@@ -7600,97 +7674,58 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
     this.settings.projectRegistry = [...this.settings.projectRegistry, normalized].sort((a, b) => a.localeCompare(b));
   }
   renderProjectActionsButton(header, project) {
-    const wrapper = header.createDiv({ cls: "belki-project-actions-wrap" });
-    const button = wrapper.createEl("button", {
-      cls: "belki-project-actions-button",
-      attr: { type: "button", "aria-label": "Project actions" }
-    });
-    createBelkiIcon(button, "more");
-    button.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      this.projectActionsOpen = this.projectActionsOpen === project ? null : project;
-      this.render();
-    });
-    if (this.projectActionsOpen !== project) return;
-    const menu = activeDocument.body.createDiv({ cls: "belki-project-menu" });
-    this.projectMenuEl = menu;
-    menu.setCssStyles({ visibility: "hidden" });
-    const renameItem = menu.createEl("button", { cls: "belki-project-option", text: "Rename project", attr: { type: "button" } });
-    renameItem.addEventListener("click", (event) => {
-      event.stopPropagation();
-      this.closeProjectActionsMenu();
-      new RenameProjectModal(this.app, project, this.getActiveProjects(), async (newName) => {
-        await this.store.renameProject(project, newName);
-        if (this.selectedProject === project) this.selectedProject = newName;
-        const preservedColor = this.settings.projectColors[project];
-        if (preservedColor) {
-          this.settings.projectColors[newName] = preservedColor;
-          delete this.settings.projectColors[project];
-        }
-        this.settings.projectRegistry = this.settings.projectRegistry.map(
-          (p) => p === project ? newName : p
-        );
-        await this.saveSettings();
+    renderProjectActionsMenu({
+      header,
+      isOpen: this.projectActionsOpen === project,
+      onToggle: () => {
+        this.projectActionsOpen = this.projectActionsOpen === project ? null : project;
         this.render();
-      }).open();
-    });
-    const archiveItem = menu.createEl("button", { cls: "belki-project-option", text: "Archive project", attr: { type: "button" } });
-    archiveItem.addEventListener("click", (event) => {
-      event.stopPropagation();
-      this.closeProjectActionsMenu();
-      this.settings.archivedProjects = [...this.settings.archivedProjects, project];
-      if (this.selectedProject === project) {
-        this.selectedProject = null;
-        this.mode = "projects";
-      }
-      void this.saveSettings().then(() => this.render());
-    });
-    const deleteItem = menu.createEl("button", { cls: "belki-project-option is-destructive", text: "Delete project", attr: { type: "button" } });
-    deleteItem.addEventListener("click", (event) => {
-      event.stopPropagation();
-      this.closeProjectActionsMenu();
-      const taskCount = this.store.getTasks().filter(
-        (task) => normalizeTaskProject(task.project) === project
-      ).length;
-      new DeleteProjectModal(this.app, project, taskCount, async () => {
-        await this.store.deleteProject(project);
-        delete this.settings.projectColors[project];
-        this.settings.projectRegistry = this.settings.projectRegistry.filter((p) => p !== project);
+      },
+      onMenuCreated: (menu) => {
+        this.projectMenuEl = menu;
+      },
+      onRename: () => {
+        this.closeProjectActionsMenu();
+        new RenameProjectModal(this.app, project, this.getActiveProjects(), async (newName) => {
+          await this.store.renameProject(project, newName);
+          if (this.selectedProject === project) this.selectedProject = newName;
+          const preservedColor = this.settings.projectColors[project];
+          if (preservedColor) {
+            this.settings.projectColors[newName] = preservedColor;
+            delete this.settings.projectColors[project];
+          }
+          this.settings.projectRegistry = this.settings.projectRegistry.map(
+            (p) => p === project ? newName : p
+          );
+          await this.saveSettings();
+          this.render();
+        }).open();
+      },
+      onArchive: () => {
+        this.closeProjectActionsMenu();
+        this.settings.archivedProjects = [...this.settings.archivedProjects, project];
         if (this.selectedProject === project) {
           this.selectedProject = null;
           this.mode = "projects";
         }
-        await this.saveSettings();
-        this.render();
-      }).open();
-    });
-    window.requestAnimationFrame(() => {
-      if (!menu.isConnected) return;
-      const btnRect = button.getBoundingClientRect();
-      const margin = 8;
-      const menuW = menu.offsetWidth || 220;
-      const menuH = menu.offsetHeight || 120;
-      let left = btnRect.left;
-      if (left + menuW > window.innerWidth - margin) {
-        left = btnRect.right - menuW;
-      }
-      const fitsBelow = btnRect.bottom + menuH + margin <= window.innerHeight;
-      const fitsAbove = btnRect.top - menuH - margin >= 0;
-      if (!fitsBelow && fitsAbove) {
-        menu.setCssStyles({
-          left: `${Math.max(margin, left)}px`,
-          bottom: `${window.innerHeight - btnRect.top + 4}px`,
-          visibility: ""
-        });
-        menu.addClass("is-open-up");
-      } else {
-        menu.setCssStyles({
-          left: `${Math.max(margin, left)}px`,
-          top: `${btnRect.bottom + 4}px`,
-          visibility: ""
-        });
-        menu.addClass("is-open-down");
+        void this.saveSettings().then(() => this.render());
+      },
+      onDelete: () => {
+        this.closeProjectActionsMenu();
+        const taskCount = this.store.getTasks().filter(
+          (task) => normalizeTaskProject(task.project) === project
+        ).length;
+        new DeleteProjectModal(this.app, project, taskCount, async () => {
+          await this.store.deleteProject(project);
+          delete this.settings.projectColors[project];
+          this.settings.projectRegistry = this.settings.projectRegistry.filter((p) => p !== project);
+          if (this.selectedProject === project) {
+            this.selectedProject = null;
+            this.mode = "projects";
+          }
+          await this.saveSettings();
+          this.render();
+        }).open();
       }
     });
   }
