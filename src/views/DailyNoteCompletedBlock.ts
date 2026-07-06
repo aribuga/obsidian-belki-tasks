@@ -8,7 +8,7 @@ import { normalizeTaskProject } from "../projects";
 import { BelkiSettings } from "../settings";
 import { TaskStore } from "../taskStore";
 import { BelkiTask } from "../types";
-import { renderLinkedText } from "./TaskBoardView";
+import { renderLinkedText } from "./linkedText";
 
 interface DailyNoteCompletedBlockOptions {
   containerEl: HTMLElement;

@@ -2498,6 +2498,148 @@ function cloneTask(task) {
 // src/views/TaskBoardView.ts
 var import_obsidian11 = require("obsidian");
 
+// src/activityData.ts
+function getActivityDataSignature(allTasks) {
+  return getCompletedActivityTasks(allTasks).map((task) => [
+    task.id,
+    task.completedDate,
+    task.title,
+    normalizeTaskProject(task.project) || "",
+    task.priority,
+    task.labels.join(",")
+  ].join(":")).join("|");
+}
+function buildActivityData(allTasks) {
+  var _a, _b, _c, _d, _e;
+  const completedTasks = getCompletedActivityTasks(allTasks);
+  const byDate = /* @__PURE__ */ new Map();
+  for (const task of completedTasks) {
+    const date = task.completedDate;
+    const group = byDate.get(date) || [];
+    group.push(task);
+    byDate.set(date, group);
+  }
+  for (const tasks of byDate.values()) {
+    tasks.sort(byOrder);
+  }
+  const today = todayIso();
+  const yesterday = yesterdayIso();
+  const weekStart = startOfWeekIso(today);
+  const monthPrefix = today.slice(0, 7);
+  const heatmapDays = [];
+  for (let offset = -181; offset <= 0; offset += 1) {
+    const date = addDaysToIso(today, offset);
+    const count = ((_a = byDate.get(date)) == null ? void 0 : _a.length) || 0;
+    heatmapDays.push({
+      count,
+      date,
+      level: activityLevel(count)
+    });
+  }
+  let currentStreak = 0;
+  for (let date = today; (((_b = byDate.get(date)) == null ? void 0 : _b.length) || 0) > 0; date = addDaysToIso(date, -1)) {
+    currentStreak += 1;
+  }
+  const sortedDates = [...byDate.keys()].sort((a, b) => b.localeCompare(a));
+  const defaultSelectedDate = (((_c = byDate.get(today)) == null ? void 0 : _c.length) || 0) > 0 ? today : sortedDates[0] || null;
+  return {
+    allTimeCount: completedTasks.length,
+    byDate,
+    currentStreak,
+    defaultSelectedDate,
+    heatmapDays,
+    monthCount: completedTasks.filter((task) => {
+      var _a2;
+      return (_a2 = task.completedDate) == null ? void 0 : _a2.startsWith(monthPrefix);
+    }).length,
+    todayCount: ((_d = byDate.get(today)) == null ? void 0 : _d.length) || 0,
+    weekCount: completedTasks.filter((task) => {
+      const date = task.completedDate || "";
+      return date >= weekStart && date <= today;
+    }).length,
+    yesterdayCount: ((_e = byDate.get(yesterday)) == null ? void 0 : _e.length) || 0
+  };
+}
+function formatActivityDate(value) {
+  const date = parseIsoDate(value);
+  if (!date) {
+    return value;
+  }
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  }).format(date);
+}
+function formatActivityDayHeading(date, count) {
+  return `${formatShortDate(date)} \xB7 ${formatWeekday(date)} \xB7 ${count}`;
+}
+function getCompletedActivityTasks(allTasks) {
+  return allTasks.filter(
+    (task) => task.completed && Boolean(task.completedDate) && parseIsoDate(task.completedDate || "") !== null
+  );
+}
+function byOrder(a, b) {
+  return a.order - b.order;
+}
+function parseIsoDate(value) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+function addDaysToIso(value, offset) {
+  const date = parseIsoDate(value);
+  if (!date) {
+    return value;
+  }
+  date.setDate(date.getDate() + offset);
+  return toLocalIsoDate(date);
+}
+function startOfWeekIso(value) {
+  const date = parseIsoDate(value);
+  if (!date) {
+    return value;
+  }
+  const day = date.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + mondayOffset);
+  return toLocalIsoDate(date);
+}
+function activityLevel(count) {
+  if (count <= 0) return 0;
+  if (count === 1) return 1;
+  if (count <= 3) return 2;
+  if (count <= 6) return 3;
+  return 4;
+}
+function formatShortDate(value) {
+  const date = parseIsoDate(value);
+  if (!date) {
+    return value;
+  }
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short"
+  }).format(date);
+}
+function formatWeekday(value) {
+  const date = parseIsoDate(value);
+  if (!date) {
+    return value;
+  }
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "long"
+  }).format(date);
+}
+function toLocalIsoDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 // src/views/AddTaskComposer.ts
 var import_obsidian8 = require("obsidian");
 
@@ -5903,8 +6045,7 @@ function isImagePath(path) {
   return /\.(png|jpe?g|gif|webp|svg)$/i.test(path);
 }
 
-// src/views/TaskBoardView.ts
-var VIEW_TYPE_BELKI = "belki-task-board";
+// src/views/linkedText.ts
 var LINK_RE = /(\[\[([^\]|#\n]+?)(?:#([^\]|\n]+?))?(?:\|([^\]\n]+?))?\]\])|(\[([^\]]+)\]\(([^)\n]+)\))|(https?:\/\/[^\s<>"')\]]+)|(www\.[a-zA-Z0-9][^\s<>"')\]]*)/g;
 function renderLinkedText(text, el, options) {
   LINK_RE.lastIndex = 0;
@@ -5943,6 +6084,29 @@ function renderLinkedText(text, el, options) {
     }
   }
   if (last < text.length) el.appendText(text.slice(last));
+}
+function stripInlineMarkdownPreservingLinks(text) {
+  return transformTextOutsideLinks(text, stripInlineMarkdownSegment);
+}
+function transformTextOutsideLinks(text, transform) {
+  LINK_RE.lastIndex = 0;
+  let output = "";
+  let last = 0;
+  let match;
+  while ((match = LINK_RE.exec(text)) !== null) {
+    if (match.index > last) {
+      output += transform(text.slice(last, match.index));
+    }
+    output += match[0];
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) {
+    output += transform(text.slice(last));
+  }
+  return output;
+}
+function stripInlineMarkdownSegment(value) {
+  return value.replace(/`([^`]+)`/g, "$1").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/__([^_]+)__/g, "$1").replace(/~~([^~]+)~~/g, "$1").replace(/(^|[^*])\*([^*\n]+)\*/g, "$1$2").replace(/(^|[^_])_([^_\n]+)_/g, "$1$2");
 }
 function createInternalLink(parent, text, linkTarget, options) {
   const link = parent.createEl("a", {
@@ -5984,10 +6148,81 @@ function isExternalLinkTarget(target) {
 function normalizeExternalHref(target) {
   return target.startsWith("www.") ? `https://${target}` : target;
 }
+
+// src/taskSorting.ts
+function compareTasksByMode(a, b, mode) {
+  if (mode === "due") {
+    return compareOptionalDateAsc(a.due, b.due) || byOrder2(a, b);
+  }
+  if (mode === "priority") {
+    return comparePriority(a, b) || compareOptionalDateAsc(a.deadline, b.deadline) || compareOptionalDateAsc(a.due, b.due) || byOrder2(a, b);
+  }
+  if (mode === "deadline") {
+    return compareOptionalDateAsc(a.deadline, b.deadline) || byOrder2(a, b);
+  }
+  if (mode === "created") {
+    return compareOptionalDateDesc(a.created, b.created) || byOrder2(a, b);
+  }
+  if (mode === "project") {
+    return projectDisplayName(a.project).localeCompare(projectDisplayName(b.project)) || compareSmart(a, b);
+  }
+  if (mode === "alphabetical") {
+    return a.title.localeCompare(b.title) || byOrder2(a, b);
+  }
+  return compareSmart(a, b);
+}
+function byOrder2(a, b) {
+  return a.order - b.order;
+}
+function compareSmart(a, b) {
+  return comparePriority(a, b) || compareOptionalDateAsc(a.deadline, b.deadline) || compareOptionalDateAsc(a.due, b.due) || compareOptionalDateAsc(a.created, b.created) || byOrder2(a, b);
+}
+function comparePriority(a, b) {
+  return priorityRank(a.priority) - priorityRank(b.priority);
+}
+function priorityRank(priority) {
+  if (priority === "P1") {
+    return 0;
+  }
+  if (priority === "P2") {
+    return 1;
+  }
+  if (priority === "P3") {
+    return 2;
+  }
+  return 3;
+}
+function compareOptionalDateAsc(a, b) {
+  if (a && b) {
+    return compareIsoDates(a, b);
+  }
+  if (a) {
+    return -1;
+  }
+  if (b) {
+    return 1;
+  }
+  return 0;
+}
+function compareOptionalDateDesc(a, b) {
+  if (a && b) {
+    return compareIsoDates(b, a);
+  }
+  if (a) {
+    return -1;
+  }
+  if (b) {
+    return 1;
+  }
+  return 0;
+}
+
+// src/views/TaskBoardView.ts
+var VIEW_TYPE_BELKI = "belki-task-board";
 function markdownPreviewText(text) {
   return text.replace(/```[a-zA-Z0-9_-]*\n?([\s\S]*?)```/g, "$1").split(/\r?\n/).map(
     (line) => line.replace(/^\s{0,3}#{1,6}\s+/, "").replace(/^\s{0,3}>\s?/, "").replace(/^\s*(?:[-*+]|\d+\.)\s+/, "").trim()
-  ).filter(Boolean).join(" ").replace(/`([^`]+)`/g, "$1").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/__([^_]+)__/g, "$1").replace(/~~([^~]+)~~/g, "$1").replace(/(^|[^*])\*([^*\n]+)\*/g, "$1$2").replace(/(^|[^_])_([^_\n]+)_/g, "$1$2").replace(/\s+/g, " ").trim();
+  ).filter(Boolean).join(" ").replace(/^(.*)$/s, (_, value) => stripInlineMarkdownPreservingLinks(value)).replace(/\s+/g, " ").trim();
 }
 var SORT_OPTIONS = [
   { mode: "smart", label: "Smart" },
@@ -6943,68 +7178,12 @@ var TaskBoardView = class extends import_obsidian11.ItemView {
     }
   }
   getActivityData(allTasks) {
-    var _a, _b, _c, _d, _e, _f;
-    const completedTasks = allTasks.filter(
-      (task) => task.completed && Boolean(task.completedDate) && parseIsoDate(task.completedDate || "") !== null
-    );
-    const signature = completedTasks.map((task) => [
-      task.id,
-      task.completedDate,
-      task.title,
-      normalizeTaskProject(task.project) || "",
-      task.priority,
-      task.labels.join(",")
-    ].join(":")).join("|");
+    var _a;
+    const signature = getActivityDataSignature(allTasks);
     if (((_a = this.activityCache) == null ? void 0 : _a.signature) === signature) {
       return this.activityCache.data;
     }
-    const byDate = /* @__PURE__ */ new Map();
-    for (const task of completedTasks) {
-      const date = task.completedDate;
-      const group = byDate.get(date) || [];
-      group.push(task);
-      byDate.set(date, group);
-    }
-    for (const tasks of byDate.values()) {
-      tasks.sort(byOrder);
-    }
-    const today = todayIso();
-    const yesterday = yesterdayIso();
-    const weekStart = startOfWeekIso(today);
-    const monthPrefix = today.slice(0, 7);
-    const heatmapDays = [];
-    for (let offset = -181; offset <= 0; offset += 1) {
-      const date = addDaysToIso(today, offset);
-      const count = ((_b = byDate.get(date)) == null ? void 0 : _b.length) || 0;
-      heatmapDays.push({
-        count,
-        date,
-        level: activityLevel(count)
-      });
-    }
-    let currentStreak = 0;
-    for (let date = today; (((_c = byDate.get(date)) == null ? void 0 : _c.length) || 0) > 0; date = addDaysToIso(date, -1)) {
-      currentStreak += 1;
-    }
-    const sortedDates = [...byDate.keys()].sort((a, b) => b.localeCompare(a));
-    const defaultSelectedDate = (((_d = byDate.get(today)) == null ? void 0 : _d.length) || 0) > 0 ? today : sortedDates[0] || null;
-    const data = {
-      allTimeCount: completedTasks.length,
-      byDate,
-      currentStreak,
-      defaultSelectedDate,
-      heatmapDays,
-      monthCount: completedTasks.filter((task) => {
-        var _a2;
-        return (_a2 = task.completedDate) == null ? void 0 : _a2.startsWith(monthPrefix);
-      }).length,
-      todayCount: ((_e = byDate.get(today)) == null ? void 0 : _e.length) || 0,
-      weekCount: completedTasks.filter((task) => {
-        const date = task.completedDate || "";
-        return date >= weekStart && date <= today;
-      }).length,
-      yesterdayCount: ((_f = byDate.get(yesterday)) == null ? void 0 : _f.length) || 0
-    };
+    const data = buildActivityData(allTasks);
     this.activityCache = { signature, data };
     return data;
   }
@@ -7521,7 +7700,7 @@ var TaskBoardView = class extends import_obsidian11.ItemView {
       subTasksByParent.set(task.parentId, subTasks);
     }
     for (const task of tasks) {
-      const subTasks = (subTasksByParent.get(task.id) || []).sort(byOrder);
+      const subTasks = (subTasksByParent.get(task.id) || []).sort(byOrder3);
       this.renderTaskItem(list, task, subTasks);
     }
   }
@@ -7629,7 +7808,7 @@ var TaskBoardView = class extends import_obsidian11.ItemView {
     if (task.deadline) {
       meta.createSpan({
         cls: `belki-task-deadline${isBeforeToday(task.deadline) ? " is-overdue" : ""}`,
-        text: `Deadline ${formatShortDate(task.deadline)}`
+        text: `Deadline ${formatShortDate2(task.deadline)}`
       });
     }
     if (task.labels.length > 0) {
@@ -8236,7 +8415,7 @@ var TaskBoardView = class extends import_obsidian11.ItemView {
           meta.createSpan({ text: formatDueChip(task.due) });
         }
         if (task.deadline) {
-          meta.createSpan({ text: `Deadline ${formatShortDate(task.deadline)}` });
+          meta.createSpan({ text: `Deadline ${formatShortDate2(task.deadline)}` });
         }
         for (const label of task.labels) {
           meta.createSpan({ text: displayLabel(label) });
@@ -8487,71 +8666,8 @@ var LabelPromptModal = class extends import_obsidian11.Modal {
     input.focus();
   }
 };
-function byOrder(a, b) {
+function byOrder3(a, b) {
   return a.order - b.order;
-}
-function compareTasksByMode(a, b, mode) {
-  if (mode === "due") {
-    return compareOptionalDateAsc(a.due, b.due) || byOrder(a, b);
-  }
-  if (mode === "priority") {
-    return comparePriority(a, b) || compareOptionalDateAsc(a.deadline, b.deadline) || compareOptionalDateAsc(a.due, b.due) || byOrder(a, b);
-  }
-  if (mode === "deadline") {
-    return compareOptionalDateAsc(a.deadline, b.deadline) || byOrder(a, b);
-  }
-  if (mode === "created") {
-    return compareOptionalDateDesc(a.created, b.created) || byOrder(a, b);
-  }
-  if (mode === "project") {
-    return projectDisplayName(a.project).localeCompare(projectDisplayName(b.project)) || compareSmart(a, b);
-  }
-  if (mode === "alphabetical") {
-    return a.title.localeCompare(b.title) || byOrder(a, b);
-  }
-  return compareSmart(a, b);
-}
-function compareSmart(a, b) {
-  return comparePriority(a, b) || compareOptionalDateAsc(a.deadline, b.deadline) || compareOptionalDateAsc(a.due, b.due) || compareOptionalDateAsc(a.created, b.created) || byOrder(a, b);
-}
-function comparePriority(a, b) {
-  return priorityRank(a.priority) - priorityRank(b.priority);
-}
-function priorityRank(priority) {
-  if (priority === "P1") {
-    return 0;
-  }
-  if (priority === "P2") {
-    return 1;
-  }
-  if (priority === "P3") {
-    return 2;
-  }
-  return 3;
-}
-function compareOptionalDateAsc(a, b) {
-  if (a && b) {
-    return compareIsoDates(a, b);
-  }
-  if (a) {
-    return -1;
-  }
-  if (b) {
-    return 1;
-  }
-  return 0;
-}
-function compareOptionalDateDesc(a, b) {
-  if (a && b) {
-    return compareIsoDates(b, a);
-  }
-  if (a) {
-    return -1;
-  }
-  if (b) {
-    return 1;
-  }
-  return 0;
 }
 function formatDueChip(value) {
   const today = todayIso();
@@ -8568,11 +8684,11 @@ function formatDueChip(value) {
   if (diffFromToday === 1) {
     return "Tomorrow";
   }
-  return formatShortDate(value);
+  return formatShortDate2(value);
 }
 function formatGroupHeader(value) {
-  const day = formatShortDate(value);
-  const weekday = formatWeekday(value);
+  const day = formatShortDate2(value);
+  const weekday = formatWeekday2(value);
   if (value === todayIso()) {
     return `${day} - Today - ${weekday}`;
   }
@@ -8584,12 +8700,12 @@ function formatGroupHeader(value) {
 function formatCompletedHeader(date) {
   if (date === todayIso()) return "Today";
   if (date === yesterdayIso()) return "Yesterday";
-  const parsed = parseIsoDate(date);
+  const parsed = parseIsoDate2(date);
   if (!parsed) return date;
   return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long" }).format(parsed);
 }
-function formatShortDate(value) {
-  const date = parseIsoDate(value);
+function formatShortDate2(value) {
+  const date = parseIsoDate2(value);
   if (!date) {
     return value;
   }
@@ -8598,8 +8714,8 @@ function formatShortDate(value) {
     month: "short"
   }).format(date);
 }
-function formatWeekday(value) {
-  const date = parseIsoDate(value);
+function formatWeekday2(value) {
+  const date = parseIsoDate2(value);
   if (!date) {
     return value;
   }
@@ -8607,7 +8723,7 @@ function formatWeekday(value) {
     weekday: "long"
   }).format(date);
 }
-function parseIsoDate(value) {
+function parseIsoDate2(value) {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) {
     return null;
@@ -8622,58 +8738,13 @@ function addDaysIso2(offset) {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
-function addDaysToIso(value, offset) {
-  const date = parseIsoDate(value);
-  if (!date) {
-    return value;
-  }
-  date.setDate(date.getDate() + offset);
-  return toLocalIsoDate(date);
-}
-function startOfWeekIso(value) {
-  const date = parseIsoDate(value);
-  if (!date) {
-    return value;
-  }
-  const day = date.getDay();
-  const mondayOffset = day === 0 ? -6 : 1 - day;
-  date.setDate(date.getDate() + mondayOffset);
-  return toLocalIsoDate(date);
-}
-function activityLevel(count) {
-  if (count <= 0) return 0;
-  if (count === 1) return 1;
-  if (count <= 3) return 2;
-  if (count <= 6) return 3;
-  return 4;
-}
-function formatActivityDate(value) {
-  const date = parseIsoDate(value);
-  if (!date) {
-    return value;
-  }
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-  }).format(date);
-}
-function formatActivityDayHeading(date, count) {
-  return `${formatShortDate(date)} \xB7 ${formatWeekday(date)} \xB7 ${count}`;
-}
-function toLocalIsoDate(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
 function groupByDueDate(tasks) {
   const map = /* @__PURE__ */ new Map();
   for (const task of tasks.sort((a, b) => {
     if (a.due && b.due && a.due !== b.due) {
       return compareIsoDates(a.due, b.due);
     }
-    return byOrder(a, b);
+    return byOrder3(a, b);
   })) {
     if (!task.due) {
       continue;
