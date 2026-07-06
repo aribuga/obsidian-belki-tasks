@@ -436,13 +436,13 @@ export class TaskBoardView extends ItemView {
     });
 
     const tasks = this.store.getTasks();
-    const active = tasks.filter((task) => !task.completed);
+    const activeTopLevel = this.getActiveTopLevelTasks(tasks);
     const nav = sidebar.createDiv({ cls: "belki-nav" });
 
     this.renderNavButton(nav, "Search", "search", undefined, "search");
-    this.renderNavButton(nav, "Inbox", "inbox", this.getInboxTasks(active).length, "inbox");
-    this.renderNavButton(nav, "Today", "today", this.getTodayTasks(active).length, "today");
-    this.renderNavButton(nav, "Upcoming", "upcoming", this.getUpcomingTasks(active).length, "upcoming");
+    this.renderNavButton(nav, "Inbox", "inbox", this.getInboxTasks(activeTopLevel).length, "inbox");
+    this.renderNavButton(nav, "Today", "today", this.getTodayTasks(activeTopLevel).length, "today");
+    this.renderNavButton(nav, "Upcoming", "upcoming", this.getUpcomingTasks(activeTopLevel).length, "upcoming");
     this.renderNavButton(nav, "Filters & Labels", "filters", undefined, "filters");
     this.renderNavButton(nav, "Projects", "projects", undefined, "projects");
     this.renderNavButton(nav, "Activity", "activity", undefined, "activity");
@@ -468,13 +468,8 @@ export class TaskBoardView extends ItemView {
       }).open();
     });
 
-    const activeTasks = active.filter((task) => {
-      const p = normalizeTaskProject(task.project);
-      return !p || !new Set(this.settings.archivedProjects).has(p);
-    });
-
     for (const cleanProject of this.getActiveProjects()) {
-      const count = activeTasks.filter((task) => normalizeTaskProject(task.project) === cleanProject).length;
+      const count = activeTopLevel.filter((task) => normalizeTaskProject(task.project) === cleanProject).length;
       const button = projectsSection.createEl("button", {
         cls: "belki-project-button"
       });
@@ -529,7 +524,7 @@ export class TaskBoardView extends ItemView {
       nav,
       "Completed",
       "completed",
-      tasks.filter((task) => task.completed || (task.completedOccurrences && task.completedOccurrences.length > 0)).length,
+      this.getCompletedDisplayTasks(tasks).length,
       "completed"
     );
   }
@@ -586,7 +581,6 @@ export class TaskBoardView extends ItemView {
   private renderMain(parent: HTMLElement): void {
     const main = parent.createEl("main", { cls: "belki-main" });
     const tasks = this.store.getTasks();
-    const active = tasks.filter((task) => !task.completed);
     const visible = this.getVisibleTasks(tasks);
     const activityData = this.mode === "activity" ? this.getActivityData(tasks) : null;
 
@@ -626,7 +620,7 @@ export class TaskBoardView extends ItemView {
       });
     }
 
-    if (active.length === 0 && tasks.length === 0) {
+    if (tasks.length === 0) {
       main.createDiv({
         cls: "belki-empty",
         text: `No tasks yet. Add one and belki will write it to ${this.store.dataDir}/YYYY-MM.md.`
@@ -858,7 +852,7 @@ export class TaskBoardView extends ItemView {
   private renderTaskSections(parent: HTMLElement, allTasks: BelkiTask[]): void {
     parent.empty();
 
-    const active = allTasks.filter((task) => !task.completed && !task.parentId);
+    const active = this.getActiveTopLevelTasks(allTasks);
 
     if (this.mode === "today") {
       const todayTasks = this.sortTasks(active.filter((task) => isToday(task.due)));
@@ -966,11 +960,7 @@ export class TaskBoardView extends ItemView {
   }
 
   private renderCompletedView(parent: HTMLElement, allTasks: BelkiTask[]): void {
-    const archivedSet = new Set(this.settings.archivedProjects);
-    const completed = allTasks.filter((task) =>
-      !archivedSet.has(normalizeTaskProject(task.project) || "") &&
-      task.completed
-    );
+    const completed = this.getCompletedDisplayTasks(allTasks);
 
     if (completed.length === 0) {
       this.renderEmptySection(parent, "No completed tasks yet.");
@@ -1216,7 +1206,7 @@ export class TaskBoardView extends ItemView {
     if (this.activeLabel) {
       const label = this.activeLabel;
       const tasks = this.sortTasks(
-        allTasks.filter((task) => !task.completed && task.labels.includes(label))
+        this.getActiveFilterTasks(allTasks).filter((task) => task.labels.includes(label))
       );
       const section = this.createSection(parent, displayLabel(label), tasks.length);
       this.renderBackToFilters(section);
@@ -1255,7 +1245,7 @@ export class TaskBoardView extends ItemView {
     }
 
     for (const label of labels) {
-      const count = allTasks.filter((task) => !task.completed && task.labels.includes(label)).length;
+      const count = this.getActiveFilterTasks(allTasks).filter((task) => task.labels.includes(label)).length;
       this.renderLabelRow(labelList, label, count);
     }
   }
@@ -2221,10 +2211,7 @@ export class TaskBoardView extends ItemView {
   }
 
   private getVisibleTasks(tasks: BelkiTask[]): BelkiTask[] {
-    const archivedSet = new Set(this.settings.archivedProjects);
-    const active = tasks.filter(
-      (task) => !task.completed && !archivedSet.has(normalizeTaskProject(task.project) || "") && !task.parentId
-    );
+    const active = this.getActiveTopLevelTasks(tasks);
 
     if (this.mode === "inbox") {
       return this.getInboxTasks(active);
@@ -2239,10 +2226,7 @@ export class TaskBoardView extends ItemView {
     }
 
     if (this.mode === "completed") {
-      return this.sortTasks(tasks.filter((task) =>
-        !archivedSet.has(normalizeTaskProject(task.project) || "") &&
-        (task.completed || (task.completedOccurrences && task.completedOccurrences.length > 0))
-      ));
+      return this.getCompletedDisplayTasks(tasks);
     }
 
     if (this.mode === "activity") {
@@ -2276,7 +2260,7 @@ export class TaskBoardView extends ItemView {
 
       if (this.activeLabel) {
         return this.sortTasks(
-          active.filter((task) => task.labels.includes(this.activeLabel || ""))
+          this.getActiveFilterTasks(tasks).filter((task) => task.labels.includes(this.activeLabel || ""))
         );
       }
 
@@ -2301,6 +2285,26 @@ export class TaskBoardView extends ItemView {
     return this.sortTasks(
       tasks.filter((task) => !normalizeTaskProject(task.project))
     );
+  }
+
+  private getActiveTopLevelTasks(tasks: BelkiTask[]): BelkiTask[] {
+    return this.getActiveFilterTasks(tasks).filter((task) => !task.parentId);
+  }
+
+  private getActiveFilterTasks(tasks: BelkiTask[]): BelkiTask[] {
+    const archivedSet = new Set(this.settings.archivedProjects);
+    return tasks.filter((task) =>
+      !task.completed &&
+      !archivedSet.has(normalizeTaskProject(task.project) || "")
+    );
+  }
+
+  private getCompletedDisplayTasks(tasks: BelkiTask[]): BelkiTask[] {
+    const archivedSet = new Set(this.settings.archivedProjects);
+    return this.sortTasks(tasks.filter((task) =>
+      task.completed &&
+      !archivedSet.has(normalizeTaskProject(task.project) || "")
+    ));
   }
 
   private getTodayTasks(tasks: BelkiTask[]): BelkiTask[] {
@@ -2419,7 +2423,7 @@ export class TaskBoardView extends ItemView {
     tasks: BelkiTask[];
     count: number;
   }> {
-    const active = tasks.filter((task) => !task.completed);
+    const active = this.getActiveFilterTasks(tasks);
     const today = todayIso();
 
     const definitions = [

@@ -6846,12 +6846,12 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
       this.openAddComposer();
     });
     const tasks = this.store.getTasks();
-    const active = tasks.filter((task) => !task.completed);
+    const activeTopLevel = this.getActiveTopLevelTasks(tasks);
     const nav = sidebar.createDiv({ cls: "belki-nav" });
     this.renderNavButton(nav, "Search", "search", void 0, "search");
-    this.renderNavButton(nav, "Inbox", "inbox", this.getInboxTasks(active).length, "inbox");
-    this.renderNavButton(nav, "Today", "today", this.getTodayTasks(active).length, "today");
-    this.renderNavButton(nav, "Upcoming", "upcoming", this.getUpcomingTasks(active).length, "upcoming");
+    this.renderNavButton(nav, "Inbox", "inbox", this.getInboxTasks(activeTopLevel).length, "inbox");
+    this.renderNavButton(nav, "Today", "today", this.getTodayTasks(activeTopLevel).length, "today");
+    this.renderNavButton(nav, "Upcoming", "upcoming", this.getUpcomingTasks(activeTopLevel).length, "upcoming");
     this.renderNavButton(nav, "Filters & Labels", "filters", void 0, "filters");
     this.renderNavButton(nav, "Projects", "projects", void 0, "projects");
     this.renderNavButton(nav, "Activity", "activity", void 0, "activity");
@@ -6875,12 +6875,8 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
         void this.saveSettings().then(() => this.render());
       }).open();
     });
-    const activeTasks = active.filter((task) => {
-      const p = normalizeTaskProject(task.project);
-      return !p || !new Set(this.settings.archivedProjects).has(p);
-    });
     for (const cleanProject of this.getActiveProjects()) {
-      const count = activeTasks.filter((task) => normalizeTaskProject(task.project) === cleanProject).length;
+      const count = activeTopLevel.filter((task) => normalizeTaskProject(task.project) === cleanProject).length;
       const button = projectsSection.createEl("button", {
         cls: "belki-project-button"
       });
@@ -6931,7 +6927,7 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
       nav,
       "Completed",
       "completed",
-      tasks.filter((task) => task.completed || task.completedOccurrences && task.completedOccurrences.length > 0).length,
+      this.getCompletedDisplayTasks(tasks).length,
       "completed"
     );
   }
@@ -6972,7 +6968,6 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
   renderMain(parent) {
     const main = parent.createEl("main", { cls: "belki-main" });
     const tasks = this.store.getTasks();
-    const active = tasks.filter((task) => !task.completed);
     const visible = this.getVisibleTasks(tasks);
     const activityData = this.mode === "activity" ? this.getActivityData(tasks) : null;
     const header = main.createDiv({ cls: "belki-main-header" });
@@ -7004,7 +6999,7 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
         this.openAddComposer();
       });
     }
-    if (active.length === 0 && tasks.length === 0) {
+    if (tasks.length === 0) {
       main.createDiv({
         cls: "belki-empty",
         text: `No tasks yet. Add one and belki will write it to ${this.store.dataDir}/YYYY-MM.md.`
@@ -7216,7 +7211,7 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
   }
   renderTaskSections(parent, allTasks) {
     parent.empty();
-    const active = allTasks.filter((task) => !task.completed && !task.parentId);
+    const active = this.getActiveTopLevelTasks(allTasks);
     if (this.mode === "today") {
       const todayTasks = this.sortTasks(active.filter((task) => isToday(task.due)));
       const todaySection = this.createSection(parent, formatGroupHeader(todayIso()), todayTasks.length);
@@ -7302,10 +7297,7 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
     this.renderTaskList(section, visible);
   }
   renderCompletedView(parent, allTasks) {
-    const archivedSet = new Set(this.settings.archivedProjects);
-    const completed = allTasks.filter(
-      (task) => !archivedSet.has(normalizeTaskProject(task.project) || "") && task.completed
-    );
+    const completed = this.getCompletedDisplayTasks(allTasks);
     if (completed.length === 0) {
       this.renderEmptySection(parent, "No completed tasks yet.");
       return;
@@ -7513,7 +7505,7 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
     if (this.activeLabel) {
       const label = this.activeLabel;
       const tasks = this.sortTasks(
-        allTasks.filter((task) => !task.completed && task.labels.includes(label))
+        this.getActiveFilterTasks(allTasks).filter((task) => task.labels.includes(label))
       );
       const section = this.createSection(parent, displayLabel(label), tasks.length);
       this.renderBackToFilters(section);
@@ -7548,7 +7540,7 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
       return;
     }
     for (const label of labels) {
-      const count = allTasks.filter((task) => !task.completed && task.labels.includes(label)).length;
+      const count = this.getActiveFilterTasks(allTasks).filter((task) => task.labels.includes(label)).length;
       this.renderLabelRow(labelList, label, count);
     }
   }
@@ -8382,10 +8374,7 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
     }).open();
   }
   getVisibleTasks(tasks) {
-    const archivedSet = new Set(this.settings.archivedProjects);
-    const active = tasks.filter(
-      (task) => !task.completed && !archivedSet.has(normalizeTaskProject(task.project) || "") && !task.parentId
-    );
+    const active = this.getActiveTopLevelTasks(tasks);
     if (this.mode === "inbox") {
       return this.getInboxTasks(active);
     }
@@ -8396,9 +8385,7 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
       return this.getUpcomingTasks(active);
     }
     if (this.mode === "completed") {
-      return this.sortTasks(tasks.filter(
-        (task) => !archivedSet.has(normalizeTaskProject(task.project) || "") && (task.completed || task.completedOccurrences && task.completedOccurrences.length > 0)
-      ));
+      return this.getCompletedDisplayTasks(tasks);
     }
     if (this.mode === "activity") {
       return [];
@@ -8423,7 +8410,7 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
       }
       if (this.activeLabel) {
         return this.sortTasks(
-          active.filter((task) => task.labels.includes(this.activeLabel || ""))
+          this.getActiveFilterTasks(tasks).filter((task) => task.labels.includes(this.activeLabel || ""))
         );
       }
       return [];
@@ -8441,6 +8428,21 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
     return this.sortTasks(
       tasks.filter((task) => !normalizeTaskProject(task.project))
     );
+  }
+  getActiveTopLevelTasks(tasks) {
+    return this.getActiveFilterTasks(tasks).filter((task) => !task.parentId);
+  }
+  getActiveFilterTasks(tasks) {
+    const archivedSet = new Set(this.settings.archivedProjects);
+    return tasks.filter(
+      (task) => !task.completed && !archivedSet.has(normalizeTaskProject(task.project) || "")
+    );
+  }
+  getCompletedDisplayTasks(tasks) {
+    const archivedSet = new Set(this.settings.archivedProjects);
+    return this.sortTasks(tasks.filter(
+      (task) => task.completed && !archivedSet.has(normalizeTaskProject(task.project) || "")
+    ));
   }
   getTodayTasks(tasks) {
     const today = todayIso();
@@ -8531,7 +8533,7 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
     return "Search";
   }
   getFilterDefinitions(tasks) {
-    const active = tasks.filter((task) => !task.completed);
+    const active = this.getActiveFilterTasks(tasks);
     const today = todayIso();
     const definitions = [
       {
