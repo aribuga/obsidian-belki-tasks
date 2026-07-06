@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => BelkiPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian14 = require("obsidian");
+var import_obsidian15 = require("obsidian");
 
 // src/dailyNotes.ts
 var import_obsidian = require("obsidian");
@@ -2496,7 +2496,7 @@ function cloneTask(task) {
 }
 
 // src/views/TaskBoardView.ts
-var import_obsidian11 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 
 // src/activityData.ts
 function getActivityDataSignature(allTasks) {
@@ -6217,6 +6217,217 @@ function compareOptionalDateDesc(a, b) {
   return 0;
 }
 
+// src/views/projects/ProjectModals.ts
+var import_obsidian11 = require("obsidian");
+var RenameProjectModal = class extends import_obsidian11.Modal {
+  constructor(app, currentName, existingProjects, onSubmit) {
+    super(app);
+    this.currentName = currentName;
+    this.existingProjects = existingProjects;
+    this.onSubmit = onSubmit;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("belki-project-rename-modal");
+    contentEl.createEl("h2", { text: "Rename project" });
+    const input = contentEl.createEl("input", {
+      cls: "belki-label-prompt-input",
+      attr: { type: "text", value: this.currentName }
+    });
+    input.select();
+    let errorEl = null;
+    const showError = (msg) => {
+      if (!errorEl) {
+        errorEl = contentEl.createDiv({ cls: "belki-modal-error" });
+        actions.before(errorEl);
+      }
+      errorEl.setText(msg);
+    };
+    const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
+    actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } }).addEventListener("click", () => this.close());
+    const submitButton = actions.createEl("button", {
+      cls: "belki-button belki-button-primary",
+      text: "Rename",
+      attr: { type: "button" }
+    });
+    const submit = () => {
+      const newName = input.value.trim();
+      if (!newName) {
+        showError("Project name cannot be empty.");
+        return;
+      }
+      if (newName === this.currentName) {
+        this.close();
+        return;
+      }
+      if (this.existingProjects.some((p) => p.toLowerCase() === newName.toLowerCase())) {
+        showError("A project with that name already exists.");
+        return;
+      }
+      void this.onSubmit(newName).then(() => this.close());
+    };
+    submitButton.addEventListener("click", submit);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        submit();
+      }
+    });
+    input.focus();
+  }
+};
+var DeleteProjectModal = class extends import_obsidian11.Modal {
+  constructor(app, projectName, taskCount, onConfirm) {
+    super(app);
+    this.projectName = projectName;
+    this.taskCount = taskCount;
+    this.onConfirm = onConfirm;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("belki-project-delete-modal");
+    contentEl.createEl("h2", { text: `Delete "${this.projectName}"?` });
+    const desc = this.taskCount > 0 ? `This will delete the project only. ${this.taskCount} task${this.taskCount === 1 ? "" : "s"} will be moved to Inbox. Tasks will not be deleted.` : "This will delete the project. It has no tasks.";
+    contentEl.createEl("p", { text: desc, cls: "belki-modal-desc" });
+    const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
+    actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } }).addEventListener("click", () => this.close());
+    actions.createEl("button", {
+      cls: "belki-button belki-button-destructive",
+      text: "Delete project",
+      attr: { type: "button" }
+    }).addEventListener("click", () => {
+      void this.onConfirm().then(() => this.close());
+    });
+  }
+};
+var CreateProjectModal = class extends import_obsidian11.Modal {
+  constructor(app, existingProjects, onSubmit) {
+    super(app);
+    this.existingProjects = existingProjects;
+    this.onSubmit = onSubmit;
+    this.selectedColor = null;
+    this.autoPreviewName = "New project";
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("belki-project-rename-modal");
+    contentEl.addClass("belki-project-create-modal");
+    contentEl.createEl("h2", { text: "New project" });
+    const input = contentEl.createEl("input", {
+      cls: "belki-label-prompt-input",
+      attr: { type: "text", placeholder: "Project name" }
+    });
+    const appearance = contentEl.createDiv({ cls: "belki-project-create-appearance" });
+    const preview = appearance.createDiv({ cls: "belki-project-create-preview" });
+    const previewChip = preview.createDiv({ cls: "belki-project-create-preview-chip" });
+    const previewDot = previewChip.createSpan({ cls: "belki-project-dot" });
+    const previewName = previewChip.createSpan({ cls: "belki-project-create-preview-name" });
+    const colorControl = appearance.createDiv({ cls: "belki-project-create-color-control" });
+    const autoButton = colorControl.createEl("button", {
+      cls: "belki-project-color-auto is-selected",
+      attr: { type: "button", "aria-label": "Automatic project color", "aria-pressed": "true" }
+    });
+    const autoDot = autoButton.createSpan({ cls: "belki-project-color-dot" });
+    const autoText = autoButton.createSpan({ cls: "belki-project-color-auto-text", text: "\u2713 Auto" });
+    const randomButton = colorControl.createEl("button", {
+      cls: "belki-project-color-random",
+      attr: { type: "button", "aria-label": "Choose another project color" }
+    });
+    createBelkiIcon(randomButton, "randomize");
+    const customColor = colorControl.createEl("label", { cls: "belki-project-color-custom" });
+    const customDot = customColor.createSpan({ cls: "belki-project-color-custom-dot" });
+    const colorInput = customColor.createEl("input", {
+      attr: { type: "color", "aria-label": "Custom project color" }
+    });
+    customColor.createSpan({ text: "Custom" });
+    const selectColor = (color) => {
+      this.selectedColor = color;
+      autoButton.toggleClass("is-selected", color === null);
+      autoButton.setAttribute("aria-pressed", String(color === null));
+      autoText.setText(color === null ? "\u2713 Auto" : "Auto");
+      customColor.toggleClass("is-selected", color !== null);
+      updatePreview();
+    };
+    autoButton.addEventListener("click", () => {
+      this.autoPreviewName = normalizeTaskProject(input.value) || "New project";
+      selectColor(null);
+    });
+    randomButton.addEventListener("click", () => {
+      const currentColor = (this.selectedColor || getProjectColor(this.autoPreviewName, {}).regular).toLowerCase();
+      const candidates = BELKI_COLOR_PALETTE.map((color) => color.regular).filter((color) => color.toLowerCase() !== currentColor);
+      const nextColor = candidates[Math.floor(Math.random() * candidates.length)] || BELKI_COLOR_PALETTE[0].regular;
+      selectColor(nextColor);
+    });
+    colorInput.addEventListener("input", () => selectColor(colorInput.value));
+    colorInput.addEventListener("change", () => selectColor(colorInput.value));
+    const updatePreview = () => {
+      const previewProjectName = normalizeTaskProject(input.value) || "New project";
+      const generatedColor = getProjectColor(this.autoPreviewName, {});
+      const previewColor = this.selectedColor ? getProjectColor(previewProjectName, { [previewProjectName]: this.selectedColor }) : generatedColor;
+      previewChip.setCssProps({
+        "--belki-project-bg": previewColor.light,
+        "--belki-project-color": previewColor.regular
+      });
+      previewDot.setCssStyles({ backgroundColor: previewColor.regular });
+      autoDot.setCssStyles({ backgroundColor: generatedColor.regular });
+      customColor.setCssProps({ "--belki-custom-color": previewColor.regular });
+      customDot.setCssStyles({ backgroundColor: previewColor.regular });
+      colorInput.value = this.selectedColor || generatedColor.regular;
+      previewName.setText(previewProjectName);
+    };
+    let errorEl = null;
+    const showError = (msg) => {
+      if (!errorEl) {
+        errorEl = contentEl.createDiv({ cls: "belki-modal-error" });
+        actions.before(errorEl);
+      }
+      errorEl.setText(msg);
+    };
+    const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
+    actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } }).addEventListener("click", () => this.close());
+    const submitButton = actions.createEl("button", {
+      cls: "belki-button belki-button-primary",
+      text: "Create",
+      attr: { type: "button" }
+    });
+    const submit = () => {
+      const name = normalizeTaskProject(input.value);
+      if (!name) {
+        showError("Project name cannot be empty.");
+        return;
+      }
+      if (isReservedInboxProject(name)) {
+        showError('"Inbox" is reserved.');
+        return;
+      }
+      if (this.existingProjects.some((p) => p.toLowerCase() === name.toLowerCase())) {
+        showError("A project with that name already exists.");
+        return;
+      }
+      this.onSubmit({
+        name,
+        colorOverride: this.selectedColor || void 0
+      });
+      this.close();
+    };
+    submitButton.addEventListener("click", submit);
+    input.addEventListener("input", () => {
+      updatePreview();
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        submit();
+      }
+    });
+    updatePreview();
+    input.focus();
+  }
+};
+
 // src/views/TaskBoardView.ts
 var VIEW_TYPE_BELKI = "belki-task-board";
 function markdownPreviewText(text) {
@@ -6233,7 +6444,7 @@ var SORT_OPTIONS = [
   { mode: "project", label: "Project" },
   { mode: "alphabetical", label: "Alphabetical" }
 ];
-var TaskBoardView = class extends import_obsidian11.ItemView {
+var TaskBoardView = class extends import_obsidian12.ItemView {
   constructor(leaf, store, settings, saveSettings) {
     super(leaf);
     this.store = store;
@@ -6459,7 +6670,7 @@ var TaskBoardView = class extends import_obsidian11.ItemView {
     containerEl.empty();
     containerEl.addClass("belki-root");
     containerEl.addClass("belki-view");
-    containerEl.toggleClass("is-mobile", import_obsidian11.Platform.isMobile);
+    containerEl.toggleClass("is-mobile", import_obsidian12.Platform.isMobile);
     applyBelkiFontSettings(containerEl, this.settings);
     containerEl.addEventListener("keydown", this.handleRootKeyDown, true);
     containerEl.addEventListener("click", this.handleRootClick, true);
@@ -6704,7 +6915,7 @@ var TaskBoardView = class extends import_obsidian11.ItemView {
     this.projectActionsOpen = null;
     this.searchOpen = false;
     this.searchQuery = "";
-    if (import_obsidian11.Platform.isMobile) {
+    if (import_obsidian12.Platform.isMobile) {
       this.mobileComposerReturnScroll = this.getMainScrollSnapshot();
       this.mobileComposerOpen = true;
       this.composerOpen = false;
@@ -6742,11 +6953,11 @@ var TaskBoardView = class extends import_obsidian11.ItemView {
         await this.createTaskFromComposer(input);
         onClose();
       },
-      presentation: import_obsidian11.Platform.isMobile ? "mobile-screen" : "default"
+      presentation: import_obsidian12.Platform.isMobile ? "mobile-screen" : "default"
     });
     const ownerWindow = parent.ownerDocument.defaultView || window;
     ownerWindow.requestAnimationFrame(() => {
-      if (import_obsidian11.Platform.isMobile) {
+      if (import_obsidian12.Platform.isMobile) {
         composer.focusTitleForMobileCapture();
       } else {
         composer.focus();
@@ -8541,90 +8752,7 @@ var TaskBoardView = class extends import_obsidian11.ItemView {
     event.stopImmediatePropagation();
   }
 };
-var RenameProjectModal = class extends import_obsidian11.Modal {
-  constructor(app, currentName, existingProjects, onSubmit) {
-    super(app);
-    this.currentName = currentName;
-    this.existingProjects = existingProjects;
-    this.onSubmit = onSubmit;
-  }
-  onOpen() {
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.addClass("belki-project-rename-modal");
-    contentEl.createEl("h2", { text: "Rename project" });
-    const input = contentEl.createEl("input", {
-      cls: "belki-label-prompt-input",
-      attr: { type: "text", value: this.currentName }
-    });
-    input.select();
-    let errorEl = null;
-    const showError = (msg) => {
-      if (!errorEl) {
-        errorEl = contentEl.createDiv({ cls: "belki-modal-error" });
-        actions.before(errorEl);
-      }
-      errorEl.setText(msg);
-    };
-    const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
-    actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } }).addEventListener("click", () => this.close());
-    const submitButton = actions.createEl("button", {
-      cls: "belki-button belki-button-primary",
-      text: "Rename",
-      attr: { type: "button" }
-    });
-    const submit = () => {
-      const newName = input.value.trim();
-      if (!newName) {
-        showError("Project name cannot be empty.");
-        return;
-      }
-      if (newName === this.currentName) {
-        this.close();
-        return;
-      }
-      if (this.existingProjects.some((p) => p.toLowerCase() === newName.toLowerCase())) {
-        showError("A project with that name already exists.");
-        return;
-      }
-      void this.onSubmit(newName).then(() => this.close());
-    };
-    submitButton.addEventListener("click", submit);
-    input.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        submit();
-      }
-    });
-    input.focus();
-  }
-};
-var DeleteProjectModal = class extends import_obsidian11.Modal {
-  constructor(app, projectName, taskCount, onConfirm) {
-    super(app);
-    this.projectName = projectName;
-    this.taskCount = taskCount;
-    this.onConfirm = onConfirm;
-  }
-  onOpen() {
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.addClass("belki-project-delete-modal");
-    contentEl.createEl("h2", { text: `Delete "${this.projectName}"?` });
-    const desc = this.taskCount > 0 ? `This will delete the project only. ${this.taskCount} task${this.taskCount === 1 ? "" : "s"} will be moved to Inbox. Tasks will not be deleted.` : "This will delete the project. It has no tasks.";
-    contentEl.createEl("p", { text: desc, cls: "belki-modal-desc" });
-    const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
-    actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } }).addEventListener("click", () => this.close());
-    actions.createEl("button", {
-      cls: "belki-button belki-button-destructive",
-      text: "Delete project",
-      attr: { type: "button" }
-    }).addEventListener("click", () => {
-      void this.onConfirm().then(() => this.close());
-    });
-  }
-};
-var LabelPromptModal = class extends import_obsidian11.Modal {
+var LabelPromptModal = class extends import_obsidian12.Modal {
   constructor(app, onSubmit) {
     super(app);
     this.onSubmit = onSubmit;
@@ -8755,131 +8883,6 @@ function groupByDueDate(tasks) {
   }
   return [...map.entries()];
 }
-var CreateProjectModal = class extends import_obsidian11.Modal {
-  constructor(app, existingProjects, onSubmit) {
-    super(app);
-    this.existingProjects = existingProjects;
-    this.onSubmit = onSubmit;
-    this.selectedColor = null;
-    this.autoPreviewName = "New project";
-  }
-  onOpen() {
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.addClass("belki-project-rename-modal");
-    contentEl.addClass("belki-project-create-modal");
-    contentEl.createEl("h2", { text: "New project" });
-    const input = contentEl.createEl("input", {
-      cls: "belki-label-prompt-input",
-      attr: { type: "text", placeholder: "Project name" }
-    });
-    const appearance = contentEl.createDiv({ cls: "belki-project-create-appearance" });
-    const preview = appearance.createDiv({ cls: "belki-project-create-preview" });
-    const previewChip = preview.createDiv({ cls: "belki-project-create-preview-chip" });
-    const previewDot = previewChip.createSpan({ cls: "belki-project-dot" });
-    const previewName = previewChip.createSpan({ cls: "belki-project-create-preview-name" });
-    const colorControl = appearance.createDiv({ cls: "belki-project-create-color-control" });
-    const autoButton = colorControl.createEl("button", {
-      cls: "belki-project-color-auto is-selected",
-      attr: { type: "button", "aria-label": "Automatic project color", "aria-pressed": "true" }
-    });
-    const autoDot = autoButton.createSpan({ cls: "belki-project-color-dot" });
-    const autoText = autoButton.createSpan({ cls: "belki-project-color-auto-text", text: "\u2713 Auto" });
-    const randomButton = colorControl.createEl("button", {
-      cls: "belki-project-color-random",
-      attr: { type: "button", "aria-label": "Choose another project color" }
-    });
-    createBelkiIcon(randomButton, "randomize");
-    const customColor = colorControl.createEl("label", { cls: "belki-project-color-custom" });
-    const customDot = customColor.createSpan({ cls: "belki-project-color-custom-dot" });
-    const colorInput = customColor.createEl("input", {
-      attr: { type: "color", "aria-label": "Custom project color" }
-    });
-    customColor.createSpan({ text: "Custom" });
-    const selectColor = (color) => {
-      this.selectedColor = color;
-      autoButton.toggleClass("is-selected", color === null);
-      autoButton.setAttribute("aria-pressed", String(color === null));
-      autoText.setText(color === null ? "\u2713 Auto" : "Auto");
-      customColor.toggleClass("is-selected", color !== null);
-      updatePreview();
-    };
-    autoButton.addEventListener("click", () => {
-      this.autoPreviewName = normalizeTaskProject(input.value) || "New project";
-      selectColor(null);
-    });
-    randomButton.addEventListener("click", () => {
-      const currentColor = (this.selectedColor || getProjectColor(this.autoPreviewName, {}).regular).toLowerCase();
-      const candidates = BELKI_COLOR_PALETTE.map((color) => color.regular).filter((color) => color.toLowerCase() !== currentColor);
-      const nextColor = candidates[Math.floor(Math.random() * candidates.length)] || BELKI_COLOR_PALETTE[0].regular;
-      selectColor(nextColor);
-    });
-    colorInput.addEventListener("input", () => selectColor(colorInput.value));
-    colorInput.addEventListener("change", () => selectColor(colorInput.value));
-    const updatePreview = () => {
-      const previewProjectName = normalizeTaskProject(input.value) || "New project";
-      const generatedColor = getProjectColor(this.autoPreviewName, {});
-      const previewColor = this.selectedColor ? getProjectColor(previewProjectName, { [previewProjectName]: this.selectedColor }) : generatedColor;
-      previewChip.setCssProps({
-        "--belki-project-bg": previewColor.light,
-        "--belki-project-color": previewColor.regular
-      });
-      previewDot.setCssStyles({ backgroundColor: previewColor.regular });
-      autoDot.setCssStyles({ backgroundColor: generatedColor.regular });
-      customColor.setCssProps({ "--belki-custom-color": previewColor.regular });
-      customDot.setCssStyles({ backgroundColor: previewColor.regular });
-      colorInput.value = this.selectedColor || generatedColor.regular;
-      previewName.setText(previewProjectName);
-    };
-    let errorEl = null;
-    const showError = (msg) => {
-      if (!errorEl) {
-        errorEl = contentEl.createDiv({ cls: "belki-modal-error" });
-        actions.before(errorEl);
-      }
-      errorEl.setText(msg);
-    };
-    const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
-    actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } }).addEventListener("click", () => this.close());
-    const submitButton = actions.createEl("button", {
-      cls: "belki-button belki-button-primary",
-      text: "Create",
-      attr: { type: "button" }
-    });
-    const submit = () => {
-      const name = normalizeTaskProject(input.value);
-      if (!name) {
-        showError("Project name cannot be empty.");
-        return;
-      }
-      if (isReservedInboxProject(name)) {
-        showError('"Inbox" is reserved.');
-        return;
-      }
-      if (this.existingProjects.some((p) => p.toLowerCase() === name.toLowerCase())) {
-        showError("A project with that name already exists.");
-        return;
-      }
-      this.onSubmit({
-        name,
-        colorOverride: this.selectedColor || void 0
-      });
-      this.close();
-    };
-    submitButton.addEventListener("click", submit);
-    input.addEventListener("input", () => {
-      updatePreview();
-    });
-    input.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        submit();
-      }
-    });
-    updatePreview();
-    input.focus();
-  }
-};
 function searchableText(task) {
   return [
     task.title,
@@ -8890,8 +8893,8 @@ function searchableText(task) {
 }
 
 // src/views/QuickAddModal.ts
-var import_obsidian12 = require("obsidian");
-var QuickAddModal = class extends import_obsidian12.Modal {
+var import_obsidian13 = require("obsidian");
+var QuickAddModal = class extends import_obsidian13.Modal {
   constructor(app, onSubmit) {
     super(app);
     this.onSubmit = onSubmit;
@@ -8958,10 +8961,10 @@ var QuickAddModal = class extends import_obsidian12.Modal {
 };
 
 // src/views/DailyNoteCompletedBlock.ts
-var import_obsidian13 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 var DATE_OPTION_RE = /(?:^|\n)\s*date\s*:\s*(\d{4}-\d{2}-\d{2})\s*(?:\n|$)/i;
 var DATE_LINE_RE = /^\s*(\d{4}-\d{2}-\d{2})\s*$/m;
-var DailyNoteCompletedBlock = class extends import_obsidian13.MarkdownRenderChild {
+var DailyNoteCompletedBlock = class extends import_obsidian14.MarkdownRenderChild {
   constructor(options) {
     super(options.containerEl);
     this.source = options.source;
@@ -9095,7 +9098,7 @@ function formatDailyBlockTitle(date) {
 // src/main.ts
 var BELKI_COMPLETED_CODE_BLOCK = "```belki-completed\n```";
 var BELKI_COMPLETED_CODE_BLOCK_RE = /```belki-completed\b[\s\S]*?```/i;
-var BelkiPlugin = class extends import_obsidian14.Plugin {
+var BelkiPlugin = class extends import_obsidian15.Plugin {
   constructor() {
     super(...arguments);
     this.reloadDebounceTimer = null;
@@ -9129,7 +9132,7 @@ var BelkiPlugin = class extends import_obsidian14.Plugin {
       callback: () => {
         new QuickAddModal(this.app, async (title) => {
           await this.store.createTask({ title });
-          new import_obsidian14.Notice("Task added to Inbox");
+          new import_obsidian15.Notice("Task added to Inbox");
         }).open();
       }
     });
@@ -9158,7 +9161,7 @@ var BelkiPlugin = class extends import_obsidian14.Plugin {
           ...Object.keys(this.settings.labelColors)
         ]);
         await this.saveSettings();
-        new import_obsidian14.Notice("belki labels normalized.");
+        new import_obsidian15.Notice("belki labels normalized.");
       }
     });
     this.addCommand({
@@ -9167,10 +9170,10 @@ var BelkiPlugin = class extends import_obsidian14.Plugin {
       callback: async () => {
         const migratedCount = await this.store.migrateOldTaskFile();
         if (migratedCount === 0) {
-          new import_obsidian14.Notice("belki found no old tasks to migrate.");
+          new import_obsidian15.Notice("belki found no old tasks to migrate.");
           return;
         }
-        new import_obsidian14.Notice(`belki migrated ${migratedCount} task${migratedCount === 1 ? "" : "s"}.`);
+        new import_obsidian15.Notice(`belki migrated ${migratedCount} task${migratedCount === 1 ? "" : "s"}.`);
       }
     });
     this.addSettingTab(new BelkiSettingTab(this.app, this));
@@ -9260,7 +9263,7 @@ var BelkiPlugin = class extends import_obsidian14.Plugin {
     try {
       await this.store.reloadFromDisk();
     } catch (error) {
-      new import_obsidian14.Notice("belki could not reload task data.");
+      new import_obsidian15.Notice("belki could not reload task data.");
       console.error(error);
     }
   }
@@ -9366,40 +9369,40 @@ var BelkiPlugin = class extends import_obsidian14.Plugin {
   }
   async openActiveDailyNoteCompletedTasks() {
     if (!this.settings.dailyNotesIntegrationEnabled) {
-      new import_obsidian14.Notice("belki Daily Notes integration is disabled in settings.");
+      new import_obsidian15.Notice("belki Daily Notes integration is disabled in settings.");
       return;
     }
     const file = this.app.workspace.getActiveFile();
     if (!file) {
-      new import_obsidian14.Notice("Open a daily note first.");
+      new import_obsidian15.Notice("Open a daily note first.");
       return;
     }
     const date = this.dateFromDailyNoteFile(file);
     if (!date) {
-      new import_obsidian14.Notice("belki could not detect a date from the active note.");
+      new import_obsidian15.Notice("belki could not detect a date from the active note.");
       return;
     }
     await this.activateDailyNoteView(date, file.path);
   }
   async insertActiveDailyNoteCompletedBlock() {
     if (!this.settings.dailyNotesIntegrationEnabled) {
-      new import_obsidian14.Notice("belki Daily Notes integration is disabled in settings.");
+      new import_obsidian15.Notice("belki Daily Notes integration is disabled in settings.");
       return;
     }
     const file = this.app.workspace.getActiveFile();
     if (!file) {
-      new import_obsidian14.Notice("Open a daily note first.");
+      new import_obsidian15.Notice("Open a daily note first.");
       return;
     }
     if (!this.dateFromDailyNoteFile(file)) {
-      new import_obsidian14.Notice("belki could not detect a date from the active note.");
+      new import_obsidian15.Notice("belki could not detect a date from the active note.");
       return;
     }
     const result = await this.ensureDailyNoteCompletedBlock(file);
     if (result === "inserted") {
-      new import_obsidian14.Notice("belki completed tasks block added.");
+      new import_obsidian15.Notice("belki completed tasks block added.");
     } else if (result === "exists") {
-      new import_obsidian14.Notice("This note already has a belki completed tasks block.");
+      new import_obsidian15.Notice("This note already has a belki completed tasks block.");
     }
   }
   async handleDailyNoteFileOpen(file) {
@@ -9475,7 +9478,7 @@ var BelkiPlugin = class extends import_obsidian14.Plugin {
     try {
       await this.store.load();
     } catch (error) {
-      new import_obsidian14.Notice("belki could not initialize task storage. Open the developer console for details.");
+      new import_obsidian15.Notice("belki could not initialize task storage. Open the developer console for details.");
       console.error("[belki] Failed to initialize task storage.", error, {
         dataFolderPath: this.settings.dataFolderPath,
         tasksFilePath: this.settings.tasksFilePath
