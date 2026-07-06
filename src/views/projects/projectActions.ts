@@ -4,13 +4,14 @@ interface ProjectActionsMenuOptions {
   header: HTMLElement;
   isOpen: boolean;
   onToggle: () => void;
+  onClose: () => void;
   onMenuCreated: (menu: HTMLElement) => void;
   onRename: () => void;
   onArchive: () => void;
   onDelete: () => void;
 }
 
-export function renderProjectActionsMenu(options: ProjectActionsMenuOptions): void {
+export function renderProjectActionsMenu(options: ProjectActionsMenuOptions): (() => void) | null {
   const wrapper = options.header.createDiv({ cls: "belki-project-actions-wrap" });
   const button = wrapper.createEl("button", {
     cls: "belki-project-actions-button",
@@ -24,10 +25,12 @@ export function renderProjectActionsMenu(options: ProjectActionsMenuOptions): vo
     options.onToggle();
   });
 
-  if (!options.isOpen) return;
+  if (!options.isOpen) return null;
 
   // Appended to body so Obsidian panel transforms don't trap it.
-  const menu = activeDocument.body.createDiv({ cls: "belki-project-menu" });
+  const ownerDocument = options.header.ownerDocument;
+  const ownerWindow = ownerDocument.defaultView || window;
+  const menu = ownerDocument.body.createDiv({ cls: "belki-project-menu" });
   options.onMenuCreated(menu);
   menu.setCssStyles({ visibility: "hidden" });
 
@@ -61,8 +64,25 @@ export function renderProjectActionsMenu(options: ProjectActionsMenuOptions): vo
     options.onDelete();
   });
 
+  const onDocumentClick = (event: MouseEvent): void => {
+    const target = event.target;
+    if (!(target instanceof ownerWindow.Node)) return;
+    if (button.contains(target) || menu.contains(target)) return;
+    options.onClose();
+  };
+
+  const onDocumentKeyDown = (event: KeyboardEvent): void => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopPropagation();
+    options.onClose();
+  };
+
+  ownerDocument.addEventListener("click", onDocumentClick, true);
+  ownerDocument.addEventListener("keydown", onDocumentKeyDown, true);
+
   // Position after browser layout so getBoundingClientRect returns real values.
-  window.requestAnimationFrame(() => {
+  ownerWindow.requestAnimationFrame(() => {
     if (!menu.isConnected) return;
     const btnRect = button.getBoundingClientRect();
     const margin = 8;
@@ -70,15 +90,15 @@ export function renderProjectActionsMenu(options: ProjectActionsMenuOptions): vo
     const menuH = menu.offsetHeight || 120;
 
     let left = btnRect.left;
-    if (left + menuW > window.innerWidth - margin) {
+    if (left + menuW > ownerWindow.innerWidth - margin) {
       left = btnRect.right - menuW;
     }
-    const fitsBelow = btnRect.bottom + menuH + margin <= window.innerHeight;
+    const fitsBelow = btnRect.bottom + menuH + margin <= ownerWindow.innerHeight;
     const fitsAbove = btnRect.top - menuH - margin >= 0;
     if (!fitsBelow && fitsAbove) {
       menu.setCssStyles({
         left: `${Math.max(margin, left)}px`,
-        bottom: `${window.innerHeight - btnRect.top + 4}px`,
+        bottom: `${ownerWindow.innerHeight - btnRect.top + 4}px`,
         visibility: ""
       });
       menu.addClass("is-open-up");
@@ -91,4 +111,10 @@ export function renderProjectActionsMenu(options: ProjectActionsMenuOptions): vo
       menu.addClass("is-open-down");
     }
   });
+
+  return () => {
+    ownerDocument.removeEventListener("click", onDocumentClick, true);
+    ownerDocument.removeEventListener("keydown", onDocumentKeyDown, true);
+    menu.remove();
+  };
 }

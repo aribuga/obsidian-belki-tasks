@@ -103,6 +103,7 @@ export class TaskBoardView extends ItemView {
   private projectMenuEl: HTMLElement | null = null;
   private labelMenuEl: HTMLElement | null = null;
   private taskActionMenuEl: HTMLElement | null = null;
+  private projectMenuCleanup: (() => void) | null = null;
   private sidebarScrollLeft = 0;
   private pendingScrollSnapshot: { top: number; left: number } | null = null;
   private mobileComposerReturnScroll: { top: number; left: number } | null = null;
@@ -147,7 +148,7 @@ export class TaskBoardView extends ItemView {
 
     if (this.projectActionsOpen !== null) {
       this.stopEscape(event);
-      this.projectActionsOpen = null;
+      this.closeProjectActionsMenu();
       this.render();
       return;
     }
@@ -260,7 +261,12 @@ export class TaskBoardView extends ItemView {
   }
 
   private removeProjectMenu(): void {
-    this.projectMenuEl?.remove();
+    if (this.projectMenuCleanup) {
+      this.projectMenuCleanup();
+      this.projectMenuCleanup = null;
+    } else {
+      this.projectMenuEl?.remove();
+    }
     this.projectMenuEl = null;
   }
 
@@ -1437,12 +1443,15 @@ export class TaskBoardView extends ItemView {
   }
 
   private renderProjectActionsButton(header: HTMLElement, project: string): void {
-    renderProjectActionsMenu({
+    const cleanup = renderProjectActionsMenu({
       header,
       isOpen: this.projectActionsOpen === project,
       onToggle: () => {
         this.projectActionsOpen = this.projectActionsOpen === project ? null : project;
         this.render();
+      },
+      onClose: () => {
+        this.closeProjectActionsMenu();
       },
       onMenuCreated: (menu) => {
         this.projectMenuEl = menu;
@@ -1491,6 +1500,9 @@ export class TaskBoardView extends ItemView {
         }).open();
       }
     });
+    if (cleanup) {
+      this.projectMenuCleanup = cleanup;
+    }
   }
 
   private renderArchivedProjectsView(parent: HTMLElement, allTasks: BelkiTask[]): void {

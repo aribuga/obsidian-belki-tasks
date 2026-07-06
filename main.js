@@ -6441,8 +6441,10 @@ function renderProjectActionsMenu(options) {
     event.stopPropagation();
     options.onToggle();
   });
-  if (!options.isOpen) return;
-  const menu = activeDocument.body.createDiv({ cls: "belki-project-menu" });
+  if (!options.isOpen) return null;
+  const ownerDocument = options.header.ownerDocument;
+  const ownerWindow = ownerDocument.defaultView || window;
+  const menu = ownerDocument.body.createDiv({ cls: "belki-project-menu" });
   options.onMenuCreated(menu);
   menu.setCssStyles({ visibility: "hidden" });
   const renameItem = menu.createEl("button", {
@@ -6472,22 +6474,36 @@ function renderProjectActionsMenu(options) {
     event.stopPropagation();
     options.onDelete();
   });
-  window.requestAnimationFrame(() => {
+  const onDocumentClick = (event) => {
+    const target = event.target;
+    if (!(target instanceof ownerWindow.Node)) return;
+    if (button.contains(target) || menu.contains(target)) return;
+    options.onClose();
+  };
+  const onDocumentKeyDown = (event) => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopPropagation();
+    options.onClose();
+  };
+  ownerDocument.addEventListener("click", onDocumentClick, true);
+  ownerDocument.addEventListener("keydown", onDocumentKeyDown, true);
+  ownerWindow.requestAnimationFrame(() => {
     if (!menu.isConnected) return;
     const btnRect = button.getBoundingClientRect();
     const margin = 8;
     const menuW = menu.offsetWidth || 220;
     const menuH = menu.offsetHeight || 120;
     let left = btnRect.left;
-    if (left + menuW > window.innerWidth - margin) {
+    if (left + menuW > ownerWindow.innerWidth - margin) {
       left = btnRect.right - menuW;
     }
-    const fitsBelow = btnRect.bottom + menuH + margin <= window.innerHeight;
+    const fitsBelow = btnRect.bottom + menuH + margin <= ownerWindow.innerHeight;
     const fitsAbove = btnRect.top - menuH - margin >= 0;
     if (!fitsBelow && fitsAbove) {
       menu.setCssStyles({
         left: `${Math.max(margin, left)}px`,
-        bottom: `${window.innerHeight - btnRect.top + 4}px`,
+        bottom: `${ownerWindow.innerHeight - btnRect.top + 4}px`,
         visibility: ""
       });
       menu.addClass("is-open-up");
@@ -6500,6 +6516,11 @@ function renderProjectActionsMenu(options) {
       menu.addClass("is-open-down");
     }
   });
+  return () => {
+    ownerDocument.removeEventListener("click", onDocumentClick, true);
+    ownerDocument.removeEventListener("keydown", onDocumentKeyDown, true);
+    menu.remove();
+  };
 }
 
 // src/views/TaskBoardView.ts
@@ -6547,6 +6568,7 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
     this.projectMenuEl = null;
     this.labelMenuEl = null;
     this.taskActionMenuEl = null;
+    this.projectMenuCleanup = null;
     this.sidebarScrollLeft = 0;
     this.pendingScrollSnapshot = null;
     this.mobileComposerReturnScroll = null;
@@ -6578,7 +6600,7 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
       }
       if (this.projectActionsOpen !== null) {
         this.stopEscape(event);
-        this.projectActionsOpen = null;
+        this.closeProjectActionsMenu();
         this.render();
         return;
       }
@@ -6670,7 +6692,12 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
   }
   removeProjectMenu() {
     var _a;
-    (_a = this.projectMenuEl) == null ? void 0 : _a.remove();
+    if (this.projectMenuCleanup) {
+      this.projectMenuCleanup();
+      this.projectMenuCleanup = null;
+    } else {
+      (_a = this.projectMenuEl) == null ? void 0 : _a.remove();
+    }
     this.projectMenuEl = null;
   }
   removeLabelMenu() {
@@ -7674,12 +7701,15 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
     this.settings.projectRegistry = [...this.settings.projectRegistry, normalized].sort((a, b) => a.localeCompare(b));
   }
   renderProjectActionsButton(header, project) {
-    renderProjectActionsMenu({
+    const cleanup = renderProjectActionsMenu({
       header,
       isOpen: this.projectActionsOpen === project,
       onToggle: () => {
         this.projectActionsOpen = this.projectActionsOpen === project ? null : project;
         this.render();
+      },
+      onClose: () => {
+        this.closeProjectActionsMenu();
       },
       onMenuCreated: (menu) => {
         this.projectMenuEl = menu;
@@ -7728,6 +7758,9 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
         }).open();
       }
     });
+    if (cleanup) {
+      this.projectMenuCleanup = cleanup;
+    }
   }
   renderArchivedProjectsView(parent, allTasks) {
     const archivedProjects = this.settings.archivedProjects;
