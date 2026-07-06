@@ -6839,12 +6839,14 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
     sidebar.addEventListener("scroll", () => {
       this.sidebarScrollLeft = sidebar.scrollLeft;
     });
-    const sidebarAdd = sidebar.createEl("button", { cls: "belki-add-sidebar" });
-    createBelkiIcon(sidebarAdd, "add", { className: "belki-add-plus", size: 18 });
-    sidebarAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
-    sidebarAdd.addEventListener("click", () => {
-      this.openAddComposer();
-    });
+    if (this.shouldShowContextualAddTask()) {
+      const sidebarAdd = sidebar.createEl("button", { cls: "belki-add-sidebar" });
+      createBelkiIcon(sidebarAdd, "add", { className: "belki-add-plus", size: 18 });
+      sidebarAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
+      sidebarAdd.addEventListener("click", () => {
+        this.openAddComposer();
+      });
+    }
     const tasks = this.store.getTasks();
     const activeTopLevel = this.getActiveTopLevelTasks(tasks);
     const nav = sidebar.createDiv({ cls: "belki-nav" });
@@ -6982,7 +6984,7 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
     }
     const sections = main.createDiv({ cls: "belki-sections" });
     this.renderTaskSections(sections, tasks);
-    if (this.mode === "activity" || this.mode === "daily-note") {
+    if (!this.shouldShowContextualAddTask()) {
       return;
     }
     const addArea = main.createDiv({ cls: "belki-add-area" });
@@ -7007,6 +7009,9 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
     }
   }
   openAddComposer() {
+    if (!this.shouldShowContextualAddTask()) {
+      return;
+    }
     this.sortPopoverOpen = false;
     this.projectActionsOpen = null;
     this.searchOpen = false;
@@ -7040,7 +7045,7 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
       labelColors: this.settings.labelColors,
       projectColors: this.settings.projectColors,
       defaultProject: this.selectedProject || "",
-      defaultDue: this.mode === "today" ? todayIso() : void 0,
+      defaultDue: this.getComposerDefaultDue(),
       onCancel: onClose,
       onEnsureLabel: (label) => {
         this.ensureLabelColor(label);
@@ -7068,7 +7073,7 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
     }
   }
   renderMobileQuickAdd(parent) {
-    if (this.searchOpen) {
+    if (this.searchOpen || !this.shouldShowContextualAddTask()) {
       return;
     }
     if (this.mobileComposerOpen) {
@@ -7099,6 +7104,21 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
     });
     createBelkiIcon(button, "add");
     button.addEventListener("click", () => this.openAddComposer());
+  }
+  shouldShowContextualAddTask() {
+    if (this.mode === "projects") {
+      return Boolean(this.selectedProject);
+    }
+    return this.mode === "inbox" || this.mode === "today" || this.mode === "upcoming";
+  }
+  getComposerDefaultDue() {
+    if (this.mode === "today") {
+      return todayIso();
+    }
+    if (this.mode === "upcoming") {
+      return addDaysIso2(1);
+    }
+    return void 0;
   }
   groupTasks(tasks) {
     const result = /* @__PURE__ */ new Map();
