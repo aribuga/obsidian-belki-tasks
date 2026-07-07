@@ -1637,13 +1637,26 @@ export class TaskDetailModal extends Modal {
       const matches = labels
         .filter((label) => label.includes(query) && !this.draft.labels.includes(label))
         .slice(0, 8);
+      const bindSuggestion = (button: HTMLButtonElement, value: string) => {
+        button.addEventListener("pointerdown", (event) => {
+          if (!Platform.isMobile) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+          addLabel(value);
+        });
+        button.addEventListener("click", () => addLabel(value));
+      };
+
       for (const label of matches) {
         const suggestion = suggestions.createEl("button", {
           cls: "belki-label-suggestion",
           text: displayLabel(label),
           attr: { type: "button" }
         });
-        suggestion.addEventListener("click", () => addLabel(label));
+        bindSuggestion(suggestion, label);
       }
       if (!labels.includes(query) && !this.draft.labels.includes(query)) {
         const create = suggestions.createEl("button", {
@@ -1651,7 +1664,7 @@ export class TaskDetailModal extends Modal {
           text: `Create label: ${displayLabel(query)}`,
           attr: { type: "button" }
         });
-        create.addEventListener("click", () => addLabel(query));
+        bindSuggestion(create, query);
       }
     };
 
