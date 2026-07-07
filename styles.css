@@ -1371,6 +1371,7 @@ button.belki-add-inline {
 }
 
 .belki-label-suggestion:hover,
+.belki-label-suggestion.is-active,
 .belki-selected-label:hover {
   background: var(--belki-hover);
 }

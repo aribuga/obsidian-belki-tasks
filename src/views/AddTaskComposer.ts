@@ -201,7 +201,10 @@ export class AddTaskComposer {
         placeholder: "#label"
       }
     });
-    const labelSuggestions = labelsPanel.createDiv({ cls: "belki-label-suggestions" });
+    const labelSuggestions = labelsPanel.createDiv({
+      cls: "belki-label-suggestions",
+      attr: { role: "listbox" }
+    });
 
     const labelChipsRow = form.createDiv({ cls: "belki-composer-label-chips is-hidden" });
 
@@ -209,6 +212,24 @@ export class AddTaskComposer {
     let closeProjectMenu = () => undefined;
     let closeDueDatePopover: () => void = () => undefined;
     let closeDeadlinePanel: () => void = () => undefined;
+    let activeLabelSuggestionIndex = -1;
+    let labelSuggestionActions: Array<{
+      element: HTMLButtonElement;
+      action: () => void;
+    }> = [];
+
+    const updateActiveLabelSuggestion = () => {
+      labelSuggestionActions.forEach((suggestion, index) => {
+        const isActive = index === activeLabelSuggestionIndex;
+        suggestion.element.toggleClass("is-active", isActive);
+        suggestion.element.setAttr("aria-selected", String(isActive));
+      });
+    };
+
+    const resetActiveLabelSuggestion = () => {
+      activeLabelSuggestionIndex = -1;
+      updateActiveLabelSuggestion();
+    };
 
     const clearOutsideListener = () => {
       detachOutsideListener();
@@ -216,6 +237,7 @@ export class AddTaskComposer {
     };
 
     const closePanels = () => {
+      resetActiveLabelSuggestion();
       labelsPanel.addClass("is-hidden");
       closeDeadlinePanel();
     };
@@ -271,6 +293,7 @@ export class AddTaskComposer {
       const shouldOpen = labelsPanel.hasClass("is-hidden");
       closeComposerPopovers();
       if (shouldOpen) {
+        resetActiveLabelSuggestion();
         labelsPanel.removeClass("is-hidden");
         watchLocalPopover(labelsWrap, labelsPanel, { preferredSide: mobilePanelSide });
         labelInput.focus();
@@ -365,6 +388,7 @@ export class AddTaskComposer {
       const label = normalizeLabelName(value);
       if (!label || selectedLabels.includes(label)) {
         labelInput.value = "";
+        resetActiveLabelSuggestion();
         renderLabels();
         return;
       }
@@ -372,6 +396,7 @@ export class AddTaskComposer {
       selectedLabels = [...selectedLabels, label];
       options.onEnsureLabel(label);
       labelInput.value = "";
+      resetActiveLabelSuggestion();
       renderLabels();
     };
 
@@ -411,6 +436,8 @@ export class AddTaskComposer {
       }
 
       labelSuggestions.empty();
+      labelSuggestionActions = [];
+      activeLabelSuggestionIndex = -1;
       const query = normalizeLabelName(labelInput.value);
       if (!query) {
         labelSuggestions.createDiv({
@@ -424,22 +451,26 @@ export class AddTaskComposer {
         .filter((label) => label.includes(query) && !selectedLabels.includes(label))
         .slice(0, 8);
 
-      for (const label of matches) {
+      const addLabelSuggestion = (text: string, action: () => void) => {
         const suggestion = labelSuggestions.createEl("button", {
           cls: "belki-label-suggestion",
-          text: displayLabel(label),
-          attr: { type: "button" }
+          text,
+          attr: {
+            type: "button",
+            role: "option",
+            "aria-selected": "false"
+          }
         });
-        suggestion.addEventListener("click", () => addLabel(label));
+        suggestion.addEventListener("click", action);
+        labelSuggestionActions.push({ element: suggestion, action });
+      };
+
+      for (const label of matches) {
+        addLabelSuggestion(displayLabel(label), () => addLabel(label));
       }
 
       if (!dedupeLabels(options.labels).includes(query) && !selectedLabels.includes(query)) {
-        const create = labelSuggestions.createEl("button", {
-          cls: "belki-label-suggestion",
-          text: `Create label: ${displayLabel(query)}`,
-          attr: { type: "button" }
-        });
-        create.addEventListener("click", () => addLabel(query));
+        addLabelSuggestion(`Create label: ${displayLabel(query)}`, () => addLabel(query));
       }
     };
 
@@ -453,11 +484,33 @@ export class AddTaskComposer {
       if (labelInput.value && !labelInput.value.startsWith("#")) {
         labelInput.value = `#${labelInput.value}`;
       }
+      resetActiveLabelSuggestion();
       renderLabels();
     });
     labelInput.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        if (labelSuggestionActions.length === 0) {
+          return;
+        }
+
+        event.preventDefault();
+        const direction = event.key === "ArrowDown" ? 1 : -1;
+        activeLabelSuggestionIndex = activeLabelSuggestionIndex === -1
+          ? (direction === 1 ? 0 : labelSuggestionActions.length - 1)
+          : (activeLabelSuggestionIndex + direction + labelSuggestionActions.length) %
+            labelSuggestionActions.length;
+        updateActiveLabelSuggestion();
+        return;
+      }
+
       if (event.key === "Enter") {
         event.preventDefault();
+        const activeSuggestion = labelSuggestionActions[activeLabelSuggestionIndex];
+        if (activeSuggestion) {
+          activeSuggestion.action();
+          return;
+        }
+
         addLabel(labelInput.value);
       }
       if (event.key === "Escape") {
