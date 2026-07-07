@@ -4,6 +4,36 @@ All notable changes to belki are documented here.
 
 ---
 
+## 0.4.1 — 2026-07-07
+
+Patch release with Daily Notes integration, safer contextual task creation, label keyboard improvements, and several consistency fixes.
+
+### Added
+
+- **Daily Note completed-task block** — Add a `belki-completed` code block to a Daily Note to show tasks completed on that note's date. belki reads the note date from the Daily Notes context when possible.
+
+### Improved
+
+- Add task controls are now only shown in views where the created task will remain visible.
+- Adding a task inside a selected project still defaults to that project.
+- Adding from Upcoming now defaults the due date to tomorrow so the task stays visible in Upcoming.
+- Label suggestions in the Add task composer can now be navigated with Arrow Up/Down and selected with Enter.
+- Label suggestion options expose basic listbox/option accessibility attributes.
+
+### Fixed
+
+- Fixed Projects overview showing a misleading Add task action that created an Inbox task and then disappeared from the current view.
+- Fixed sidebar counters counting hidden sub-tasks or archived-project tasks differently from the visible task lists.
+- Fixed mobile task detail label creation requiring a second tap.
+- Fixed project action menus not closing reliably on outside click or Escape.
+
+### Internal
+
+- Extracted board helper logic for maintainability.
+- Extracted project modal classes and project action menu rendering from `TaskBoardView`.
+
+---
+
 ## 0.4.0 — 2026-07-05
 
 This release focuses on project and label management, activity history, faster capture, cleaner navigation, and more useful sub-task visibility.
