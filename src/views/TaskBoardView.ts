@@ -47,6 +47,10 @@ import { renderLinkedText, stripInlineMarkdownPreservingLinks } from "./linkedTe
 import { compareTasksByMode } from "../taskSorting";
 import { CreateProjectModal, DeleteProjectModal, RenameProjectModal } from "./projects/ProjectModals";
 import { renderProjectActionsMenu } from "./projects/projectActions";
+import {
+  openLabelActionsMenu as openLabelActionsMenuElement,
+  renderLabelActionsMenu
+} from "./labels/labelActions";
 
 export const VIEW_TYPE_BELKI = "belki-task-board";
 
@@ -1330,96 +1334,50 @@ export class TaskBoardView extends ItemView {
   }
 
   private renderLabelActionsButton(parent: HTMLElement, label: string, taskCount: number): void {
-    const button = parent.createEl("button", {
-      cls: "belki-label-actions-button",
-      attr: { type: "button", "aria-label": `Actions for ${displayLabel(label)}` }
+    renderLabelActionsMenu({
+      parent,
+      label,
+      isOpen: this.labelActionsOpen === label && !this.labelMenuEl,
+      onToggle: (button) => {
+        if (this.labelActionsOpen === label) {
+          this.closeLabelActionsMenu();
+          return;
+        }
+
+        this.openLabelActionsMenu(button, label, taskCount);
+      },
+      onOpen: (button) => this.openLabelActionsMenu(button, label, taskCount),
+      onRename: () => this.openRenameLabelModal(label),
+      onDelete: () => this.openDeleteLabelModal(label, taskCount)
     });
-    createBelkiIcon(button, "more");
-
-    button.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (this.labelActionsOpen === label) {
-        this.closeLabelActionsMenu();
-        return;
-      }
-
-      this.openLabelActionsMenu(button, label, taskCount);
-    });
-
-    if (this.labelActionsOpen === label && !this.labelMenuEl) {
-      this.openLabelActionsMenu(button, label, taskCount);
-    }
   }
 
   private openLabelActionsMenu(button: HTMLElement, label: string, taskCount: number): void {
     this.removeLabelMenu();
     this.labelActionsOpen = label;
-    const ownerDocument = button.ownerDocument;
-    const ownerWindow = ownerDocument.defaultView || window;
-
-    const menu = ownerDocument.body.createDiv({ cls: "belki-project-menu belki-label-menu" });
-    this.labelMenuEl = menu;
-    menu.setCssStyles({ visibility: "hidden" });
-
-    const renameItem = menu.createEl("button", {
-      cls: "belki-project-option belki-label-option",
-      text: "Rename label",
-      attr: { type: "button" }
+    openLabelActionsMenuElement({
+      button,
+      label,
+      onMenuCreated: (menu) => {
+        this.labelMenuEl = menu;
+      },
+      onRename: () => this.openRenameLabelModal(label),
+      onDelete: () => this.openDeleteLabelModal(label, taskCount)
     });
-    renameItem.addEventListener("click", (event) => {
-      event.stopPropagation();
-      this.closeLabelActionsMenu();
-      new RenameLabelModal(this.app, label, this.getAllLabels(), async (newLabel) => {
-        await this.renameLabel(label, newLabel);
-      }).open();
-    });
+  }
 
-    const deleteItem = menu.createEl("button", {
-      cls: "belki-project-option belki-label-option is-destructive",
-      text: "Delete label",
-      attr: { type: "button" }
-    });
-    deleteItem.addEventListener("click", (event) => {
-      event.stopPropagation();
-      this.closeLabelActionsMenu();
-      new DeleteLabelModal(this.app, label, taskCount, async () => {
-        await this.deleteLabel(label);
-      }).open();
-    });
+  private openRenameLabelModal(label: string): void {
+    this.closeLabelActionsMenu();
+    new RenameLabelModal(this.app, label, this.getAllLabels(), async (newLabel) => {
+      await this.renameLabel(label, newLabel);
+    }).open();
+  }
 
-    ownerWindow.requestAnimationFrame(() => {
-      if (!menu.isConnected) return;
-      const btnRect = button.getBoundingClientRect();
-      const margin = 8;
-      const menuW = menu.offsetWidth || 180;
-      const menuH = menu.offsetHeight || 90;
-
-      let left = btnRect.left;
-      if (left + menuW > ownerWindow.innerWidth - margin) {
-        left = btnRect.right - menuW;
-      }
-      left = Math.min(
-        Math.max(margin, left),
-        Math.max(margin, ownerWindow.innerWidth - menuW - margin)
-      );
-
-      const fitsBelow = btnRect.bottom + menuH + margin <= ownerWindow.innerHeight;
-      const fitsAbove = btnRect.top - menuH - margin >= 0;
-      if (!fitsBelow && fitsAbove) {
-        menu.setCssStyles({
-          left: `${left}px`,
-          bottom: `${ownerWindow.innerHeight - btnRect.top + 4}px`,
-          visibility: ""
-        });
-      } else {
-        menu.setCssStyles({
-          left: `${left}px`,
-          top: `${btnRect.bottom + 4}px`,
-          visibility: ""
-        });
-      }
-    });
+  private openDeleteLabelModal(label: string, taskCount: number): void {
+    this.closeLabelActionsMenu();
+    new DeleteLabelModal(this.app, label, taskCount, async () => {
+      await this.deleteLabel(label);
+    }).open();
   }
 
   private createSection(

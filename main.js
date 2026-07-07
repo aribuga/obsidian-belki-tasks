@@ -6575,6 +6575,76 @@ function renderProjectActionsMenu(options) {
   };
 }
 
+// src/views/labels/labelActions.ts
+function renderLabelActionsMenu(options) {
+  const button = options.parent.createEl("button", {
+    cls: "belki-label-actions-button",
+    attr: { type: "button", "aria-label": `Actions for ${displayLabel(options.label)}` }
+  });
+  createBelkiIcon(button, "more");
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    options.onToggle(button);
+  });
+  if (options.isOpen) options.onOpen(button);
+}
+function openLabelActionsMenu(options) {
+  const ownerDocument = options.button.ownerDocument;
+  const ownerWindow = ownerDocument.defaultView || window;
+  const menu = ownerDocument.body.createDiv({ cls: "belki-project-menu belki-label-menu" });
+  options.onMenuCreated(menu);
+  menu.setCssStyles({ visibility: "hidden" });
+  const renameItem = menu.createEl("button", {
+    cls: "belki-project-option belki-label-option",
+    text: "Rename label",
+    attr: { type: "button" }
+  });
+  renameItem.addEventListener("click", (event) => {
+    event.stopPropagation();
+    options.onRename();
+  });
+  const deleteItem = menu.createEl("button", {
+    cls: "belki-project-option belki-label-option is-destructive",
+    text: "Delete label",
+    attr: { type: "button" }
+  });
+  deleteItem.addEventListener("click", (event) => {
+    event.stopPropagation();
+    options.onDelete();
+  });
+  ownerWindow.requestAnimationFrame(() => {
+    if (!menu.isConnected) return;
+    const btnRect = options.button.getBoundingClientRect();
+    const margin = 8;
+    const menuW = menu.offsetWidth || 180;
+    const menuH = menu.offsetHeight || 90;
+    let left = btnRect.left;
+    if (left + menuW > ownerWindow.innerWidth - margin) {
+      left = btnRect.right - menuW;
+    }
+    left = Math.min(
+      Math.max(margin, left),
+      Math.max(margin, ownerWindow.innerWidth - menuW - margin)
+    );
+    const fitsBelow = btnRect.bottom + menuH + margin <= ownerWindow.innerHeight;
+    const fitsAbove = btnRect.top - menuH - margin >= 0;
+    if (!fitsBelow && fitsAbove) {
+      menu.setCssStyles({
+        left: `${left}px`,
+        bottom: `${ownerWindow.innerHeight - btnRect.top + 4}px`,
+        visibility: ""
+      });
+    } else {
+      menu.setCssStyles({
+        left: `${left}px`,
+        top: `${btnRect.bottom + 4}px`,
+        visibility: ""
+      });
+    }
+  });
+}
+
 // src/views/TaskBoardView.ts
 var VIEW_TYPE_BELKI = "belki-task-board";
 function markdownPreviewText(text) {
@@ -7657,86 +7727,46 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
     this.renderLabelActionsButton(row, label, count);
   }
   renderLabelActionsButton(parent, label, taskCount) {
-    const button = parent.createEl("button", {
-      cls: "belki-label-actions-button",
-      attr: { type: "button", "aria-label": `Actions for ${displayLabel(label)}` }
+    renderLabelActionsMenu({
+      parent,
+      label,
+      isOpen: this.labelActionsOpen === label && !this.labelMenuEl,
+      onToggle: (button) => {
+        if (this.labelActionsOpen === label) {
+          this.closeLabelActionsMenu();
+          return;
+        }
+        this.openLabelActionsMenu(button, label, taskCount);
+      },
+      onOpen: (button) => this.openLabelActionsMenu(button, label, taskCount),
+      onRename: () => this.openRenameLabelModal(label),
+      onDelete: () => this.openDeleteLabelModal(label, taskCount)
     });
-    createBelkiIcon(button, "more");
-    button.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (this.labelActionsOpen === label) {
-        this.closeLabelActionsMenu();
-        return;
-      }
-      this.openLabelActionsMenu(button, label, taskCount);
-    });
-    if (this.labelActionsOpen === label && !this.labelMenuEl) {
-      this.openLabelActionsMenu(button, label, taskCount);
-    }
   }
   openLabelActionsMenu(button, label, taskCount) {
     this.removeLabelMenu();
     this.labelActionsOpen = label;
-    const ownerDocument = button.ownerDocument;
-    const ownerWindow = ownerDocument.defaultView || window;
-    const menu = ownerDocument.body.createDiv({ cls: "belki-project-menu belki-label-menu" });
-    this.labelMenuEl = menu;
-    menu.setCssStyles({ visibility: "hidden" });
-    const renameItem = menu.createEl("button", {
-      cls: "belki-project-option belki-label-option",
-      text: "Rename label",
-      attr: { type: "button" }
+    openLabelActionsMenu({
+      button,
+      label,
+      onMenuCreated: (menu) => {
+        this.labelMenuEl = menu;
+      },
+      onRename: () => this.openRenameLabelModal(label),
+      onDelete: () => this.openDeleteLabelModal(label, taskCount)
     });
-    renameItem.addEventListener("click", (event) => {
-      event.stopPropagation();
-      this.closeLabelActionsMenu();
-      new RenameLabelModal(this.app, label, this.getAllLabels(), async (newLabel) => {
-        await this.renameLabel(label, newLabel);
-      }).open();
-    });
-    const deleteItem = menu.createEl("button", {
-      cls: "belki-project-option belki-label-option is-destructive",
-      text: "Delete label",
-      attr: { type: "button" }
-    });
-    deleteItem.addEventListener("click", (event) => {
-      event.stopPropagation();
-      this.closeLabelActionsMenu();
-      new DeleteLabelModal(this.app, label, taskCount, async () => {
-        await this.deleteLabel(label);
-      }).open();
-    });
-    ownerWindow.requestAnimationFrame(() => {
-      if (!menu.isConnected) return;
-      const btnRect = button.getBoundingClientRect();
-      const margin = 8;
-      const menuW = menu.offsetWidth || 180;
-      const menuH = menu.offsetHeight || 90;
-      let left = btnRect.left;
-      if (left + menuW > ownerWindow.innerWidth - margin) {
-        left = btnRect.right - menuW;
-      }
-      left = Math.min(
-        Math.max(margin, left),
-        Math.max(margin, ownerWindow.innerWidth - menuW - margin)
-      );
-      const fitsBelow = btnRect.bottom + menuH + margin <= ownerWindow.innerHeight;
-      const fitsAbove = btnRect.top - menuH - margin >= 0;
-      if (!fitsBelow && fitsAbove) {
-        menu.setCssStyles({
-          left: `${left}px`,
-          bottom: `${ownerWindow.innerHeight - btnRect.top + 4}px`,
-          visibility: ""
-        });
-      } else {
-        menu.setCssStyles({
-          left: `${left}px`,
-          top: `${btnRect.bottom + 4}px`,
-          visibility: ""
-        });
-      }
-    });
+  }
+  openRenameLabelModal(label) {
+    this.closeLabelActionsMenu();
+    new RenameLabelModal(this.app, label, this.getAllLabels(), async (newLabel) => {
+      await this.renameLabel(label, newLabel);
+    }).open();
+  }
+  openDeleteLabelModal(label, taskCount) {
+    this.closeLabelActionsMenu();
+    new DeleteLabelModal(this.app, label, taskCount, async () => {
+      await this.deleteLabel(label);
+    }).open();
   }
   createSection(parent, title, count, renderHeaderAction) {
     const section = parent.createDiv({ cls: "belki-section" });
