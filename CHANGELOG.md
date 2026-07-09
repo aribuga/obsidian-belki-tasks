@@ -4,6 +4,22 @@ All notable changes to belki are documented here.
 
 ---
 
+## 0.4.2 — 2026-07-08
+
+Patch release focused on iPadOS layout stability and a small internal cleanup.
+
+### Fixed
+
+- Fixed task completion circles stretching into pill-shaped checkboxes on iPadOS/mobile Obsidian panes wider than the narrow-phone breakpoint.
+- Mobile/tablet task layout now also follows the `.is-mobile` state set by the plugin, instead of relying only on viewport width.
+- Tightened task and sub-task checkbox sizing so they remain round and do not overlap task text.
+
+### Internal
+
+- Extracted label action menu rendering from `TaskBoardView` for maintainability.
+
+---
+
 ## 0.4.1 — 2026-07-07
 
 Patch release with Daily Notes integration, safer contextual task creation, label keyboard improvements, and several consistency fixes.
