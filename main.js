@@ -6645,6 +6645,112 @@ function openLabelActionsMenu(options) {
   });
 }
 
+// src/views/filters/FiltersAndLabelsView.ts
+function renderFiltersAndLabelsView(options) {
+  if (options.activeFilter) {
+    const definition = options.filterDefinitions.find(
+      (filter) => filter.id === options.activeFilter
+    );
+    const tasks = definition ? options.sortTasks(definition.tasks) : [];
+    const section = options.createSection(
+      options.parent,
+      (definition == null ? void 0 : definition.name) || "Filter",
+      tasks.length
+    );
+    renderBackToFilters(section, options.onBackToFilters);
+    options.renderTaskList(section, tasks);
+    return;
+  }
+  if (options.activeLabel) {
+    const label = options.activeLabel;
+    const tasks = options.sortTasks(
+      options.activeFilterTasks.filter((task) => task.labels.includes(label))
+    );
+    const section = options.createSection(options.parent, displayLabel(label), tasks.length);
+    renderBackToFilters(section, options.onBackToFilters);
+    options.renderTaskList(section, tasks);
+    return;
+  }
+  const filtersSection = options.parent.createDiv({ cls: "belki-filter-section" });
+  filtersSection.createEl("h2", { text: "My Filters" });
+  const filterList = filtersSection.createDiv({ cls: "belki-filter-list" });
+  for (const filter of options.filterDefinitions) {
+    renderFilterRow(filterList, filter.name, filter.count, filter.icon, () => {
+      options.onSelectFilter(filter.id);
+    });
+  }
+  const labelsSection = options.parent.createDiv({ cls: "belki-filter-section" });
+  const labelsHeader = labelsSection.createDiv({ cls: "belki-labels-header" });
+  labelsHeader.createEl("h2", { text: "Labels" });
+  const labelAddButton = labelsHeader.createEl("button", {
+    cls: "belki-label-add",
+    attr: { type: "button", "aria-label": "Create label" }
+  });
+  createBelkiIcon(labelAddButton, "add");
+  labelAddButton.addEventListener("click", () => {
+    options.onCreateLabel();
+  });
+  const labelList = labelsSection.createDiv({ cls: "belki-filter-list" });
+  if (options.labels.length === 0) {
+    labelList.createDiv({ cls: "belki-empty belki-empty-small", text: "No labels yet." });
+    return;
+  }
+  for (const label of options.labels) {
+    const count = options.activeFilterTasks.filter((task) => task.labels.includes(label)).length;
+    renderLabelRow(labelList, label, count, options);
+  }
+}
+function renderBackToFilters(parent, onClick) {
+  parent.createEl("button", { cls: "belki-back-button", text: "Back to Filters & Labels" }).addEventListener("click", onClick);
+}
+function renderFilterRow(parent, name, count, icon, onClick, color) {
+  const row = parent.createEl("button", { cls: "belki-filter-row", attr: { type: "button" } });
+  row.toggleClass("belki-label-row", Boolean(color));
+  const dot = row.createSpan({ cls: "belki-filter-dot" });
+  if (color) {
+    dot.addClass("belki-label-dot");
+    dot.setCssStyles({ backgroundColor: color });
+  } else if (icon) {
+    createBelkiIcon(dot, icon);
+  }
+  row.createSpan({ cls: "belki-filter-name", text: name });
+  row.createSpan({ cls: "belki-row-count", text: String(count) });
+  row.addEventListener("click", onClick);
+}
+function renderLabelRow(parent, label, count, options) {
+  const color = getLabelColor(label, options.labelColors).regular;
+  const row = parent.createDiv({ cls: "belki-filter-row belki-label-row belki-filter-row-with-actions" });
+  const main = row.createEl("button", {
+    cls: "belki-filter-row-main",
+    attr: { type: "button" }
+  });
+  const dot = main.createSpan({ cls: "belki-filter-dot belki-label-dot" });
+  dot.setCssStyles({ backgroundColor: color });
+  main.createSpan({ cls: "belki-filter-name", text: displayLabel(label) });
+  main.createSpan({ cls: "belki-row-count", text: String(count) });
+  main.addEventListener("click", () => {
+    options.onSelectLabel(label);
+  });
+  renderLabelActionsButton(row, label, count, options);
+}
+function renderLabelActionsButton(parent, label, taskCount, options) {
+  renderLabelActionsMenu({
+    parent,
+    label,
+    isOpen: options.labelActionsOpen === label && !options.hasLabelMenu,
+    onToggle: (button) => {
+      if (options.labelActionsOpen === label) {
+        options.onCloseLabelActions();
+        return;
+      }
+      options.onOpenLabelActions(button, label, taskCount);
+    },
+    onOpen: (button) => options.onOpenLabelActions(button, label, taskCount),
+    onRename: () => options.onRenameLabel(label),
+    onDelete: () => options.onDeleteLabel(label, taskCount)
+  });
+}
+
 // src/views/tasks/taskActions.ts
 function renderTaskActions(options) {
   const actions = options.row.createDiv({ cls: "belki-task-actions" });
@@ -7737,113 +7843,42 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
     return data;
   }
   renderFiltersAndLabels(parent, allTasks) {
-    if (this.activeFilter) {
-      const definition = this.getFilterDefinitions(allTasks).find(
-        (filter) => filter.id === this.activeFilter
-      );
-      const tasks = definition ? this.sortTasks(definition.tasks) : [];
-      const section = this.createSection(parent, (definition == null ? void 0 : definition.name) || "Filter", tasks.length);
-      this.renderBackToFilters(section);
-      this.renderTaskList(section, tasks);
-      return;
-    }
-    if (this.activeLabel) {
-      const label = this.activeLabel;
-      const tasks = this.sortTasks(
-        this.getActiveFilterTasks(allTasks).filter((task) => task.labels.includes(label))
-      );
-      const section = this.createSection(parent, displayLabel(label), tasks.length);
-      this.renderBackToFilters(section);
-      this.renderTaskList(section, tasks);
-      return;
-    }
-    const filtersSection = parent.createDiv({ cls: "belki-filter-section" });
-    filtersSection.createEl("h2", { text: "My Filters" });
-    const filterList = filtersSection.createDiv({ cls: "belki-filter-list" });
-    for (const filter of this.getFilterDefinitions(allTasks)) {
-      this.renderFilterRow(filterList, filter.name, filter.count, filter.icon, () => {
-        this.activeFilter = filter.id;
+    renderFiltersAndLabelsView({
+      parent,
+      activeFilter: this.activeFilter,
+      activeLabel: this.activeLabel,
+      filterDefinitions: this.getFilterDefinitions(allTasks),
+      activeFilterTasks: this.getActiveFilterTasks(allTasks),
+      labels: this.getAllLabels(),
+      labelColors: this.settings.labelColors,
+      labelActionsOpen: this.labelActionsOpen,
+      hasLabelMenu: Boolean(this.labelMenuEl),
+      sortTasks: (tasks) => this.sortTasks(tasks),
+      createSection: (sectionParent, title, count) => this.createSection(sectionParent, title, count),
+      renderTaskList: (section, tasks) => this.renderTaskList(section, tasks),
+      onBackToFilters: () => {
+        this.activeFilter = null;
         this.activeLabel = null;
         this.render();
-      });
-    }
-    const labelsSection = parent.createDiv({ cls: "belki-filter-section" });
-    const labelsHeader = labelsSection.createDiv({ cls: "belki-labels-header" });
-    labelsHeader.createEl("h2", { text: "Labels" });
-    const labelAddButton = labelsHeader.createEl("button", {
-      cls: "belki-label-add",
-      attr: { type: "button", "aria-label": "Create label" }
-    });
-    createBelkiIcon(labelAddButton, "add");
-    labelAddButton.addEventListener("click", () => {
-      this.createLabelFromPrompt();
-    });
-    const labelList = labelsSection.createDiv({ cls: "belki-filter-list" });
-    const labels = this.getAllLabels();
-    if (labels.length === 0) {
-      labelList.createDiv({ cls: "belki-empty belki-empty-small", text: "No labels yet." });
-      return;
-    }
-    for (const label of labels) {
-      const count = this.getActiveFilterTasks(allTasks).filter((task) => task.labels.includes(label)).length;
-      this.renderLabelRow(labelList, label, count);
-    }
-  }
-  renderBackToFilters(parent) {
-    parent.createEl("button", { cls: "belki-back-button", text: "Back to Filters & Labels" }).addEventListener("click", () => {
-      this.activeFilter = null;
-      this.activeLabel = null;
-      this.render();
-    });
-  }
-  renderFilterRow(parent, name, count, icon, onClick, color) {
-    const row = parent.createEl("button", { cls: "belki-filter-row", attr: { type: "button" } });
-    row.toggleClass("belki-label-row", Boolean(color));
-    const dot = row.createSpan({ cls: "belki-filter-dot" });
-    if (color) {
-      dot.addClass("belki-label-dot");
-      dot.setCssStyles({ backgroundColor: color });
-    } else if (icon) {
-      createBelkiIcon(dot, icon);
-    }
-    row.createSpan({ cls: "belki-filter-name", text: name });
-    row.createSpan({ cls: "belki-row-count", text: String(count) });
-    row.addEventListener("click", onClick);
-  }
-  renderLabelRow(parent, label, count) {
-    const color = getLabelColor(label, this.settings.labelColors).regular;
-    const row = parent.createDiv({ cls: "belki-filter-row belki-label-row belki-filter-row-with-actions" });
-    const main = row.createEl("button", {
-      cls: "belki-filter-row-main",
-      attr: { type: "button" }
-    });
-    const dot = main.createSpan({ cls: "belki-filter-dot belki-label-dot" });
-    dot.setCssStyles({ backgroundColor: color });
-    main.createSpan({ cls: "belki-filter-name", text: displayLabel(label) });
-    main.createSpan({ cls: "belki-row-count", text: String(count) });
-    main.addEventListener("click", () => {
-      this.activeLabel = label;
-      this.activeFilter = null;
-      this.closeLabelActionsMenu();
-      this.render();
-    });
-    this.renderLabelActionsButton(row, label, count);
-  }
-  renderLabelActionsButton(parent, label, taskCount) {
-    renderLabelActionsMenu({
-      parent,
-      label,
-      isOpen: this.labelActionsOpen === label && !this.labelMenuEl,
-      onToggle: (button) => {
-        if (this.labelActionsOpen === label) {
-          this.closeLabelActionsMenu();
-          return;
-        }
+      },
+      onSelectFilter: (filterId) => {
+        this.activeFilter = filterId;
+        this.activeLabel = null;
+        this.render();
+      },
+      onSelectLabel: (label) => {
+        this.activeLabel = label;
+        this.activeFilter = null;
+        this.closeLabelActionsMenu();
+        this.render();
+      },
+      onCreateLabel: () => this.createLabelFromPrompt(),
+      onOpenLabelActions: (button, label, taskCount) => {
         this.openLabelActionsMenu(button, label, taskCount);
       },
-      onOpen: (button) => this.openLabelActionsMenu(button, label, taskCount),
-      onRename: () => this.openRenameLabelModal(label),
-      onDelete: () => this.openDeleteLabelModal(label, taskCount)
+      onCloseLabelActions: () => this.closeLabelActionsMenu(),
+      onRenameLabel: (label) => this.openRenameLabelModal(label),
+      onDeleteLabel: (label, taskCount) => this.openDeleteLabelModal(label, taskCount)
     });
   }
   openLabelActionsMenu(button, label, taskCount) {
