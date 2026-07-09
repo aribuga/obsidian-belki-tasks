@@ -6645,6 +6645,109 @@ function openLabelActionsMenu(options) {
   });
 }
 
+// src/views/tasks/taskActions.ts
+function renderTaskActions(options) {
+  const actions = options.row.createDiv({ cls: "belki-task-actions" });
+  const actionButton = actions.createEl("button", {
+    cls: "belki-task-actions-button",
+    attr: {
+      type: "button",
+      "aria-label": "Task actions"
+    }
+  });
+  createBelkiIcon(actionButton, "more");
+  actionButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    options.onOpenMenu(actionButton);
+  });
+  const deleteButton = actions.createEl("button", {
+    cls: "belki-task-delete",
+    attr: {
+      type: "button",
+      "aria-label": "Delete task"
+    }
+  });
+  createBelkiIcon(deleteButton, "delete");
+  deleteButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    options.onDelete();
+  });
+}
+function renderTaskActionMenu(options) {
+  const menu = options.container.createDiv({ cls: "belki-task-action-menu" });
+  menu.addEventListener("click", (event) => event.stopPropagation());
+  if (!options.task.completed && options.task.due !== todayIso()) {
+    createTaskActionMenuButton(menu, "Move to Today", () => {
+      options.onMoveDue(todayIso());
+    });
+  }
+  const tomorrow = addDaysIso(1);
+  if (!options.task.completed && options.task.due !== tomorrow) {
+    createTaskActionMenuButton(menu, "Move to Tomorrow", () => {
+      options.onMoveDue(tomorrow);
+    });
+  }
+  if (!options.task.completed) {
+    const pickDateItem = menu.createEl("label", { cls: "belki-task-action-menu-item" });
+    pickDateItem.createSpan({ text: "Pick date" });
+    const dateInput = pickDateItem.createEl("input", {
+      cls: "belki-task-action-date-input",
+      attr: {
+        type: "date",
+        value: options.task.due || todayIso(),
+        "aria-label": "Pick task date"
+      }
+    });
+    dateInput.addEventListener("click", (event) => event.stopPropagation());
+    dateInput.addEventListener("change", () => {
+      options.onMoveDue(dateInput.value || void 0);
+    });
+  }
+  if (!options.task.completed && options.task.due) {
+    createTaskActionMenuButton(menu, "Clear date", () => {
+      options.onMoveDue(void 0);
+    });
+  }
+  createTaskActionMenuButton(menu, "Delete task", () => {
+    options.onDelete();
+  });
+  positionTaskActionMenu(menu, options.trigger);
+  return menu;
+}
+function positionTaskActionMenu(menu, trigger) {
+  const ownerWindow = menu.ownerDocument.defaultView || window;
+  const rect = trigger.getBoundingClientRect();
+  const margin = 12;
+  const gap = 6;
+  const menuWidth = menu.offsetWidth || 170;
+  const menuHeight = menu.offsetHeight || 180;
+  const maxLeft = ownerWindow.innerWidth - menuWidth - margin;
+  const left = Math.min(Math.max(margin, rect.right - menuWidth), Math.max(margin, maxLeft));
+  let top = rect.bottom + gap;
+  if (top + menuHeight > ownerWindow.innerHeight - margin) {
+    top = rect.top - menuHeight - gap;
+  }
+  if (top < margin) {
+    top = margin;
+  }
+  menu.setCssStyles({
+    left: `${left}px`,
+    top: `${top}px`
+  });
+}
+function createTaskActionMenuButton(parent, label, onClick) {
+  parent.createEl("button", {
+    cls: "belki-task-action-menu-item",
+    text: label,
+    attr: { type: "button" }
+  }).addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onClick();
+  });
+}
+
 // src/views/TaskBoardView.ts
 var VIEW_TYPE_BELKI = "belki-task-board";
 function markdownPreviewText(text) {
@@ -8241,37 +8344,15 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
       projectChip.createSpan({ cls: "belki-project-dot" }).setCssStyles({ backgroundColor: projectColor.regular });
       projectChip.createSpan({ text: project });
     }
-    const actions = row.createDiv({ cls: "belki-task-actions" });
-    const actionButton = actions.createEl("button", {
-      cls: "belki-task-actions-button",
-      attr: {
-        type: "button",
-        "aria-label": "Task actions"
+    renderTaskActions({
+      row,
+      task,
+      onOpenMenu: (button) => {
+        this.toggleTaskActionMenu(task, button);
+      },
+      onDelete: () => {
+        void this.store.deleteTask(task.id);
       }
-    });
-    createBelkiIcon(actionButton, "more");
-    actionButton.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const wasOpen = this.taskActionsOpenId === task.id;
-      this.removeTaskActionMenu();
-      if (wasOpen) {
-        return;
-      }
-      this.taskActionsOpenId = task.id;
-      this.taskActionMenuEl = this.renderTaskActionMenu(task, actionButton);
-    });
-    const deleteButton = actions.createEl("button", {
-      cls: "belki-task-delete",
-      attr: {
-        type: "button",
-        "aria-label": "Delete task"
-      }
-    });
-    createBelkiIcon(deleteButton, "delete");
-    deleteButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      void this.store.deleteTask(task.id);
     });
   }
   toggleSubtaskPreview(taskId, item, subTasks) {
@@ -8379,78 +8460,24 @@ var TaskBoardView = class extends import_obsidian12.ItemView {
       textEl.textContent = `${done}/${total}`;
     }
   }
-  renderTaskActionMenu(task, trigger) {
-    const menu = this.containerEl.createDiv({ cls: "belki-task-action-menu" });
-    menu.addEventListener("click", (event) => event.stopPropagation());
-    if (!task.completed && task.due !== todayIso()) {
-      this.createTaskActionMenuButton(menu, "Move to Today", () => {
-        this.moveTaskDue(task, todayIso());
-      });
+  toggleTaskActionMenu(task, trigger) {
+    const wasOpen = this.taskActionsOpenId === task.id;
+    this.removeTaskActionMenu();
+    if (wasOpen) {
+      return;
     }
-    const tomorrow = addDaysIso2(1);
-    if (!task.completed && task.due !== tomorrow) {
-      this.createTaskActionMenuButton(menu, "Move to Tomorrow", () => {
-        this.moveTaskDue(task, tomorrow);
-      });
-    }
-    if (!task.completed) {
-      const pickDateItem = menu.createEl("label", { cls: "belki-task-action-menu-item" });
-      pickDateItem.createSpan({ text: "Pick date" });
-      const dateInput = pickDateItem.createEl("input", {
-        cls: "belki-task-action-date-input",
-        attr: {
-          type: "date",
-          value: task.due || todayIso(),
-          "aria-label": "Pick task date"
-        }
-      });
-      dateInput.addEventListener("click", (event) => event.stopPropagation());
-      dateInput.addEventListener("change", () => {
-        this.moveTaskDue(task, dateInput.value || void 0);
-      });
-    }
-    if (!task.completed && task.due) {
-      this.createTaskActionMenuButton(menu, "Clear date", () => {
-        this.moveTaskDue(task, void 0);
-      });
-    }
-    this.createTaskActionMenuButton(menu, "Delete task", () => {
-      this.removeTaskActionMenu();
-      void this.store.deleteTask(task.id);
-    });
-    this.positionTaskActionMenu(menu, trigger);
-    return menu;
-  }
-  positionTaskActionMenu(menu, trigger) {
-    const ownerWindow = this.containerEl.ownerDocument.defaultView || window;
-    const rect = trigger.getBoundingClientRect();
-    const margin = 12;
-    const gap = 6;
-    const menuWidth = menu.offsetWidth || 170;
-    const menuHeight = menu.offsetHeight || 180;
-    const maxLeft = ownerWindow.innerWidth - menuWidth - margin;
-    let left = Math.min(Math.max(margin, rect.right - menuWidth), Math.max(margin, maxLeft));
-    let top = rect.bottom + gap;
-    if (top + menuHeight > ownerWindow.innerHeight - margin) {
-      top = rect.top - menuHeight - gap;
-    }
-    if (top < margin) {
-      top = margin;
-    }
-    menu.setCssStyles({
-      left: `${left}px`,
-      top: `${top}px`
-    });
-  }
-  createTaskActionMenuButton(parent, label, onClick) {
-    parent.createEl("button", {
-      cls: "belki-task-action-menu-item",
-      text: label,
-      attr: { type: "button" }
-    }).addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      onClick();
+    this.taskActionsOpenId = task.id;
+    this.taskActionMenuEl = renderTaskActionMenu({
+      container: this.containerEl,
+      task,
+      trigger,
+      onMoveDue: (due) => {
+        this.moveTaskDue(task, due);
+      },
+      onDelete: () => {
+        this.removeTaskActionMenu();
+        void this.store.deleteTask(task.id);
+      }
     });
   }
   moveTaskDue(task, due) {
