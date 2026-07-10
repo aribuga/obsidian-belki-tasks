@@ -4362,6 +4362,96 @@ var ImagePreviewModal = class extends import_obsidian9.Modal {
   }
 };
 
+// src/views/task-detail/descriptionFormatting.ts
+function formatDescriptionMarkdown(value, selectionStart, selectionEnd, action) {
+  switch (action) {
+    case "bold":
+      return wrapSelection(value, selectionStart, selectionEnd, "**", "**", "bold text");
+    case "italic":
+      return wrapSelection(value, selectionStart, selectionEnd, "*", "*", "italic text");
+    case "strike":
+      return wrapSelection(value, selectionStart, selectionEnd, "~~", "~~", "struck text");
+    case "inline-code":
+      return wrapSelection(value, selectionStart, selectionEnd, "`", "`", "code");
+    case "code-block":
+      return wrapSelection(value, selectionStart, selectionEnd, "```\n", "\n```", "code");
+    case "link":
+      return formatMarkdownLink(value, selectionStart, selectionEnd);
+    case "quote":
+      return formatSelectedLines(
+        value,
+        selectionStart,
+        selectionEnd,
+        (line) => `> ${line.replace(/^>\s?/, "")}`
+      );
+    case "bullet-list":
+      return formatSelectedLines(
+        value,
+        selectionStart,
+        selectionEnd,
+        (line) => `- ${stripListMarker(line) || "List item"}`
+      );
+    case "numbered-list":
+      return formatSelectedLines(
+        value,
+        selectionStart,
+        selectionEnd,
+        (line, index) => `${index + 1}. ${stripListMarker(line) || "List item"}`
+      );
+  }
+}
+function wrapSelection(value, selectionStart, selectionEnd, prefix, suffix, placeholder) {
+  const selected = value.slice(selectionStart, selectionEnd);
+  const content = selected || placeholder;
+  const replacement = `${prefix}${content}${suffix}`;
+  const nextValue = replaceRange(value, selectionStart, selectionEnd, replacement);
+  const innerStart = selectionStart + prefix.length;
+  return {
+    value: nextValue,
+    selectionStart: innerStart,
+    selectionEnd: innerStart + content.length
+  };
+}
+function formatMarkdownLink(value, selectionStart, selectionEnd) {
+  const selected = value.slice(selectionStart, selectionEnd) || "link text";
+  const replacement = `[${selected}](url)`;
+  const nextValue = replaceRange(value, selectionStart, selectionEnd, replacement);
+  const urlStart = selectionStart + selected.length + 3;
+  return {
+    value: nextValue,
+    selectionStart: urlStart,
+    selectionEnd: urlStart + 3
+  };
+}
+function formatSelectedLines(value, selectionStart, selectionEnd, transform) {
+  const collapsed = selectionStart === selectionEnd;
+  const effectiveEnd = selectionEnd > selectionStart && value[selectionEnd - 1] === "\n" ? selectionEnd - 1 : selectionEnd;
+  const lineStart = value.lastIndexOf("\n", Math.max(0, selectionStart - 1)) + 1;
+  const nextLineBreak = value.indexOf("\n", effectiveEnd);
+  const lineEnd = nextLineBreak === -1 ? value.length : nextLineBreak;
+  const block = collapsed ? "" : value.slice(lineStart, lineEnd);
+  const lines = block ? block.split("\n") : [""];
+  const replacement = lines.map(transform).join("\n");
+  const nextValue = replaceRange(
+    value,
+    collapsed ? selectionStart : lineStart,
+    collapsed ? selectionEnd : lineEnd,
+    replacement
+  );
+  const replacementStart = collapsed ? selectionStart : lineStart;
+  return {
+    value: nextValue,
+    selectionStart: replacementStart,
+    selectionEnd: replacementStart + replacement.length
+  };
+}
+function replaceRange(value, start, end, replacement) {
+  return `${value.slice(0, start)}${replacement}${value.slice(end)}`;
+}
+function stripListMarker(line) {
+  return line.replace(/^\s*(?:[-*+]|\d+\.)\s+/, "");
+}
+
 // src/views/TaskDetailModal.ts
 var DESCRIPTION_FORMAT_ACTIONS = [
   { id: "bold", label: "B", title: "Bold" },
@@ -5943,89 +6033,6 @@ function renderCustomDatePicker(parent, currentValue, _iconName, onSelect) {
     calWrap.toggleClass("is-hidden", !opening);
     if (opening) renderCal();
   });
-}
-function formatDescriptionMarkdown(value, selectionStart, selectionEnd, action) {
-  switch (action) {
-    case "bold":
-      return wrapSelection(value, selectionStart, selectionEnd, "**", "**", "bold text");
-    case "italic":
-      return wrapSelection(value, selectionStart, selectionEnd, "*", "*", "italic text");
-    case "strike":
-      return wrapSelection(value, selectionStart, selectionEnd, "~~", "~~", "struck text");
-    case "inline-code":
-      return wrapSelection(value, selectionStart, selectionEnd, "`", "`", "code");
-    case "code-block":
-      return wrapSelection(value, selectionStart, selectionEnd, "```\n", "\n```", "code");
-    case "link":
-      return formatMarkdownLink(value, selectionStart, selectionEnd);
-    case "quote":
-      return formatSelectedLines(
-        value,
-        selectionStart,
-        selectionEnd,
-        (line) => `> ${line.replace(/^>\s?/, "")}`
-      );
-    case "bullet-list":
-      return formatSelectedLines(
-        value,
-        selectionStart,
-        selectionEnd,
-        (line) => `- ${stripListMarker(line) || "List item"}`
-      );
-    case "numbered-list":
-      return formatSelectedLines(
-        value,
-        selectionStart,
-        selectionEnd,
-        (line, index) => `${index + 1}. ${stripListMarker(line) || "List item"}`
-      );
-  }
-}
-function wrapSelection(value, selectionStart, selectionEnd, prefix, suffix, placeholder) {
-  const selected = value.slice(selectionStart, selectionEnd);
-  const content = selected || placeholder;
-  const replacement = `${prefix}${content}${suffix}`;
-  const nextValue = replaceRange(value, selectionStart, selectionEnd, replacement);
-  const innerStart = selectionStart + prefix.length;
-  return {
-    value: nextValue,
-    selectionStart: innerStart,
-    selectionEnd: innerStart + content.length
-  };
-}
-function formatMarkdownLink(value, selectionStart, selectionEnd) {
-  const selected = value.slice(selectionStart, selectionEnd) || "link text";
-  const replacement = `[${selected}](url)`;
-  const nextValue = replaceRange(value, selectionStart, selectionEnd, replacement);
-  const urlStart = selectionStart + selected.length + 3;
-  return {
-    value: nextValue,
-    selectionStart: urlStart,
-    selectionEnd: urlStart + 3
-  };
-}
-function formatSelectedLines(value, selectionStart, selectionEnd, transform) {
-  const collapsed = selectionStart === selectionEnd;
-  const effectiveEnd = selectionEnd > selectionStart && value[selectionEnd - 1] === "\n" ? selectionEnd - 1 : selectionEnd;
-  const lineStart = value.lastIndexOf("\n", Math.max(0, selectionStart - 1)) + 1;
-  const nextLineBreak = value.indexOf("\n", effectiveEnd);
-  const lineEnd = nextLineBreak === -1 ? value.length : nextLineBreak;
-  const block = collapsed ? "" : value.slice(lineStart, lineEnd);
-  const lines = block ? block.split("\n") : [""];
-  const replacement = lines.map(transform).join("\n");
-  const nextValue = replaceRange(value, collapsed ? selectionStart : lineStart, collapsed ? selectionEnd : lineEnd, replacement);
-  const replacementStart = collapsed ? selectionStart : lineStart;
-  return {
-    value: nextValue,
-    selectionStart: replacementStart,
-    selectionEnd: replacementStart + replacement.length
-  };
-}
-function replaceRange(value, start, end, replacement) {
-  return `${value.slice(0, start)}${replacement}${value.slice(end)}`;
-}
-function stripListMarker(line) {
-  return line.replace(/^\s*(?:[-*+]|\d+\.)\s+/, "");
 }
 function getTextareaSelectionAnchor(textarea) {
   const doc = textarea.ownerDocument;
