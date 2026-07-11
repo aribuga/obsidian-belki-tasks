@@ -1,7 +1,7 @@
 import { App, Notice, Platform } from "obsidian";
 import { CreateTaskInput, PRIORITIES, Priority, RepeatRule } from "../types";
-import { getLabelColor, getProjectColor } from "../colors";
-import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
+import { getProjectColor } from "../colors";
+import { dedupeLabels } from "../labels";
 import {
   getPriorityColor,
   getPriorityDisplayLabel,
@@ -17,6 +17,8 @@ import { attachQuickAddAutocomplete, parseQuickAddTokens } from "./quickAddAutoc
 import { createBelkiActionRow, createBelkiButton } from "../ui";
 import { createBelkiIcon } from "../ui/components/BelkiIcon";
 import { renderComposerAttachments } from "./composer/ComposerAttachments";
+import { renderComposerLabels } from "./composer/ComposerLabels";
+import type { ComposerLabelsController } from "./composer/ComposerLabels";
 
 interface ComposerOptions {
   app: App;
@@ -44,7 +46,6 @@ export class AddTaskComposer {
     let selectedDue = options.defaultDue || "";
     let selectedRepeat: RepeatRule | undefined;
     let selectedDeadline = "";
-    let selectedLabels: string[] = [];
 
     this.titleInput = form.createEl("textarea", {
       cls: "belki-composer-title",
@@ -142,47 +143,14 @@ export class AddTaskComposer {
     const attachments = renderComposerAttachments({ chipRow, form });
 
     const mobilePanelSide = Platform.isMobile ? "above" : "below";
-    const labelsWrap = chipRow.createDiv({ cls: "belki-composer-labels-wrap" });
-    const labelsButton = createChipButton(labelsWrap, "Labels", "tag");
-    const deadlineWrap = chipRow.createDiv({ cls: "belki-composer-deadline-wrap" });
-
-    const labelsPanel = labelsWrap.createDiv({ cls: "belki-composer-popover is-hidden" });
-    const selectedLabelsEl = labelsPanel.createDiv({ cls: "belki-selected-labels" });
-    const labelInput = labelsPanel.createEl("input", {
-      cls: "belki-label-input",
-      attr: {
-        type: "text",
-        placeholder: "#label"
-      }
-    });
-    const labelSuggestions = labelsPanel.createDiv({
-      cls: "belki-label-suggestions",
-      attr: { role: "listbox" }
-    });
-
-    const labelChipsRow = form.createDiv({ cls: "belki-composer-label-chips is-hidden" });
-
     let detachOutsideListener = () => undefined;
     let closeProjectMenu = () => undefined;
     let closeDueDatePopover: () => void = () => undefined;
     let closeDeadlinePanel: () => void = () => undefined;
-    let activeLabelSuggestionIndex = -1;
-    let labelSuggestionActions: Array<{
-      element: HTMLButtonElement;
-      action: () => void;
-    }> = [];
-
-    const updateActiveLabelSuggestion = () => {
-      labelSuggestionActions.forEach((suggestion, index) => {
-        const isActive = index === activeLabelSuggestionIndex;
-        suggestion.element.toggleClass("is-active", isActive);
-        suggestion.element.setAttr("aria-selected", String(isActive));
-      });
-    };
-
-    const resetActiveLabelSuggestion = () => {
-      activeLabelSuggestionIndex = -1;
-      updateActiveLabelSuggestion();
+    let labels: ComposerLabelsController = {
+      close: () => undefined,
+      isOpen: () => false,
+      getSelectedLabels: () => []
     };
 
     const clearOutsideListener = () => {
@@ -191,8 +159,7 @@ export class AddTaskComposer {
     };
 
     const closePanels = () => {
-      resetActiveLabelSuggestion();
-      labelsPanel.addClass("is-hidden");
+      labels.close();
       closeDeadlinePanel();
     };
 
@@ -228,32 +195,19 @@ export class AddTaskComposer {
       };
     };
 
-    const keepLabelInputVisible = () => {
-      const ownerWindow = labelInput.ownerDocument.defaultView || window;
-      const scrollIntoView = () => {
-        labelInput.scrollIntoView({
-          block: "center",
-          inline: "nearest",
-          behavior: "smooth"
-        });
-      };
-
-      ownerWindow.setTimeout(scrollIntoView, 80);
-      ownerWindow.setTimeout(scrollIntoView, 320);
-      ownerWindow.setTimeout(scrollIntoView, 650);
-    };
-
-    labelsButton.addEventListener("click", () => {
-      const shouldOpen = labelsPanel.hasClass("is-hidden");
-      closeComposerPopovers();
-      if (shouldOpen) {
-        resetActiveLabelSuggestion();
-        labelsPanel.removeClass("is-hidden");
-        watchLocalPopover(labelsWrap, labelsPanel, { preferredSide: mobilePanelSide });
-        labelInput.focus();
-        keepLabelInputVisible();
+    labels = renderComposerLabels({
+      chipRow,
+      form,
+      labels: options.labels,
+      labelColors: options.labelColors,
+      closePopovers: closeComposerPopovers,
+      onEnsureLabel: options.onEnsureLabel,
+      watchPopover: (wrapper, popover) => {
+        watchLocalPopover(wrapper, popover, { preferredSide: mobilePanelSide });
       }
     });
+    const deadlineWrap = chipRow.createDiv({ cls: "belki-composer-deadline-wrap" });
+
     const renderDeadlineButton = () => {
       deadlineWrap.empty();
       const hasDeadline = Boolean(selectedDeadline);
@@ -337,141 +291,6 @@ export class AddTaskComposer {
       });
     };
     renderDeadlineButton();
-
-    const addLabel = (value: string) => {
-      const label = normalizeLabelName(value);
-      if (!label || selectedLabels.includes(label)) {
-        labelInput.value = "";
-        resetActiveLabelSuggestion();
-        renderLabels();
-        return;
-      }
-
-      selectedLabels = [...selectedLabels, label];
-      options.onEnsureLabel(label);
-      labelInput.value = "";
-      resetActiveLabelSuggestion();
-      renderLabels();
-    };
-
-    const renderLabels = () => {
-      selectedLabelsEl.empty();
-      labelChipsRow.empty();
-      labelChipsRow.toggleClass("is-hidden", selectedLabels.length === 0);
-
-      for (const label of selectedLabels) {
-        const color = getLabelColor(label, options.labelColors);
-        const removeLabel = () => {
-          selectedLabels = selectedLabels.filter((c) => c !== label);
-          renderLabels();
-        };
-
-        const chip = selectedLabelsEl.createEl("button", {
-          cls: "belki-selected-label",
-          text: displayLabel(label),
-          attr: { type: "button" }
-        });
-        chip.setCssStyles({ backgroundColor: color.light, borderColor: color.light });
-        chip.addEventListener("click", removeLabel);
-
-        const externalChip = labelChipsRow.createEl("span", {
-          cls: "belki-label-chip",
-          attr: { "aria-label": `Remove label ${displayLabel(label)}` }
-        });
-        externalChip.setCssProps({ "--belki-label-chip-color": color.regular, "--belki-label-chip-bg": color.light });
-        createIcon(externalChip, "tag");
-        externalChip.createSpan({ cls: "belki-label-chip-name", text: displayLabel(label) });
-        const removeBtn = externalChip.createEl("button", {
-          cls: "belki-label-chip-remove",
-          attr: { type: "button", "aria-label": `Remove ${displayLabel(label)}` }
-        });
-        createIcon(removeBtn, "close");
-        removeBtn.addEventListener("click", removeLabel);
-      }
-
-      labelSuggestions.empty();
-      labelSuggestionActions = [];
-      activeLabelSuggestionIndex = -1;
-      const query = normalizeLabelName(labelInput.value);
-      if (!query) {
-        labelSuggestions.createDiv({
-          cls: "belki-label-empty",
-          text: "Type a label name"
-        });
-        return;
-      }
-
-      const matches = dedupeLabels(options.labels)
-        .filter((label) => label.includes(query) && !selectedLabels.includes(label))
-        .slice(0, 8);
-
-      const addLabelSuggestion = (text: string, action: () => void) => {
-        const suggestion = labelSuggestions.createEl("button", {
-          cls: "belki-label-suggestion",
-          text,
-          attr: {
-            type: "button",
-            role: "option",
-            "aria-selected": "false"
-          }
-        });
-        suggestion.addEventListener("click", action);
-        labelSuggestionActions.push({ element: suggestion, action });
-      };
-
-      for (const label of matches) {
-        addLabelSuggestion(displayLabel(label), () => addLabel(label));
-      }
-
-      if (!dedupeLabels(options.labels).includes(query) && !selectedLabels.includes(query)) {
-        addLabelSuggestion(`Create label: ${displayLabel(query)}`, () => addLabel(query));
-      }
-    };
-
-    labelInput.addEventListener("focus", () => {
-      if (!labelInput.value) {
-        labelInput.value = "#";
-      }
-      keepLabelInputVisible();
-    });
-    labelInput.addEventListener("input", () => {
-      if (labelInput.value && !labelInput.value.startsWith("#")) {
-        labelInput.value = `#${labelInput.value}`;
-      }
-      resetActiveLabelSuggestion();
-      renderLabels();
-    });
-    labelInput.addEventListener("keydown", (event) => {
-      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-        if (labelSuggestionActions.length === 0) {
-          return;
-        }
-
-        event.preventDefault();
-        const direction = event.key === "ArrowDown" ? 1 : -1;
-        activeLabelSuggestionIndex = activeLabelSuggestionIndex === -1
-          ? (direction === 1 ? 0 : labelSuggestionActions.length - 1)
-          : (activeLabelSuggestionIndex + direction + labelSuggestionActions.length) %
-            labelSuggestionActions.length;
-        updateActiveLabelSuggestion();
-        return;
-      }
-
-      if (event.key === "Enter") {
-        event.preventDefault();
-        const activeSuggestion = labelSuggestionActions[activeLabelSuggestionIndex];
-        if (activeSuggestion) {
-          activeSuggestion.action();
-          return;
-        }
-
-        addLabel(labelInput.value);
-      }
-      if (event.key === "Escape") {
-        closeComposerPopovers();
-      }
-    });
-    renderLabels();
 
     const footer = form.createDiv({ cls: "belki-composer-footer" });
     const projectArea = footer.createDiv({ cls: "belki-composer-project" });
@@ -648,7 +467,7 @@ export class AddTaskComposer {
     };
 
     const hasOpenComposerPopover = () =>
-      !labelsPanel.hasClass("is-hidden") ||
+      labels.isOpen() ||
       Boolean(deadlineWrap.querySelector(".belki-composer-popover:not(.is-hidden)")) ||
       projectMenu.isConnected ||
       Boolean(dueDateWrap.querySelector(".belki-date-popover:not(.is-hidden)"));
@@ -710,7 +529,7 @@ export class AddTaskComposer {
             deadline: selectedDeadline,
             project: explicitProject || parsed.project || "",
             priority: prioritySelect.value as Priority,
-            labels: dedupeLabels([...selectedLabels, ...parsed.labels]),
+            labels: dedupeLabels([...labels.getSelectedLabels(), ...parsed.labels]),
             pendingAttachments: attachments.getPendingAttachments(),
             repeat: selectedRepeat
           });
@@ -892,34 +711,6 @@ export class AddTaskComposer {
   private readProject(): string | undefined {
     return normalizeTaskProject(this.selectedProjectValue);
   }
-}
-
-function createChipButton(
-  parent: HTMLElement,
-  label: string,
-  iconName: string,
-  ariaLabel?: string
-): HTMLButtonElement {
-  const button = parent.createEl("button", {
-    cls: "belki-chip-button",
-    attr: {
-      type: "button"
-    }
-  });
-
-  if (ariaLabel) {
-    button.setAttr("aria-label", ariaLabel);
-  }
-  if (!label) {
-    button.addClass("is-icon-only");
-  }
-
-  createIcon(button, iconName);
-  if (label) {
-    button.createSpan({ cls: "belki-chip-label", text: label });
-  }
-
-  return button;
 }
 
 function createIcon(
