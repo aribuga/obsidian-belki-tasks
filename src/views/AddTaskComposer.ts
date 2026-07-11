@@ -16,6 +16,7 @@ import { attachWikilinkAutocomplete } from "./wikilinkAutocomplete";
 import { attachQuickAddAutocomplete, parseQuickAddTokens } from "./quickAddAutocomplete";
 import { createBelkiActionRow, createBelkiButton } from "../ui";
 import { createBelkiIcon } from "../ui/components/BelkiIcon";
+import { renderComposerAttachments } from "./composer/ComposerAttachments";
 
 interface ComposerOptions {
   app: App;
@@ -44,7 +45,6 @@ export class AddTaskComposer {
     let selectedRepeat: RepeatRule | undefined;
     let selectedDeadline = "";
     let selectedLabels: string[] = [];
-    let pendingAttachments: File[] = [];
 
     this.titleInput = form.createEl("textarea", {
       cls: "belki-composer-title",
@@ -139,53 +139,7 @@ export class AddTaskComposer {
     prioritySelect.addEventListener("change", updatePriorityStyle);
     updatePriorityStyle();
 
-    const attachmentButton = createChipButton(chipRow, "Attachment", "paperclip");
-    const attachmentInput = chipRow.createEl("input", {
-      cls: "is-hidden",
-      attr: {
-        type: "file",
-        multiple: "true"
-      }
-    });
-    const pendingAttachmentsEl = form.createDiv({
-      cls: "belki-composer-attachments is-hidden"
-    });
-
-    const renderPendingAttachments = () => {
-      pendingAttachmentsEl.empty();
-      pendingAttachmentsEl.toggleClass("is-hidden", pendingAttachments.length === 0);
-
-      for (const [index, file] of pendingAttachments.entries()) {
-        const item = pendingAttachmentsEl.createDiv({ cls: "belki-composer-attachment" });
-        createBelkiIcon(item, isImageFile(file) ? "attachment" : "file", {
-          className: "belki-composer-attachment-icon"
-        });
-        item.createDiv({ cls: "belki-composer-attachment-name", text: file.name });
-        const removeButton = item.createEl("button", {
-          cls: "belki-composer-attachment-remove",
-          attr: {
-            type: "button",
-            "aria-label": `Remove ${file.name}`
-          }
-        });
-        createBelkiIcon(removeButton, "close");
-        removeButton.addEventListener("click", () => {
-          pendingAttachments = pendingAttachments.filter((_, candidateIndex) => candidateIndex !== index);
-          renderPendingAttachments();
-        });
-      }
-    };
-    attachmentButton.addEventListener("click", () => {
-      attachmentInput.click();
-    });
-    attachmentInput.addEventListener("change", () => {
-      pendingAttachments = [
-        ...pendingAttachments,
-        ...Array.from(attachmentInput.files || [])
-      ];
-      attachmentInput.value = "";
-      renderPendingAttachments();
-    });
+    const attachments = renderComposerAttachments({ chipRow, form });
 
     const mobilePanelSide = Platform.isMobile ? "above" : "below";
     const labelsWrap = chipRow.createDiv({ cls: "belki-composer-labels-wrap" });
@@ -757,7 +711,7 @@ export class AddTaskComposer {
             project: explicitProject || parsed.project || "",
             priority: prioritySelect.value as Priority,
             labels: dedupeLabels([...selectedLabels, ...parsed.labels]),
-            pendingAttachments,
+            pendingAttachments: attachments.getPendingAttachments(),
             repeat: selectedRepeat
           });
         } finally {
@@ -1200,8 +1154,4 @@ function clampPopoverToViewport(popover: HTMLElement): void {
   if (nextShift !== currentShift) {
     popover.setCssProps({ "--belki-popover-shift-x": `${Math.round(nextShift)}px` });
   }
-}
-
-function isImageFile(file: File): boolean {
-  return file.type.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
 }

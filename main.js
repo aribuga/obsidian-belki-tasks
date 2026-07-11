@@ -3284,6 +3284,73 @@ function attachQuickAddAutocomplete(input, getLabels, getProjects) {
   return closeDropdown;
 }
 
+// src/views/composer/ComposerAttachments.ts
+function renderComposerAttachments(options) {
+  let pendingAttachments = [];
+  const attachmentButton = createAttachmentButton(options.chipRow);
+  const attachmentInput = options.chipRow.createEl("input", {
+    cls: "is-hidden",
+    attr: {
+      type: "file",
+      multiple: "true"
+    }
+  });
+  const pendingAttachmentsEl = options.form.createDiv({
+    cls: "belki-composer-attachments is-hidden"
+  });
+  const renderPendingAttachments = () => {
+    pendingAttachmentsEl.empty();
+    pendingAttachmentsEl.toggleClass("is-hidden", pendingAttachments.length === 0);
+    for (const [index, file] of pendingAttachments.entries()) {
+      const item = pendingAttachmentsEl.createDiv({ cls: "belki-composer-attachment" });
+      createBelkiIcon(item, isImageFile(file) ? "attachment" : "file", {
+        className: "belki-composer-attachment-icon"
+      });
+      item.createDiv({ cls: "belki-composer-attachment-name", text: file.name });
+      const removeButton = item.createEl("button", {
+        cls: "belki-composer-attachment-remove",
+        attr: {
+          type: "button",
+          "aria-label": `Remove ${file.name}`
+        }
+      });
+      createBelkiIcon(removeButton, "close");
+      removeButton.addEventListener("click", () => {
+        pendingAttachments = pendingAttachments.filter((_, candidateIndex) => candidateIndex !== index);
+        renderPendingAttachments();
+      });
+    }
+  };
+  attachmentButton.addEventListener("click", () => {
+    attachmentInput.click();
+  });
+  attachmentInput.addEventListener("change", () => {
+    pendingAttachments = [
+      ...pendingAttachments,
+      ...Array.from(attachmentInput.files || [])
+    ];
+    attachmentInput.value = "";
+    renderPendingAttachments();
+  });
+  return {
+    getPendingAttachments: () => pendingAttachments
+  };
+}
+function createAttachmentButton(parent) {
+  const button = parent.createEl("button", {
+    cls: "belki-chip-button",
+    attr: {
+      type: "button"
+    }
+  });
+  createBelkiIcon(button, "paperclip", { className: "belki-chip-icon" });
+  button.createSpan({ cls: "belki-chip-label", text: "Attachment" });
+  return button;
+}
+function isImageFile(file) {
+  return file.type.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
+}
+
 // src/views/AddTaskComposer.ts
 var AddTaskComposer = class {
   constructor() {
@@ -3297,7 +3364,6 @@ var AddTaskComposer = class {
     let selectedRepeat;
     let selectedDeadline = "";
     let selectedLabels = [];
-    let pendingAttachments = [];
     this.titleInput = form.createEl("textarea", {
       cls: "belki-composer-title",
       attr: {
@@ -3376,51 +3442,7 @@ var AddTaskComposer = class {
     };
     prioritySelect.addEventListener("change", updatePriorityStyle);
     updatePriorityStyle();
-    const attachmentButton = createChipButton(chipRow, "Attachment", "paperclip");
-    const attachmentInput = chipRow.createEl("input", {
-      cls: "is-hidden",
-      attr: {
-        type: "file",
-        multiple: "true"
-      }
-    });
-    const pendingAttachmentsEl = form.createDiv({
-      cls: "belki-composer-attachments is-hidden"
-    });
-    const renderPendingAttachments = () => {
-      pendingAttachmentsEl.empty();
-      pendingAttachmentsEl.toggleClass("is-hidden", pendingAttachments.length === 0);
-      for (const [index, file] of pendingAttachments.entries()) {
-        const item = pendingAttachmentsEl.createDiv({ cls: "belki-composer-attachment" });
-        createBelkiIcon(item, isImageFile(file) ? "attachment" : "file", {
-          className: "belki-composer-attachment-icon"
-        });
-        item.createDiv({ cls: "belki-composer-attachment-name", text: file.name });
-        const removeButton = item.createEl("button", {
-          cls: "belki-composer-attachment-remove",
-          attr: {
-            type: "button",
-            "aria-label": `Remove ${file.name}`
-          }
-        });
-        createBelkiIcon(removeButton, "close");
-        removeButton.addEventListener("click", () => {
-          pendingAttachments = pendingAttachments.filter((_, candidateIndex) => candidateIndex !== index);
-          renderPendingAttachments();
-        });
-      }
-    };
-    attachmentButton.addEventListener("click", () => {
-      attachmentInput.click();
-    });
-    attachmentInput.addEventListener("change", () => {
-      pendingAttachments = [
-        ...pendingAttachments,
-        ...Array.from(attachmentInput.files || [])
-      ];
-      attachmentInput.value = "";
-      renderPendingAttachments();
-    });
+    const attachments = renderComposerAttachments({ chipRow, form });
     const mobilePanelSide = import_obsidian8.Platform.isMobile ? "above" : "below";
     const labelsWrap = chipRow.createDiv({ cls: "belki-composer-labels-wrap" });
     const labelsButton = createChipButton(labelsWrap, "Labels", "tag");
@@ -3920,7 +3942,7 @@ var AddTaskComposer = class {
             project: explicitProject || parsed.project || "",
             priority: prioritySelect.value,
             labels: dedupeLabels([...selectedLabels, ...parsed.labels]),
-            pendingAttachments,
+            pendingAttachments: attachments.getPendingAttachments(),
             repeat: selectedRepeat
           });
         } finally {
@@ -4292,9 +4314,6 @@ function clampPopoverToViewport(popover) {
   if (nextShift !== currentShift) {
     popover.setCssProps({ "--belki-popover-shift-x": `${Math.round(nextShift)}px` });
   }
-}
-function isImageFile(file) {
-  return file.type.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
 }
 
 // src/views/TaskDetailModal.ts
