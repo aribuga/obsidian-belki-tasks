@@ -8,10 +8,24 @@ import { BelkiTask, CreateTaskInput, ParsedTaskDocument, TaskPatch } from "./typ
 import { dedupeLabels, normalizeLabelName } from "./labels";
 import { DEMO_MAIN_CONTENT, buildDemoSeedData } from "./demoData";
 import { normalizeTaskProject } from "./projects";
+import {
+  attachmentPathCandidate,
+  numberedAttachmentPathCandidate,
+  retryAttachmentFilename,
+  splitAttachmentFilename
+} from "./storage/attachmentPaths";
+import {
+  attachmentsDirForRoot,
+  dataDirForRoot,
+  isMonthlyDataFileName,
+  isMonthlyDataFilePath,
+  legacyBackupPathCandidate,
+  mainFilePathForRoot,
+  monthlyDataFilePath,
+  taskAttachmentFolderPath
+} from "./storage/storagePaths";
 
 type Listener = () => void;
-
-const MONTHLY_FILE_PATTERN = /^\d{4}-\d{2}\.md$/;
 
 export class TaskStore {
   private documents = new Map<string, ParsedTaskDocument>();
@@ -31,15 +45,15 @@ export class TaskStore {
   }
 
   get mainFilePath(): string {
-    return normalizePath(`${this.rootDir}/main.md`);
+    return mainFilePathForRoot(this.rootDir);
   }
 
   get dataDir(): string {
-    return normalizePath(`${this.rootDir}/Data`);
+    return dataDirForRoot(this.rootDir);
   }
 
   get attachmentsDir(): string {
-    return normalizePath(`${this.rootDir}/Attachments`);
+    return attachmentsDirForRoot(this.rootDir);
   }
 
   isCurrentlyWriting(path: string): boolean {
@@ -50,8 +64,7 @@ export class TaskStore {
     const normalizedPath = normalizePath(path);
     return (
       normalizedPath === this.filePath ||
-      (normalizedPath.startsWith(`${this.dataDir}/`) &&
-        MONTHLY_FILE_PATTERN.test(normalizedPath.split("/").pop() || ""))
+      isMonthlyDataFilePath(this.dataDir, normalizedPath)
     );
   }
 
@@ -452,7 +465,7 @@ export class TaskStore {
   }
 
   private async copyAttachmentFile(taskId: string, file: File): Promise<string> {
-    const folderPath = normalizePath(`${this.attachmentsDir}/${taskId}`);
+    const folderPath = taskAttachmentFolderPath(this.attachmentsDir, taskId);
     const folderReady = await this.ensureFolder(folderPath);
     if (!folderReady) {
       throw new Error(`belki cannot use attachment folder: ${folderPath}`);
@@ -624,7 +637,7 @@ export class TaskStore {
       .getFiles()
       .filter((file) => {
         const path = normalizePath(file.path);
-        return path.startsWith(`${this.dataDir}/`) && MONTHLY_FILE_PATTERN.test(file.name);
+        return path.startsWith(`${this.dataDir}/`) && isMonthlyDataFileName(file.name);
       })
       .sort((a, b) => a.path.localeCompare(b.path));
   }
@@ -763,17 +776,16 @@ export class TaskStore {
     filename: string,
     data: ArrayBuffer
   ): Promise<string> {
-    const safeName = sanitizeFilename(filename);
-    const extensionStart = safeName.lastIndexOf(".");
-    const base =
-      extensionStart > 0 ? safeName.slice(0, extensionStart) : safeName;
-    const extension = extensionStart > 0 ? safeName.slice(extensionStart) : "";
+    const filenameParts = splitAttachmentFilename(filename);
 
     for (let attempt = 0; attempt < 10; attempt += 1) {
       const targetPath =
         attempt === 0
           ? await this.nextAttachmentPath(folderPath, filename)
-          : await this.nextAttachmentPath(folderPath, `${base}-${Date.now()}-${attempt}${extension}`);
+          : await this.nextAttachmentPath(
+            folderPath,
+            retryAttachmentFilename(filenameParts, attempt, Date.now())
+          );
       try {
         await this.app.vault.createBinary(targetPath, data);
         return targetPath;
@@ -812,16 +824,12 @@ export class TaskStore {
   }
 
   private async nextAttachmentPath(folderPath: string, filename: string): Promise<string> {
-    const safeName = sanitizeFilename(filename);
-    const extensionStart = safeName.lastIndexOf(".");
-    const base =
-      extensionStart > 0 ? safeName.slice(0, extensionStart) : safeName;
-    const extension = extensionStart > 0 ? safeName.slice(extensionStart) : "";
+    const { base, extension } = splitAttachmentFilename(filename);
 
-    let candidate = normalizePath(`${folderPath}/${safeName}`);
+    let candidate = attachmentPathCandidate(folderPath, filename);
     let index = 2;
     while (this.app.vault.getAbstractFileByPath(candidate)) {
-      candidate = normalizePath(`${folderPath}/${base}-${index}${extension}`);
+      candidate = numberedAttachmentPathCandidate(folderPath, base, index, extension);
       index += 1;
     }
 
@@ -829,15 +837,10 @@ export class TaskStore {
   }
 
   private async nextBackupPath(path: string): Promise<string> {
-    const normalizedPath = normalizePath(path);
-    const extensionStart = normalizedPath.lastIndexOf(".md");
-    const base =
-      extensionStart > -1 ? normalizedPath.slice(0, extensionStart) : normalizedPath;
-
-    let candidate = `${base}.migrated-backup.md`;
+    let candidate = legacyBackupPathCandidate(path, 1);
     let index = 2;
     while (this.app.vault.getAbstractFileByPath(candidate)) {
-      candidate = `${base}.migrated-backup-${index}.md`;
+      candidate = legacyBackupPathCandidate(path, index);
       index += 1;
     }
 
@@ -859,8 +862,7 @@ export class TaskStore {
   }
 
   private monthlyPathForDate(value: string): string {
-    const month = /^\d{4}-\d{2}/.test(value) ? value.slice(0, 7) : todayIso().slice(0, 7);
-    return normalizePath(`${this.dataDir}/${month}.md`);
+    return monthlyDataFilePath(this.dataDir, value);
   }
 }
 
@@ -890,11 +892,6 @@ function normalizeAttachments(attachments: string[]): string[] {
 
 function dedupeStrings(values: string[]): string[] {
   return [...new Set(values)];
-}
-
-function sanitizeFilename(filename: string): string {
-  const clean = filename.replace(/[\\/:*?"<>|]/g, "-").trim();
-  return clean || "attachment";
 }
 
 function isAlreadyExistsError(error: unknown): boolean {

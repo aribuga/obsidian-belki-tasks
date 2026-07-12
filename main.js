@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => BelkiPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian17 = require("obsidian");
+var import_obsidian19 = require("obsidian");
 
 // src/dailyNotes.ts
 var import_obsidian = require("obsidian");
@@ -839,7 +839,7 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
 };
 
 // src/taskStore.ts
-var import_obsidian6 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // src/repeatUtils.ts
 var WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -1780,8 +1780,64 @@ function reelFrameSvg() {
   ].join("");
 }
 
-// src/taskStore.ts
+// src/storage/attachmentPaths.ts
+var import_obsidian6 = require("obsidian");
+function sanitizeAttachmentFilename(filename) {
+  const clean = filename.replace(/[\\/:*?"<>|]/g, "-").trim();
+  return clean || "attachment";
+}
+function splitAttachmentFilename(filename) {
+  const safeName = sanitizeAttachmentFilename(filename);
+  const extensionStart = safeName.lastIndexOf(".");
+  const base = extensionStart > 0 ? safeName.slice(0, extensionStart) : safeName;
+  const extension = extensionStart > 0 ? safeName.slice(extensionStart) : "";
+  return { safeName, base, extension };
+}
+function attachmentPathCandidate(folderPath, filename) {
+  return (0, import_obsidian6.normalizePath)(`${folderPath}/${sanitizeAttachmentFilename(filename)}`);
+}
+function numberedAttachmentPathCandidate(folderPath, base, index, extension) {
+  return (0, import_obsidian6.normalizePath)(`${folderPath}/${base}-${index}${extension}`);
+}
+function retryAttachmentFilename(parts, attempt, timestamp) {
+  return `${parts.base}-${timestamp}-${attempt}${parts.extension}`;
+}
+
+// src/storage/storagePaths.ts
+var import_obsidian7 = require("obsidian");
 var MONTHLY_FILE_PATTERN = /^\d{4}-\d{2}\.md$/;
+function mainFilePathForRoot(rootDir) {
+  return (0, import_obsidian7.normalizePath)(`${rootDir}/main.md`);
+}
+function dataDirForRoot(rootDir) {
+  return (0, import_obsidian7.normalizePath)(`${rootDir}/Data`);
+}
+function attachmentsDirForRoot(rootDir) {
+  return (0, import_obsidian7.normalizePath)(`${rootDir}/Attachments`);
+}
+function taskAttachmentFolderPath(attachmentsDir, taskId) {
+  return (0, import_obsidian7.normalizePath)(`${attachmentsDir}/${taskId}`);
+}
+function isMonthlyDataFileName(fileName) {
+  return MONTHLY_FILE_PATTERN.test(fileName);
+}
+function isMonthlyDataFilePath(dataDir, path) {
+  const normalizedPath = (0, import_obsidian7.normalizePath)(path);
+  const normalizedDataDir = (0, import_obsidian7.normalizePath)(dataDir);
+  return normalizedPath.startsWith(`${normalizedDataDir}/`) && isMonthlyDataFileName(normalizedPath.split("/").pop() || "");
+}
+function monthlyDataFilePath(dataDir, value) {
+  const month = /^\d{4}-\d{2}/.test(value) ? value.slice(0, 7) : todayIso().slice(0, 7);
+  return (0, import_obsidian7.normalizePath)(`${dataDir}/${month}.md`);
+}
+function legacyBackupPathCandidate(path, index) {
+  const normalizedPath = (0, import_obsidian7.normalizePath)(path);
+  const extensionStart = normalizedPath.lastIndexOf(".md");
+  const base = extensionStart > -1 ? normalizedPath.slice(0, extensionStart) : normalizedPath;
+  return index <= 1 ? `${base}.migrated-backup.md` : `${base}.migrated-backup-${index}.md`;
+}
+
+// src/taskStore.ts
 var TaskStore = class {
   constructor(app, settings) {
     this.app = app;
@@ -1793,26 +1849,26 @@ var TaskStore = class {
     this.writingPaths = /* @__PURE__ */ new Set();
   }
   get filePath() {
-    return (0, import_obsidian6.normalizePath)(this.settings.tasksFilePath);
+    return (0, import_obsidian8.normalizePath)(this.settings.tasksFilePath);
   }
   get rootDir() {
     return normalizeDataFolderPath(this.settings.dataFolderPath);
   }
   get mainFilePath() {
-    return (0, import_obsidian6.normalizePath)(`${this.rootDir}/main.md`);
+    return mainFilePathForRoot(this.rootDir);
   }
   get dataDir() {
-    return (0, import_obsidian6.normalizePath)(`${this.rootDir}/Data`);
+    return dataDirForRoot(this.rootDir);
   }
   get attachmentsDir() {
-    return (0, import_obsidian6.normalizePath)(`${this.rootDir}/Attachments`);
+    return attachmentsDirForRoot(this.rootDir);
   }
   isCurrentlyWriting(path) {
-    return this.writingPaths.has((0, import_obsidian6.normalizePath)(path));
+    return this.writingPaths.has((0, import_obsidian8.normalizePath)(path));
   }
   isTaskStorageFile(path) {
-    const normalizedPath = (0, import_obsidian6.normalizePath)(path);
-    return normalizedPath === this.filePath || normalizedPath.startsWith(`${this.dataDir}/`) && MONTHLY_FILE_PATTERN.test(normalizedPath.split("/").pop() || "");
+    const normalizedPath = (0, import_obsidian8.normalizePath)(path);
+    return normalizedPath === this.filePath || isMonthlyDataFilePath(this.dataDir, normalizedPath);
   }
   getTasks() {
     return this.tasks.map((task) => cloneTask(task));
@@ -1896,7 +1952,7 @@ var TaskStore = class {
     const sourcePath = this.monthlyPathForDate(created);
     const sourceReady = await this.ensureSourceDocument(sourcePath);
     if (!sourceReady) {
-      new import_obsidian6.Notice("belki could not create the task data file. Check the console for details.");
+      new import_obsidian8.Notice("belki could not create the task data file. Check the console for details.");
       return;
     }
     const attachments = normalizeAttachments(input.attachments || []);
@@ -1971,7 +2027,7 @@ var TaskStore = class {
           completedOccurrences: occurrences,
           due: nextDue
         });
-        new import_obsidian6.Notice(`Recurring task rescheduled to ${formatDueDateChip(nextDue)}`);
+        new import_obsidian8.Notice(`Recurring task rescheduled to ${formatDueDateChip(nextDue)}`);
       }
       return;
     }
@@ -2127,7 +2183,7 @@ var TaskStore = class {
     return targetPath;
   }
   async copyAttachmentFile(taskId, file) {
-    const folderPath = (0, import_obsidian6.normalizePath)(`${this.attachmentsDir}/${taskId}`);
+    const folderPath = taskAttachmentFolderPath(this.attachmentsDir, taskId);
     const folderReady = await this.ensureFolder(folderPath);
     if (!folderReady) {
       throw new Error(`belki cannot use attachment folder: ${folderPath}`);
@@ -2207,11 +2263,11 @@ var TaskStore = class {
       if (!file) {
         continue;
       }
-      this.writingPaths.add((0, import_obsidian6.normalizePath)(sourcePath));
+      this.writingPaths.add((0, import_obsidian8.normalizePath)(sourcePath));
       try {
         await this.app.vault.modify(file, content);
       } finally {
-        this.writingPaths.delete((0, import_obsidian6.normalizePath)(sourcePath));
+        this.writingPaths.delete((0, import_obsidian8.normalizePath)(sourcePath));
       }
       this.documents.set(sourcePath, parseTaskDocument(content, sourcePath));
     }
@@ -2264,8 +2320,8 @@ var TaskStore = class {
   }
   getDataFiles() {
     return this.app.vault.getFiles().filter((file) => {
-      const path = (0, import_obsidian6.normalizePath)(file.path);
-      return path.startsWith(`${this.dataDir}/`) && MONTHLY_FILE_PATTERN.test(file.name);
+      const path = (0, import_obsidian8.normalizePath)(file.path);
+      return path.startsWith(`${this.dataDir}/`) && isMonthlyDataFileName(file.name);
     }).sort((a, b) => a.path.localeCompare(b.path));
   }
   getLegacyTaskFile() {
@@ -2274,7 +2330,7 @@ var TaskStore = class {
       return null;
     }
     const existing = this.app.vault.getAbstractFileByPath(path);
-    return existing instanceof import_obsidian6.TFile ? existing : null;
+    return existing instanceof import_obsidian8.TFile ? existing : null;
   }
   async ensureSourceDocument(sourcePath) {
     if (this.documents.has(sourcePath)) {
@@ -2290,9 +2346,9 @@ var TaskStore = class {
     return true;
   }
   async ensureFile(path, content) {
-    const normalizedPath = (0, import_obsidian6.normalizePath)(path);
+    const normalizedPath = (0, import_obsidian8.normalizePath)(path);
     const existing = this.app.vault.getAbstractFileByPath(normalizedPath);
-    if (existing instanceof import_obsidian6.TFile) {
+    if (existing instanceof import_obsidian8.TFile) {
       return existing;
     }
     if (existing) {
@@ -2310,7 +2366,7 @@ var TaskStore = class {
         throw error;
       }
       const created = this.app.vault.getAbstractFileByPath(normalizedPath);
-      if (created instanceof import_obsidian6.TFile) {
+      if (created instanceof import_obsidian8.TFile) {
         return created;
       }
       if (created) {
@@ -2332,7 +2388,7 @@ var TaskStore = class {
     return file;
   }
   async ensureParentFolders(path) {
-    const parts = (0, import_obsidian6.normalizePath)(path).split("/");
+    const parts = (0, import_obsidian8.normalizePath)(path).split("/");
     parts.pop();
     let current = "";
     for (const part of parts) {
@@ -2345,9 +2401,9 @@ var TaskStore = class {
     return true;
   }
   async ensureFolder(path) {
-    const normalizedPath = (0, import_obsidian6.normalizePath)(path);
+    const normalizedPath = (0, import_obsidian8.normalizePath)(path);
     const existing = this.app.vault.getAbstractFileByPath(normalizedPath);
-    if (existing instanceof import_obsidian6.TFolder) {
+    if (existing instanceof import_obsidian8.TFolder) {
       return true;
     }
     if (existing) {
@@ -2366,7 +2422,7 @@ var TaskStore = class {
         throw error;
       }
       const created = this.app.vault.getAbstractFileByPath(normalizedPath);
-      if (created instanceof import_obsidian6.TFolder) {
+      if (created instanceof import_obsidian8.TFolder) {
         return true;
       }
       if (created) {
@@ -2380,12 +2436,12 @@ var TaskStore = class {
     }
   }
   async createUniqueBinaryFile(folderPath, filename, data) {
-    const safeName = sanitizeFilename(filename);
-    const extensionStart = safeName.lastIndexOf(".");
-    const base = extensionStart > 0 ? safeName.slice(0, extensionStart) : safeName;
-    const extension = extensionStart > 0 ? safeName.slice(extensionStart) : "";
+    const filenameParts = splitAttachmentFilename(filename);
     for (let attempt = 0; attempt < 10; attempt += 1) {
-      const targetPath = attempt === 0 ? await this.nextAttachmentPath(folderPath, filename) : await this.nextAttachmentPath(folderPath, `${base}-${Date.now()}-${attempt}${extension}`);
+      const targetPath = attempt === 0 ? await this.nextAttachmentPath(folderPath, filename) : await this.nextAttachmentPath(
+        folderPath,
+        retryAttachmentFilename(filenameParts, attempt, Date.now())
+      );
       try {
         await this.app.vault.createBinary(targetPath, data);
         return targetPath;
@@ -2404,9 +2460,9 @@ var TaskStore = class {
       return;
     }
     this.warnedStorageIssues.add(key);
-    const actualType = existing instanceof import_obsidian6.TFolder ? "folder" : "file";
+    const actualType = existing instanceof import_obsidian8.TFolder ? "folder" : "file";
     const message = `belki expected a ${expectedType} at "${path}", but found a ${actualType}.`;
-    new import_obsidian6.Notice(`${message} Please rename or move the conflicting vault item.`);
+    new import_obsidian8.Notice(`${message} Please rename or move the conflicting vault item.`);
     console.warn("[belki] Storage path type mismatch.", {
       path,
       expectedType,
@@ -2415,26 +2471,20 @@ var TaskStore = class {
     });
   }
   async nextAttachmentPath(folderPath, filename) {
-    const safeName = sanitizeFilename(filename);
-    const extensionStart = safeName.lastIndexOf(".");
-    const base = extensionStart > 0 ? safeName.slice(0, extensionStart) : safeName;
-    const extension = extensionStart > 0 ? safeName.slice(extensionStart) : "";
-    let candidate = (0, import_obsidian6.normalizePath)(`${folderPath}/${safeName}`);
+    const { base, extension } = splitAttachmentFilename(filename);
+    let candidate = attachmentPathCandidate(folderPath, filename);
     let index = 2;
     while (this.app.vault.getAbstractFileByPath(candidate)) {
-      candidate = (0, import_obsidian6.normalizePath)(`${folderPath}/${base}-${index}${extension}`);
+      candidate = numberedAttachmentPathCandidate(folderPath, base, index, extension);
       index += 1;
     }
     return candidate;
   }
   async nextBackupPath(path) {
-    const normalizedPath = (0, import_obsidian6.normalizePath)(path);
-    const extensionStart = normalizedPath.lastIndexOf(".md");
-    const base = extensionStart > -1 ? normalizedPath.slice(0, extensionStart) : normalizedPath;
-    let candidate = `${base}.migrated-backup.md`;
+    let candidate = legacyBackupPathCandidate(path, 1);
     let index = 2;
     while (this.app.vault.getAbstractFileByPath(candidate)) {
-      candidate = `${base}.migrated-backup-${index}.md`;
+      candidate = legacyBackupPathCandidate(path, index);
       index += 1;
     }
     return candidate;
@@ -2451,8 +2501,7 @@ var TaskStore = class {
     }
   }
   monthlyPathForDate(value) {
-    const month = /^\d{4}-\d{2}/.test(value) ? value.slice(0, 7) : todayIso().slice(0, 7);
-    return (0, import_obsidian6.normalizePath)(`${this.dataDir}/${month}.md`);
+    return monthlyDataFilePath(this.dataDir, value);
   }
 };
 function normalizeTaskForSave(task, sourcePath) {
@@ -2478,10 +2527,6 @@ function normalizeAttachments(attachments) {
 function dedupeStrings(values) {
   return [...new Set(values)];
 }
-function sanitizeFilename(filename) {
-  const clean = filename.replace(/[\\/:*?"<>|]/g, "-").trim();
-  return clean || "attachment";
-}
 function isAlreadyExistsError(error) {
   const message = error instanceof Error ? error.message : String(error);
   return /already exists|EEXIST/i.test(message);
@@ -2501,7 +2546,7 @@ function cloneTask(task) {
 }
 
 // src/views/TaskBoardView.ts
-var import_obsidian14 = require("obsidian");
+var import_obsidian16 = require("obsidian");
 
 // src/activityData.ts
 function getActivityDataSignature(allTasks) {
@@ -2646,7 +2691,7 @@ function toLocalIsoDate(date) {
 }
 
 // src/views/AddTaskComposer.ts
-var import_obsidian10 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 
 // src/priority.ts
 var PRIORITY_COLORS = {
@@ -2991,7 +3036,7 @@ function attachQuickAddAutocomplete(input, getLabels, getProjects) {
 }
 
 // src/ui/components/BelkiIcon.ts
-var import_obsidian7 = require("obsidian");
+var import_obsidian9 = require("obsidian");
 
 // src/ui/icons/belkiIcons.ts
 var BELKI_ICON_MAP = {
@@ -3037,7 +3082,7 @@ function createBelkiIcon(parent, icon, options = {}) {
     cls: classNames("belki-icon", options.className),
     attr: options.ariaLabel ? { "aria-label": options.ariaLabel, role: "img" } : { "aria-hidden": "true" }
   });
-  (0, import_obsidian7.setIcon)(iconEl, resolveBelkiIcon(icon));
+  (0, import_obsidian9.setIcon)(iconEl, resolveBelkiIcon(icon));
   applyIconOptions(iconEl, options);
   return iconEl;
 }
@@ -3171,10 +3216,10 @@ function isImageFile(file) {
 }
 
 // src/views/composer/ComposerDateRepeat.ts
-var import_obsidian9 = require("obsidian");
+var import_obsidian11 = require("obsidian");
 
 // src/views/CustomRepeatModal.ts
-var import_obsidian8 = require("obsidian");
+var import_obsidian10 = require("obsidian");
 var FREQ_LABELS = {
   daily: "Day",
   weekly: "Week",
@@ -3191,7 +3236,7 @@ var DISPLAY_DAYS = [
   { label: "Sat", value: 6 },
   { label: "Sun", value: 0 }
 ];
-var CustomRepeatModal = class extends import_obsidian8.Modal {
+var CustomRepeatModal = class extends import_obsidian10.Modal {
   constructor(app, current, onSave) {
     super(app);
     this.onSave = onSave;
@@ -3319,7 +3364,7 @@ var CustomRepeatModal = class extends import_obsidian8.Modal {
     cancelBtn.addEventListener("click", () => this.close());
     saveBtn.addEventListener("click", () => {
       if (this.requiresWeekdays() && getRepeatWeekdays(this.draft).length === 0) {
-        new import_obsidian8.Notice("Choose at least one weekday.");
+        new import_obsidian10.Notice("Choose at least one weekday.");
         return;
       }
       const v = parseInt(intervalInput.value);
@@ -3395,7 +3440,7 @@ function renderComposerDateRepeat(options) {
       panel.addClass("is-hidden");
       panel.removeClass("is-calendar-open");
     };
-    let canSelectDeadline = !import_obsidian9.Platform.isMobile;
+    let canSelectDeadline = !import_obsidian11.Platform.isMobile;
     const selectDeadline = (value) => {
       if (!canSelectDeadline) {
         return;
@@ -3428,12 +3473,12 @@ function renderComposerDateRepeat(options) {
       const shouldOpen = panel.hasClass("is-hidden");
       options.closePopovers();
       if (shouldOpen) {
-        canSelectDeadline = !import_obsidian9.Platform.isMobile;
+        canSelectDeadline = !import_obsidian11.Platform.isMobile;
         const ownerWindow = btn.ownerDocument.defaultView || window;
         ownerWindow.setTimeout(() => {
           panel.removeClass("is-hidden");
           options.watchPopover(options.deadlineWrap, panel, { preferredSide: options.popoverSide });
-          if (import_obsidian9.Platform.isMobile) {
+          if (import_obsidian11.Platform.isMobile) {
             ownerWindow.setTimeout(() => {
               canSelectDeadline = true;
             }, 250);
@@ -3459,7 +3504,7 @@ function renderComposerDateRepeat(options) {
       createBelkiIcon(clearBtn, "close");
       clearBtn.addEventListener("click", (event) => {
         event.stopPropagation();
-        if (selectedRepeat) new import_obsidian9.Notice("Date and repeat rule removed.");
+        if (selectedRepeat) new import_obsidian11.Notice("Date and repeat rule removed.");
         selectedDue = "";
         selectedRepeat = void 0;
         closeDueDatePopover();
@@ -4166,7 +4211,7 @@ var AddTaskComposer = class {
     prioritySelect.addEventListener("change", updatePriorityStyle);
     updatePriorityStyle();
     const attachments = renderComposerAttachments({ chipRow, form });
-    const mobilePanelSide = import_obsidian10.Platform.isMobile ? "above" : "below";
+    const mobilePanelSide = import_obsidian12.Platform.isMobile ? "above" : "below";
     let detachOutsideListener = () => void 0;
     let dateRepeat = {
       close: () => void 0,
@@ -4397,11 +4442,11 @@ function alignLocalPopover(wrapper, popover, options = {}) {
 }
 
 // src/views/TaskDetailModal.ts
-var import_obsidian12 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 
 // src/views/ImagePreviewModal.ts
-var import_obsidian11 = require("obsidian");
-var ImagePreviewModal = class extends import_obsidian11.Modal {
+var import_obsidian13 = require("obsidian");
+var ImagePreviewModal = class extends import_obsidian13.Modal {
   constructor(app, file, label) {
     super(app);
     this.file = file;
@@ -5210,7 +5255,7 @@ var DESCRIPTION_FORMAT_ACTIONS = [
   { id: "numbered-list", label: "1.", title: "Numbered list" },
   { id: "link", label: "\u2197", title: "Link" }
 ];
-var TaskDetailModal = class _TaskDetailModal extends import_obsidian12.Modal {
+var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
   constructor(app, options) {
     super(app);
     this.options = options;
@@ -5256,7 +5301,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian12.Modal {
     this.modalEl.addClass("belki-modal-detail");
     this.containerEl.addClass("belki-modal-detail-container");
     (_a = this.markdownRenderComponent) == null ? void 0 : _a.unload();
-    this.markdownRenderComponent = new import_obsidian12.Component();
+    this.markdownRenderComponent = new import_obsidian14.Component();
     this.markdownRenderComponent.load();
     applyBelkiFontSettings(contentEl, this.options.settings);
     this.modalEl.addEventListener("keydown", this.handleEscape, true);
@@ -5362,7 +5407,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian12.Modal {
       }
       const renderTarget = descRendered.createDiv({ cls: "belki-detail-description-content" });
       try {
-        await import_obsidian12.MarkdownRenderer.render(
+        await import_obsidian14.MarkdownRenderer.render(
           this.app,
           markdown,
           renderTarget,
@@ -5507,7 +5552,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian12.Modal {
     createBelkiButton(footerActions, { text: "Save", variant: "primary" }).addEventListener("click", () => {
       void this.save();
     });
-    if (!import_obsidian12.Platform.isMobile) {
+    if (!import_obsidian14.Platform.isMobile) {
       titleInput.focus();
     }
   }
@@ -5613,7 +5658,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian12.Modal {
     const toolbarWidth = toolbar.offsetWidth;
     const toolbarHeight = toolbar.offsetHeight;
     const textareaRect = textarea.getBoundingClientRect();
-    const anchor = import_obsidian12.Platform.isMobile ? {
+    const anchor = import_obsidian14.Platform.isMobile ? {
       left: textareaRect.left + 8,
       top: textareaRect.top,
       bottom: textareaRect.bottom
@@ -5679,7 +5724,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian12.Modal {
         this.draft.due = due;
       },
       onClearDueAndRepeat: () => {
-        if (this.draft.repeat) new import_obsidian12.Notice("Date and repeat rule removed.");
+        if (this.draft.repeat) new import_obsidian14.Notice("Date and repeat rule removed.");
         this.draft.due = void 0;
         this.draft.repeat = void 0;
       },
@@ -5705,7 +5750,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian12.Modal {
       list.empty();
       const imagePaths = this.draft.attachments.filter((path) => {
         const file = this.app.vault.getAbstractFileByPath(path);
-        return isImagePath(path) && file instanceof import_obsidian12.TFile;
+        return isImagePath(path) && file instanceof import_obsidian14.TFile;
       });
       if (this.draft.attachments.length === 0) {
         list.createDiv({
@@ -5724,7 +5769,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian12.Modal {
         item.setAttr("tabindex", "0");
         const openAttachment = () => {
           const file = this.app.vault.getAbstractFileByPath(path);
-          if (isImagePath(path) && file instanceof import_obsidian12.TFile) {
+          if (isImagePath(path) && file instanceof import_obsidian14.TFile) {
             new ImagePreviewModal(this.app, file, attachmentName(path)).open();
             return;
           }
@@ -5813,7 +5858,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian12.Modal {
     });
     for (const path of imagePaths) {
       const file = this.app.vault.getAbstractFileByPath(path);
-      if (!(file instanceof import_obsidian12.TFile)) {
+      if (!(file instanceof import_obsidian14.TFile)) {
         continue;
       }
       const preview = gallery.createDiv({ cls: "belki-image-attachment-card" });
@@ -5879,7 +5924,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian12.Modal {
   }
   async downloadAttachment(path) {
     const file = this.app.vault.getAbstractFileByPath(path);
-    if (!(file instanceof import_obsidian12.TFile)) {
+    if (!(file instanceof import_obsidian14.TFile)) {
       await this.app.workspace.openLinkText(path, "", false);
       return;
     }
@@ -6094,7 +6139,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian12.Modal {
       const matches = labels.filter((label) => label.includes(query) && !this.draft.labels.includes(label)).slice(0, 8);
       const bindSuggestion = (button, value) => {
         button.addEventListener("pointerdown", (event) => {
-          if (!import_obsidian12.Platform.isMobile) {
+          if (!import_obsidian14.Platform.isMobile) {
             return;
           }
           event.preventDefault();
@@ -6422,8 +6467,8 @@ function compareOptionalDateDesc(a, b) {
 }
 
 // src/views/projects/ProjectModals.ts
-var import_obsidian13 = require("obsidian");
-var RenameProjectModal = class extends import_obsidian13.Modal {
+var import_obsidian15 = require("obsidian");
+var RenameProjectModal = class extends import_obsidian15.Modal {
   constructor(app, currentName, existingProjects, onSubmit) {
     super(app);
     this.currentName = currentName;
@@ -6481,7 +6526,7 @@ var RenameProjectModal = class extends import_obsidian13.Modal {
     input.focus();
   }
 };
-var DeleteProjectModal = class extends import_obsidian13.Modal {
+var DeleteProjectModal = class extends import_obsidian15.Modal {
   constructor(app, projectName, taskCount, onConfirm) {
     super(app);
     this.projectName = projectName;
@@ -6506,7 +6551,7 @@ var DeleteProjectModal = class extends import_obsidian13.Modal {
     });
   }
 };
-var CreateProjectModal = class extends import_obsidian13.Modal {
+var CreateProjectModal = class extends import_obsidian15.Modal {
   constructor(app, existingProjects, onSubmit) {
     super(app);
     this.existingProjects = existingProjects;
@@ -7022,7 +7067,7 @@ var SORT_OPTIONS = [
   { mode: "project", label: "Project" },
   { mode: "alphabetical", label: "Alphabetical" }
 ];
-var TaskBoardView = class extends import_obsidian14.ItemView {
+var TaskBoardView = class extends import_obsidian16.ItemView {
   constructor(leaf, store, settings, saveSettings) {
     super(leaf);
     this.store = store;
@@ -7254,7 +7299,7 @@ var TaskBoardView = class extends import_obsidian14.ItemView {
     containerEl.empty();
     containerEl.addClass("belki-root");
     containerEl.addClass("belki-view");
-    containerEl.toggleClass("is-mobile", import_obsidian14.Platform.isMobile);
+    containerEl.toggleClass("is-mobile", import_obsidian16.Platform.isMobile);
     applyBelkiFontSettings(containerEl, this.settings);
     containerEl.addEventListener("keydown", this.handleRootKeyDown, true);
     containerEl.addEventListener("click", this.handleRootClick, true);
@@ -7499,7 +7544,7 @@ var TaskBoardView = class extends import_obsidian14.ItemView {
     this.projectActionsOpen = null;
     this.searchOpen = false;
     this.searchQuery = "";
-    if (import_obsidian14.Platform.isMobile) {
+    if (import_obsidian16.Platform.isMobile) {
       this.mobileComposerReturnScroll = this.getMainScrollSnapshot();
       this.mobileComposerOpen = true;
       this.composerOpen = false;
@@ -7537,11 +7582,11 @@ var TaskBoardView = class extends import_obsidian14.ItemView {
         await this.createTaskFromComposer(input);
         onClose();
       },
-      presentation: import_obsidian14.Platform.isMobile ? "mobile-screen" : "default"
+      presentation: import_obsidian16.Platform.isMobile ? "mobile-screen" : "default"
     });
     const ownerWindow = parent.ownerDocument.defaultView || window;
     ownerWindow.requestAnimationFrame(() => {
-      if (import_obsidian14.Platform.isMobile) {
+      if (import_obsidian16.Platform.isMobile) {
         composer.focusTitleForMobileCapture();
       } else {
         composer.focus();
@@ -9138,7 +9183,7 @@ var TaskBoardView = class extends import_obsidian14.ItemView {
     event.stopImmediatePropagation();
   }
 };
-var LabelPromptModal = class extends import_obsidian14.Modal {
+var LabelPromptModal = class extends import_obsidian16.Modal {
   constructor(app, onSubmit) {
     super(app);
     this.onSubmit = onSubmit;
@@ -9279,8 +9324,8 @@ function searchableText(task) {
 }
 
 // src/views/QuickAddModal.ts
-var import_obsidian15 = require("obsidian");
-var QuickAddModal = class extends import_obsidian15.Modal {
+var import_obsidian17 = require("obsidian");
+var QuickAddModal = class extends import_obsidian17.Modal {
   constructor(app, onSubmit) {
     super(app);
     this.onSubmit = onSubmit;
@@ -9347,10 +9392,10 @@ var QuickAddModal = class extends import_obsidian15.Modal {
 };
 
 // src/views/DailyNoteCompletedBlock.ts
-var import_obsidian16 = require("obsidian");
+var import_obsidian18 = require("obsidian");
 var DATE_OPTION_RE = /(?:^|\n)\s*date\s*:\s*(\d{4}-\d{2}-\d{2})\s*(?:\n|$)/i;
 var DATE_LINE_RE = /^\s*(\d{4}-\d{2}-\d{2})\s*$/m;
-var DailyNoteCompletedBlock = class extends import_obsidian16.MarkdownRenderChild {
+var DailyNoteCompletedBlock = class extends import_obsidian18.MarkdownRenderChild {
   constructor(options) {
     super(options.containerEl);
     this.source = options.source;
@@ -9484,7 +9529,7 @@ function formatDailyBlockTitle(date) {
 // src/main.ts
 var BELKI_COMPLETED_CODE_BLOCK = "```belki-completed\n```";
 var BELKI_COMPLETED_CODE_BLOCK_RE = /```belki-completed\b[\s\S]*?```/i;
-var BelkiPlugin = class extends import_obsidian17.Plugin {
+var BelkiPlugin = class extends import_obsidian19.Plugin {
   constructor() {
     super(...arguments);
     this.reloadDebounceTimer = null;
@@ -9518,7 +9563,7 @@ var BelkiPlugin = class extends import_obsidian17.Plugin {
       callback: () => {
         new QuickAddModal(this.app, async (title) => {
           await this.store.createTask({ title });
-          new import_obsidian17.Notice("Task added to Inbox");
+          new import_obsidian19.Notice("Task added to Inbox");
         }).open();
       }
     });
@@ -9547,7 +9592,7 @@ var BelkiPlugin = class extends import_obsidian17.Plugin {
           ...Object.keys(this.settings.labelColors)
         ]);
         await this.saveSettings();
-        new import_obsidian17.Notice("belki labels normalized.");
+        new import_obsidian19.Notice("belki labels normalized.");
       }
     });
     this.addCommand({
@@ -9556,10 +9601,10 @@ var BelkiPlugin = class extends import_obsidian17.Plugin {
       callback: async () => {
         const migratedCount = await this.store.migrateOldTaskFile();
         if (migratedCount === 0) {
-          new import_obsidian17.Notice("belki found no old tasks to migrate.");
+          new import_obsidian19.Notice("belki found no old tasks to migrate.");
           return;
         }
-        new import_obsidian17.Notice(`belki migrated ${migratedCount} task${migratedCount === 1 ? "" : "s"}.`);
+        new import_obsidian19.Notice(`belki migrated ${migratedCount} task${migratedCount === 1 ? "" : "s"}.`);
       }
     });
     this.addSettingTab(new BelkiSettingTab(this.app, this));
@@ -9649,7 +9694,7 @@ var BelkiPlugin = class extends import_obsidian17.Plugin {
     try {
       await this.store.reloadFromDisk();
     } catch (error) {
-      new import_obsidian17.Notice("belki could not reload task data.");
+      new import_obsidian19.Notice("belki could not reload task data.");
       console.error(error);
     }
   }
@@ -9755,40 +9800,40 @@ var BelkiPlugin = class extends import_obsidian17.Plugin {
   }
   async openActiveDailyNoteCompletedTasks() {
     if (!this.settings.dailyNotesIntegrationEnabled) {
-      new import_obsidian17.Notice("belki Daily Notes integration is disabled in settings.");
+      new import_obsidian19.Notice("belki Daily Notes integration is disabled in settings.");
       return;
     }
     const file = this.app.workspace.getActiveFile();
     if (!file) {
-      new import_obsidian17.Notice("Open a daily note first.");
+      new import_obsidian19.Notice("Open a daily note first.");
       return;
     }
     const date = this.dateFromDailyNoteFile(file);
     if (!date) {
-      new import_obsidian17.Notice("belki could not detect a date from the active note.");
+      new import_obsidian19.Notice("belki could not detect a date from the active note.");
       return;
     }
     await this.activateDailyNoteView(date, file.path);
   }
   async insertActiveDailyNoteCompletedBlock() {
     if (!this.settings.dailyNotesIntegrationEnabled) {
-      new import_obsidian17.Notice("belki Daily Notes integration is disabled in settings.");
+      new import_obsidian19.Notice("belki Daily Notes integration is disabled in settings.");
       return;
     }
     const file = this.app.workspace.getActiveFile();
     if (!file) {
-      new import_obsidian17.Notice("Open a daily note first.");
+      new import_obsidian19.Notice("Open a daily note first.");
       return;
     }
     if (!this.dateFromDailyNoteFile(file)) {
-      new import_obsidian17.Notice("belki could not detect a date from the active note.");
+      new import_obsidian19.Notice("belki could not detect a date from the active note.");
       return;
     }
     const result = await this.ensureDailyNoteCompletedBlock(file);
     if (result === "inserted") {
-      new import_obsidian17.Notice("belki completed tasks block added.");
+      new import_obsidian19.Notice("belki completed tasks block added.");
     } else if (result === "exists") {
-      new import_obsidian17.Notice("This note already has a belki completed tasks block.");
+      new import_obsidian19.Notice("This note already has a belki completed tasks block.");
     }
   }
   async handleDailyNoteFileOpen(file) {
@@ -9864,7 +9909,7 @@ var BelkiPlugin = class extends import_obsidian17.Plugin {
     try {
       await this.store.load();
     } catch (error) {
-      new import_obsidian17.Notice("belki could not initialize task storage. Open the developer console for details.");
+      new import_obsidian19.Notice("belki could not initialize task storage. Open the developer console for details.");
       console.error("[belki] Failed to initialize task storage.", error, {
         dataFolderPath: this.settings.dataFolderPath,
         tasksFilePath: this.settings.tasksFilePath
