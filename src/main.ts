@@ -1,8 +1,8 @@
 import { Notice, Plugin, TAbstractFile, TFile, WorkspaceLeaf } from "obsidian";
 import type { MarkdownPostProcessorContext } from "obsidian";
 import { dailyNoteDateFromPath, normalizeDailyNoteDateFormat } from "./dailyNotes";
+import { BelkiSettingTab } from "./BelkiSettingTab";
 import {
-  BelkiSettingTab,
   BelkiSettings,
   DEFAULT_SETTINGS,
   normalizeDefaultProject,
