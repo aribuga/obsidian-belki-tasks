@@ -1,6 +1,5 @@
 import { App, Notice, Platform } from "obsidian";
 import { CreateTaskInput, PRIORITIES, Priority, RepeatRule } from "../types";
-import { getProjectColor } from "../colors";
 import { dedupeLabels } from "../labels";
 import {
   getPriorityColor,
@@ -8,7 +7,6 @@ import {
   getPriorityDropdownLabel,
   hasVisiblePriority
 } from "../priority";
-import { normalizeTaskProject, uniqueRealProjects } from "../projects";
 import { addDaysIso, formatDueDateChip, nextWeekdayIso, todayIso } from "../dateUtils";
 import { getRepeatChipLabel, getRepeatLabel, getRepeatPresets, repeatRulesEqual } from "../repeatUtils";
 import { CustomRepeatModal } from "./CustomRepeatModal";
@@ -19,6 +17,8 @@ import { createBelkiIcon } from "../ui/components/BelkiIcon";
 import { renderComposerAttachments } from "./composer/ComposerAttachments";
 import { renderComposerLabels } from "./composer/ComposerLabels";
 import type { ComposerLabelsController } from "./composer/ComposerLabels";
+import { renderComposerProjects } from "./composer/ComposerProjects";
+import type { ComposerProjectsController } from "./composer/ComposerProjects";
 
 interface ComposerOptions {
   app: App;
@@ -36,8 +36,6 @@ interface ComposerOptions {
 
 export class AddTaskComposer {
   private titleInput?: HTMLTextAreaElement;
-  private customProjectInput?: HTMLInputElement;
-  private selectedProjectValue = "";
 
   render(parent: HTMLElement, options: ComposerOptions): () => void {
     const form = parent.createEl("form", { cls: "belki-composer" });
@@ -144,13 +142,18 @@ export class AddTaskComposer {
 
     const mobilePanelSide = Platform.isMobile ? "above" : "below";
     let detachOutsideListener = () => undefined;
-    let closeProjectMenu = () => undefined;
     let closeDueDatePopover: () => void = () => undefined;
     let closeDeadlinePanel: () => void = () => undefined;
     let labels: ComposerLabelsController = {
       close: () => undefined,
       isOpen: () => false,
       getSelectedLabels: () => []
+    };
+    let projects: ComposerProjectsController = {
+      close: () => undefined,
+      isOpen: () => false,
+      getSelectedProject: () => undefined,
+      remove: () => undefined
     };
 
     const clearOutsideListener = () => {
@@ -165,7 +168,7 @@ export class AddTaskComposer {
 
     const closeComposerPopovers = () => {
       closePanels();
-      closeProjectMenu();
+      projects.close();
       closeDueDatePopover();
       clearOutsideListener();
     };
@@ -293,194 +296,24 @@ export class AddTaskComposer {
     renderDeadlineButton();
 
     const footer = form.createDiv({ cls: "belki-composer-footer" });
-    const projectArea = footer.createDiv({ cls: "belki-composer-project" });
-
-    const projectPicker = projectArea.createEl("button", {
-      cls: "belki-project-picker belki-location-picker",
-      attr: {
-        type: "button",
-        "aria-haspopup": "listbox",
-        "aria-expanded": "false"
+    projects = renderComposerProjects({
+      footer,
+      projects: options.projects,
+      projectColors: options.projectColors,
+      defaultProject: options.defaultProject,
+      closePopovers: closeComposerPopovers,
+      clearOutsideListener,
+      watchPopover: (wrapper, popover, popoverOptions) => {
+        watchLocalPopover(wrapper, popover, popoverOptions);
       }
     });
-    const projectDot = projectPicker.createSpan({ cls: "belki-project-dot belki-composer-project-dot" });
-    const projectLabel = projectPicker.createSpan({ cls: "belki-project-trigger-label" });
-    const projectMenu = createEl("div", {
-      cls: "belki-project-menu",
-      attr: {
-        role: "listbox"
-      }
-    });
-    const projects = uniqueRealProjects([options.defaultProject, ...options.projects]);
-    const defaultProject = normalizeTaskProject(options.defaultProject) || "";
-    this.selectedProjectValue = projects.includes(defaultProject)
-      ? defaultProject
-      : "";
-
-    const customProjectWrap = projectArea.createDiv({ cls: "belki-custom-project-wrap is-hidden" });
-    this.customProjectInput = customProjectWrap.createEl("input", {
-      cls: "belki-chip-input belki-custom-project",
-      attr: {
-        type: "text",
-        placeholder: "Project name"
-      }
-    });
-    const confirmProjectBtn = customProjectWrap.createEl("button", {
-      cls: "belki-custom-project-confirm",
-      attr: { type: "button", "aria-label": "Confirm project" }
-    });
-    createBelkiIcon(confirmProjectBtn, "completed");
-
-    const cancelProjectBtn = customProjectWrap.createEl("button", {
-      cls: "belki-custom-project-cancel",
-      attr: { type: "button", "aria-label": "Cancel" }
-    });
-    createBelkiIcon(cancelProjectBtn, "close");
-
-    let previousProjectValue = "";
-
-    const confirmProject = () => {
-      const name = this.customProjectInput?.value.trim() || "";
-      if (!name) return;
-      this.selectedProjectValue = name;
-      updateProjectDot();
-      renderProjectMenu();
-      customProjectWrap.addClass("is-hidden");
-    };
-
-    const cancelProject = () => {
-      this.selectedProjectValue = previousProjectValue;
-      this.customProjectInput!.value = "";
-      customProjectWrap.addClass("is-hidden");
-      updateProjectDot();
-      renderProjectMenu();
-    };
-
-    confirmProjectBtn.addEventListener("click", confirmProject);
-    cancelProjectBtn.addEventListener("click", cancelProject);
-    this.customProjectInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") { e.preventDefault(); confirmProject(); }
-      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cancelProject(); }
-    });
-
-    closeProjectMenu = () => {
-      projectMenu.remove();
-      projectPicker.setAttr("aria-expanded", "false");
-      projectPicker.focus({ preventScroll: true });
-    };
-
-    const openProjectMenu = () => {
-      activeDocument.body.appendChild(projectMenu);
-      projectPicker.setAttr("aria-expanded", "true");
-      watchLocalPopover(projectArea, projectMenu, { preferredSide: "above", useFixed: true });
-    };
-
-    const selectProject = (value: string) => {
-      if (value === "__new__") {
-        previousProjectValue = this.selectedProjectValue;
-      }
-      this.selectedProjectValue = value;
-      if (value === "__new__") {
-        customProjectWrap.removeClass("is-hidden");
-        this.customProjectInput!.value = "";
-        closeProjectMenu();
-        clearOutsideListener();
-        this.customProjectInput?.focus();
-      } else {
-        customProjectWrap.addClass("is-hidden");
-        closeProjectMenu();
-        clearOutsideListener();
-      }
-      updateProjectDot();
-      renderProjectMenu();
-    };
-
-    const renderProjectOption = (
-      parent: HTMLElement,
-      label: string,
-      value: string,
-      projectColor?: { regular: string; light: string }
-    ) => {
-      const option = parent.createEl("button", {
-        cls: "belki-project-option",
-        attr: {
-          type: "button",
-          role: "option",
-          "aria-selected": String(this.selectedProjectValue === value)
-        }
-      });
-      option.toggleClass("is-selected", this.selectedProjectValue === value);
-      option.toggleClass("has-project", Boolean(projectColor));
-      option.createSpan({
-        cls: "belki-project-option-check",
-        text: this.selectedProjectValue === value ? "✓" : ""
-      });
-      if (projectColor) {
-        option
-          .createSpan({ cls: "belki-project-dot" })
-          .setCssStyles({ backgroundColor: projectColor.regular });
-      }
-      option.createSpan({ cls: "belki-project-option-label", text: label });
-      option.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        selectProject(value);
-      });
-    };
-
-    const renderProjectMenu = () => {
-      projectMenu.empty();
-      renderProjectOption(projectMenu, "Inbox", "");
-      projectMenu.createDiv({ cls: "belki-project-section-label", text: "Projects" });
-
-      for (const project of projects) {
-        renderProjectOption(
-          projectMenu,
-          project,
-          project,
-          getProjectColor(project, options.projectColors)
-        );
-      }
-
-      renderProjectOption(projectMenu, "New project...", "__new__");
-    };
-
-    const updateProjectDot = () => {
-      const displayValue = this.selectedProjectValue === "__new__" ? previousProjectValue : this.selectedProjectValue;
-      const project = normalizeTaskProject(displayValue) || "";
-      projectLabel.setText(project || "Inbox");
-      if (!project) {
-        projectDot.setCssStyles({ backgroundColor: "var(--belki-faint)" });
-        projectPicker.setCssStyles({
-          backgroundColor: "var(--belki-hover)",
-          borderColor: "var(--belki-border)"
-        });
-        return;
-      }
-
-      const color = getProjectColor(project, options.projectColors);
-      projectDot.setCssStyles({ backgroundColor: color.regular });
-      projectPicker.setCssStyles({
-        backgroundColor: color.light,
-        borderColor: color.light
-      });
-    };
 
     const hasOpenComposerPopover = () =>
       labels.isOpen() ||
       Boolean(deadlineWrap.querySelector(".belki-composer-popover:not(.is-hidden)")) ||
-      projectMenu.isConnected ||
+      projects.isOpen() ||
       Boolean(dueDateWrap.querySelector(".belki-date-popover:not(.is-hidden)"));
 
-    projectPicker.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const shouldOpen = !projectMenu.isConnected;
-      closeComposerPopovers();
-      if (shouldOpen) {
-        openProjectMenu();
-      }
-    });
     form.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && hasOpenComposerPopover()) {
         event.preventDefault();
@@ -488,13 +321,6 @@ export class AddTaskComposer {
         closeComposerPopovers();
       }
     });
-    this.customProjectInput.addEventListener("input", () => {
-      updateProjectDot();
-      renderProjectMenu();
-    });
-    renderProjectMenu();
-    updateProjectDot();
-
     const actions = createBelkiActionRow(footer, { className: "belki-composer-actions" });
     const cancelButton = createBelkiButton(actions, { text: "Cancel" });
     const addButton = createBelkiButton(actions, {
@@ -505,7 +331,7 @@ export class AddTaskComposer {
       }
     });
 
-    const cleanup = () => { projectMenu.remove(); closeWikilinkDropdown(); closeQuickAddDropdown(); };
+    const cleanup = () => { projects.remove(); closeWikilinkDropdown(); closeQuickAddDropdown(); };
     cancelButton.addEventListener("click", () => { cleanup(); options.onCancel(); });
     form.addEventListener("submit", () => cleanup());
     form.addEventListener("submit", (event) => {
@@ -521,7 +347,7 @@ export class AddTaskComposer {
       addButton.setAttr("disabled", "true");
       void (async () => {
         try {
-          const explicitProject = this.readProject();
+          const explicitProject = projects.getSelectedProject();
           await options.onSubmit({
             title: parsed.title,
             description: descriptionInput.value,
@@ -706,10 +532,6 @@ export class AddTaskComposer {
     ownerWindow.setTimeout(() => {
       input.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
     }, 250);
-  }
-
-  private readProject(): string | undefined {
-    return normalizeTaskProject(this.selectedProjectValue);
   }
 }
 
