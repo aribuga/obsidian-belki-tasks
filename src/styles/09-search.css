@@ -1,0 +1,111 @@
+
+.belki-search-backdrop {
+  align-items: flex-start;
+  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.24);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding-top: 12vh;
+  position: absolute;
+  z-index: 1000;
+}
+
+.belki-search-modal {
+  background: var(--belki-surface);
+  border: 1px solid var(--belki-border);
+  border-radius: 12px;
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.22);
+  max-height: min(640px, 76vh);
+  overflow: hidden;
+  width: min(640px, calc(100vw - 48px));
+}
+
+input.belki-search-input {
+  appearance: none;
+  background: var(--belki-surface);
+  border: 0;
+  border-bottom: 1px solid var(--belki-border);
+  border-radius: 0;
+  box-shadow: none;
+  box-sizing: border-box;
+  color: var(--belki-text);
+  font-size: 18px;
+  height: 52px;
+  line-height: 52px;
+  outline: none;
+  padding: 0 18px;
+  width: 100%;
+}
+
+input.belki-search-input:focus {
+  border-bottom-color: var(--belki-border);
+  box-shadow: none;
+  outline: none;
+}
+
+.belki-search-results {
+  max-height: calc(min(640px, 76vh) - 52px);
+  overflow: auto;
+  padding: 0;
+}
+
+.belki-search-empty {
+  color: var(--belki-muted);
+  font-size: 13px;
+  padding: 18px;
+}
+
+button.belki-search-result {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  border-top: 1px solid var(--belki-border);
+  box-shadow: none;
+  color: var(--belki-text);
+  cursor: pointer;
+  display: block;
+  min-height: 56px;
+  padding: 12px 16px;
+  text-align: left;
+  white-space: normal;
+  width: 100%;
+}
+
+button.belki-search-result:hover,
+button.belki-search-result.is-selected {
+  background: var(--belki-hover);
+}
+
+.belki-search-title {
+  color: var(--belki-text);
+  font-family: var(--belki-font-task-title);
+  font-size: 14px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.belki-search-description {
+  color: var(--belki-muted);
+  font-family: var(--belki-font-task-description);
+  font-size: 12px;
+  line-height: 1.35;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.belki-search-meta {
+  color: var(--belki-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 8px;
+  line-height: 1.35;
+  margin-top: 5px;
+  min-height: 16px;
+}

@@ -1,0 +1,20 @@
+
+.belki-icon {
+  align-items: center;
+  color: currentColor;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: var(--belki-icon-size, 16px);
+  justify-content: center;
+  line-height: 1;
+  width: var(--belki-icon-size, 16px);
+}
+
+.belki-icon svg {
+  display: block;
+  fill: none;
+  height: var(--belki-icon-size, 16px);
+  stroke: currentColor;
+  stroke-width: var(--belki-icon-stroke-width, 1.75);
+  width: var(--belki-icon-size, 16px);
+}
