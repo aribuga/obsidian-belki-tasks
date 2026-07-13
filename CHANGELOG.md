@@ -4,6 +4,39 @@ All notable changes to belki are documented here.
 
 ---
 
+## 0.4.3 - 2026-07-13
+
+Patch release focused on a better desktop add-task flow, narrow-pane navigation, and Obsidian review cleanup.
+
+### Added
+
+- Added a **desktop floating task composer**. On desktop, clicking `+ Add task` now opens a compact floating composer above the current task list instead of inserting an inline composer at the bottom.
+- Added a collapsible desktop sidebar. The belki sidebar can now collapse into an icon rail and remembers the preferred layout.
+
+### Improved
+
+- Opening the desktop task composer no longer intentionally scrolls the task list or moves the user's current position.
+- The floating composer preserves contextual defaults, including Today due dates, Upcoming defaults, and selected project defaults.
+- Composer popovers for dates, labels, deadlines, and projects were adjusted for the floating composer layout.
+- The Projects header add button now uses a transparent background for a quieter sidebar appearance.
+- Sidebar collapse controls now use panel icons, a transparent background, and a more muted visual style.
+
+### Fixed
+
+- Fixed Obsidian review warnings by removing the default Quick Add hotkey, using cross-window-safe HTMLElement checks, and avoiding direct self-calls to deprecated settings tab rendering.
+
+### Internal
+
+- Split the root stylesheet into ordered partial CSS files while preserving the generated release `styles.css`.
+- Completed several focused extraction passes from large UI/store modules, including composer controls, settings tab UI, task detail helpers, task action menus, filters/labels, and low-risk storage helpers.
+- Added a small unit test setup for composer context behavior.
+
+### Breaking Changes
+
+- None expected.
+
+---
+
 ## 0.4.2 — 2026-07-08
 
 Patch release focused on iPadOS layout stability and a small internal cleanup.
