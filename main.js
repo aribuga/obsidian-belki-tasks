@@ -7307,6 +7307,7 @@ function renderDayChips(parent, day, options) {
       text: task.title,
       attr: { type: "button" }
     });
+    applyProjectColor(chip, task, options.projectColors);
     chip.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -7341,6 +7342,7 @@ function renderSelectedDay(parent, selectedDate, entries, options) {
       cls: `belki-calendar-selected-task is-${entry.role}`,
       attr: { type: "button" }
     });
+    applyProjectColor(row, entry.task, options.projectColors);
     row.addEventListener("click", () => options.onOpenTask(entry.task));
     row.createSpan({
       cls: "belki-calendar-selected-role",
@@ -7348,11 +7350,27 @@ function renderSelectedDay(parent, selectedDate, entries, options) {
     });
     const content = row.createDiv({ cls: "belki-calendar-selected-content" });
     content.createDiv({ cls: "belki-calendar-selected-title", text: entry.task.title });
+    const project = normalizeTaskProject(entry.task.project);
     content.createDiv({
       cls: "belki-calendar-selected-meta",
-      text: entry.role === "deadline" && entry.task.due ? `Due ${formatDateLabel(entry.task.due)}` : entry.task.deadline && entry.task.deadline !== selectedDate ? `Deadline ${formatDateLabel(entry.task.deadline)}` : ""
+      text: [
+        project,
+        entry.role === "deadline" && entry.task.due ? `Due ${formatDateLabel(entry.task.due)}` : entry.task.deadline && entry.task.deadline !== selectedDate ? `Deadline ${formatDateLabel(entry.task.deadline)}` : ""
+      ].filter(Boolean).join(" \xB7 ")
     });
   }
+}
+function applyProjectColor(element, task, projectColors) {
+  const project = normalizeTaskProject(task.project);
+  if (!project) {
+    return;
+  }
+  const color = getProjectColor(project, projectColors);
+  element.addClass("belki-calendar-has-project-color");
+  element.setCssProps({
+    "--belki-calendar-project-bg": color.light,
+    "--belki-calendar-project-color": color.regular
+  });
 }
 function selectDay(day, options) {
   const month = day.isCurrentMonth ? options.month : calendarMonthFromIsoDate(day.date) || options.month;
@@ -8160,6 +8178,7 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
         month: this.calendarMonth,
         selectedDate: this.calendarSelectedDate,
         tasks: this.sortTasks(active.filter(hasCalendarDate)),
+        projectColors: this.settings.projectColors,
         sortTasks: (tasks) => this.sortTasks(tasks),
         onNavigate: (month, selectedDate) => {
           this.calendarMonth = month;

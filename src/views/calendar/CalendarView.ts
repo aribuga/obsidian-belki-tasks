@@ -1,4 +1,6 @@
+import { getProjectColor } from "../../colors";
 import { formatDateLabel, todayIso } from "../../dateUtils";
+import { normalizeTaskProject } from "../../projects";
 import type { BelkiTask } from "../../types";
 import { createBelkiIcon } from "../../ui/components/BelkiIcon";
 import {
@@ -21,6 +23,7 @@ interface RenderCalendarViewOptions {
   month: CalendarMonth;
   selectedDate: string;
   tasks: BelkiTask[];
+  projectColors: Record<string, string>;
   sortTasks: (tasks: BelkiTask[]) => BelkiTask[];
   onNavigate: (month: CalendarMonth, selectedDate: string) => void;
   onSelectDate: (date: string, month: CalendarMonth) => void;
@@ -177,6 +180,7 @@ function renderDayChips(
       text: task.title,
       attr: { type: "button" }
     });
+    applyProjectColor(chip, task, options.projectColors);
     chip.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -220,6 +224,7 @@ function renderSelectedDay(
       cls: `belki-calendar-selected-task is-${entry.role}`,
       attr: { type: "button" }
     });
+    applyProjectColor(row, entry.task, options.projectColors);
     row.addEventListener("click", () => options.onOpenTask(entry.task));
     row.createSpan({
       cls: "belki-calendar-selected-role",
@@ -227,15 +232,37 @@ function renderSelectedDay(
     });
     const content = row.createDiv({ cls: "belki-calendar-selected-content" });
     content.createDiv({ cls: "belki-calendar-selected-title", text: entry.task.title });
+    const project = normalizeTaskProject(entry.task.project);
     content.createDiv({
       cls: "belki-calendar-selected-meta",
-      text: entry.role === "deadline" && entry.task.due
-        ? `Due ${formatDateLabel(entry.task.due)}`
-        : entry.task.deadline && entry.task.deadline !== selectedDate
-          ? `Deadline ${formatDateLabel(entry.task.deadline)}`
-          : ""
+      text: [
+        project,
+        entry.role === "deadline" && entry.task.due
+          ? `Due ${formatDateLabel(entry.task.due)}`
+          : entry.task.deadline && entry.task.deadline !== selectedDate
+            ? `Deadline ${formatDateLabel(entry.task.deadline)}`
+            : ""
+      ].filter(Boolean).join(" · ")
     });
   }
+}
+
+function applyProjectColor(
+  element: HTMLElement,
+  task: BelkiTask,
+  projectColors: Record<string, string>
+): void {
+  const project = normalizeTaskProject(task.project);
+  if (!project) {
+    return;
+  }
+
+  const color = getProjectColor(project, projectColors);
+  element.addClass("belki-calendar-has-project-color");
+  element.setCssProps({
+    "--belki-calendar-project-bg": color.light,
+    "--belki-calendar-project-color": color.regular
+  });
 }
 
 function selectDay(day: CalendarDay, options: RenderCalendarViewOptions): void {

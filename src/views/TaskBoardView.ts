@@ -987,6 +987,7 @@ export class TaskBoardView extends ItemView {
         month: this.calendarMonth,
         selectedDate: this.calendarSelectedDate,
         tasks: this.sortTasks(active.filter(hasCalendarDate)),
+        projectColors: this.settings.projectColors,
         sortTasks: (tasks) => this.sortTasks(tasks),
         onNavigate: (month, selectedDate) => {
           this.calendarMonth = month;

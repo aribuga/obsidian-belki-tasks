@@ -3635,6 +3635,7 @@ button.belki-label-actions-button:focus-visible {
   appearance: none;
   background: var(--belki-chip-bg);
   border: 1px solid transparent;
+  border-left: 3px solid transparent;
   border-radius: 5px;
   box-shadow: none;
   color: var(--belki-text);
@@ -3652,10 +3653,20 @@ button.belki-label-actions-button:focus-visible {
   white-space: nowrap;
 }
 
+.belki-calendar-task-chip.belki-calendar-has-project-color {
+  background: var(--belki-calendar-project-bg);
+  border-left-color: var(--belki-calendar-project-color);
+}
+
 .belki-calendar-task-chip:hover,
 .belki-calendar-task-chip:focus-visible {
   background: var(--belki-border);
   outline: none;
+}
+
+.belki-calendar-task-chip.belki-calendar-has-project-color:hover,
+.belki-calendar-task-chip.belki-calendar-has-project-color:focus-visible {
+  background: color-mix(in srgb, var(--belki-calendar-project-bg) 72%, var(--belki-hover));
 }
 
 .belki-calendar-more {
@@ -3710,6 +3721,7 @@ button.belki-label-actions-button:focus-visible {
   background: transparent;
   border: 0;
   border-bottom: 1px solid var(--belki-border);
+  border-left: 3px solid transparent;
   border-radius: 0;
   box-shadow: none;
   color: var(--belki-text);
@@ -3723,10 +3735,21 @@ button.belki-label-actions-button:focus-visible {
   text-align: left;
 }
 
+.belki-calendar-selected-task.belki-calendar-has-project-color {
+  background: color-mix(in srgb, var(--belki-calendar-project-bg) 58%, transparent);
+  border-left-color: var(--belki-calendar-project-color);
+  padding-left: 8px;
+}
+
 .belki-calendar-selected-task:hover,
 .belki-calendar-selected-task:focus-visible {
   background: var(--belki-hover);
   outline: none;
+}
+
+.belki-calendar-selected-task.belki-calendar-has-project-color:hover,
+.belki-calendar-selected-task.belki-calendar-has-project-color:focus-visible {
+  background: color-mix(in srgb, var(--belki-calendar-project-bg) 72%, var(--belki-hover));
 }
 
 .belki-calendar-selected-role {
