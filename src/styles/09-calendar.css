@@ -168,17 +168,18 @@
   box-shadow: none;
   color: var(--belki-text);
   cursor: pointer;
-  display: block;
+  display: -webkit-box;
   font: inherit;
   font-size: 12px;
+  height: 36px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   line-height: 1.25;
-  min-height: 24px;
   min-width: 0;
   overflow: hidden;
   padding: 4px 6px;
   text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .belki-calendar-task-chip.belki-calendar-has-project-color {
@@ -257,7 +258,7 @@
   display: grid;
   font: inherit;
   gap: 10px;
-  grid-template-columns: 74px minmax(0, 1fr);
+  grid-template-columns: 68px minmax(0, 1fr);
   min-height: 46px;
   padding: 8px 0;
   text-align: left;

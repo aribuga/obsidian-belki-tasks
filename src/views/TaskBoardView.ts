@@ -992,12 +992,12 @@ export class TaskBoardView extends ItemView {
         onNavigate: (month, selectedDate) => {
           this.calendarMonth = month;
           this.calendarSelectedDate = selectedDate;
-          this.render();
+          this.renderPreservingMainScroll();
         },
         onSelectDate: (date, month) => {
           this.calendarSelectedDate = date;
           this.calendarMonth = month;
-          this.render();
+          this.renderPreservingMainScroll();
         },
         onOpenTask: (task) => this.openTaskDetail(task)
       });
