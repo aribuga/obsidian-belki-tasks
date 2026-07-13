@@ -612,6 +612,9 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
     this.plugin = plugin;
   }
   display() {
+    this.renderSettings();
+  }
+  renderSettings() {
     const { containerEl } = this;
     containerEl.empty();
     applyBelkiFontSettings(containerEl, this.plugin.settings);
@@ -750,7 +753,7 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
         this.plugin.settings[key] = normalizeFontOption(value);
         await this.plugin.saveSettings();
         this.plugin.refreshBelkiViews();
-        this.display();
+        this.renderSettings();
       });
     });
   }
@@ -769,7 +772,7 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
           delete this.plugin.settings.projectColors[project];
           await this.plugin.saveSettings();
           this.plugin.refreshBelkiViews();
-          this.display();
+          this.renderSettings();
         })();
       });
     });
@@ -793,7 +796,7 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
           ]);
           await this.plugin.saveSettings();
           this.plugin.refreshBelkiViews();
-          this.display();
+          this.renderSettings();
         })();
       });
     });
@@ -811,7 +814,7 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
       button.setButtonText("Rename").onClick(() => {
         new RenameLabelModal(this.app, label, this.plugin.getLabelNames(), async (newLabel) => {
           await this.plugin.renameLabel(label, newLabel);
-          this.display();
+          this.renderSettings();
         }).open();
       });
     }).addButton((button) => {
@@ -822,7 +825,7 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
           this.plugin.getLabelTaskCount(label),
           async () => {
             await this.plugin.deleteLabel(label);
-            this.display();
+            this.renderSettings();
           }
         ).open();
       });
@@ -832,7 +835,7 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
           delete this.plugin.settings.labelColors[label];
           await this.plugin.saveSettings();
           this.plugin.refreshBelkiViews();
-          this.display();
+          this.renderSettings();
         })();
       });
     });
@@ -4465,7 +4468,7 @@ function alignLocalPopover(wrapper, popover, options = {}) {
 }
 function getPopoverAnchor(wrapper) {
   for (const child of Array.from(wrapper.children)) {
-    if (!(child instanceof HTMLElement)) {
+    if (!child.instanceOf(HTMLElement)) {
       continue;
     }
     if (child.matches("button.belki-chip-button, button.belki-project-picker, button")) {
@@ -9764,12 +9767,6 @@ var BelkiPlugin = class extends import_obsidian19.Plugin {
     this.addCommand({
       id: "quick-add-task",
       name: "Quick Add Task",
-      hotkeys: [
-        {
-          modifiers: ["Mod", "Shift"],
-          key: "A"
-        }
-      ],
       callback: () => {
         new QuickAddModal(this.app, async (title) => {
           await this.store.createTask({ title });
