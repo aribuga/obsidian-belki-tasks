@@ -5,7 +5,8 @@
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production"
+    "build:css": "node scripts/build-styles.mjs",
+    "build": "pnpm run build:css && tsc --noEmit --skipLibCheck && node esbuild.config.mjs production"
   },
   "keywords": [
     "obsidian",

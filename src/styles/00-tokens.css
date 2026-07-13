@@ -1,0 +1,63 @@
+.belki-root {
+  --belki-bg: #ffffff;
+  --belki-surface: #ffffff;
+  --belki-sidebar-bg: #f7f7f5;
+  --belki-hover: #f1f1ef;
+  --belki-border: #ebeced;
+  --belki-border-soft: #ebeced;
+  --belki-text: #37352f;
+  --belki-muted: #787774;
+  --belki-faint: #a8a6a1;
+  --belki-accent: #37352f;
+  --belki-accent-hover: #2f2e2a;
+  --belki-on-accent: #ffffff;
+  --belki-danger: #e03e3e;
+  --belki-danger-light: #fbe4e3;
+  --belki-chip-bg: #f7f7f5;
+  --belki-nav-hover-bg: var(--belki-hover);
+  --belki-nav-active-bg: color-mix(in srgb, var(--belki-accent) 8%, transparent);
+  --belki-nav-active-border: color-mix(in srgb, var(--belki-accent) 12%, transparent);
+  --belki-radius-sm: 4px;
+  --belki-radius: 6px;
+  --belki-radius-lg: 10px;
+  --belki-radius-pill: 999px;
+  --belki-spacing-1: 4px;
+  --belki-spacing-2: 8px;
+  --belki-spacing-3: 12px;
+  --belki-spacing-4: 16px;
+  --belki-transition: 120ms ease;
+  --belki-button-height: 36px;
+  --belki-chip-height: 32px;
+  --belki-footer-height: 64px;
+  --belki-card-padding: 12px;
+  --belki-font-ui: var(--font-interface), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --belki-font-task-title: var(--belki-font-ui);
+  --belki-font-task-description: var(--belki-font-ui);
+  --belki-font-label: var(--belki-font-ui);
+  --belki-mobile-safe-top: max(24px, env(safe-area-inset-top, 0px));
+  --belki-mobile-bottom-toolbar: 88px;
+  color: var(--belki-text);
+  font-family: var(--belki-font-ui);
+  height: 100%;
+  position: relative;
+}
+
+.theme-dark .belki-root {
+  --belki-bg: var(--background-primary);
+  --belki-surface: var(--background-secondary);
+  --belki-sidebar-bg: var(--background-secondary);
+  --belki-hover: var(--background-modifier-hover);
+  --belki-border: var(--background-modifier-border);
+  --belki-border-soft: var(--background-modifier-border);
+  --belki-text: var(--text-normal);
+  --belki-muted: var(--text-muted);
+  --belki-faint: var(--text-faint);
+  --belki-accent: var(--text-normal);
+  --belki-accent-hover: var(--text-normal);
+  --belki-on-accent: var(--background-primary);
+  --belki-chip-bg: var(--background-secondary-alt);
+  --belki-nav-hover-bg: var(--background-modifier-hover);
+  --belki-nav-active-bg: color-mix(in srgb, var(--text-normal) 10%, transparent);
+  --belki-nav-active-border: color-mix(in srgb, var(--text-normal) 12%, transparent);
+  --belki-danger-light: rgba(224, 62, 62, 0.16);
+}

@@ -1,0 +1,174 @@
+
+.belki-empty {
+  color: var(--belki-muted);
+  font-size: 13px;
+  padding: 18px 0;
+}
+
+.belki-empty-small {
+  padding: 12px 0;
+}
+
+.belki-filter-section {
+  margin-bottom: 30px;
+}
+
+.belki-filter-section h2 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.belki-filter-list {
+  border-top: 1px solid var(--belki-border);
+  display: grid;
+  margin-top: 8px;
+}
+
+.belki-filter-row,
+.belki-label-row {
+  appearance: none;
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--belki-border);
+  box-shadow: none;
+  color: var(--belki-text);
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  min-height: 48px;
+  padding: 0 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.belki-filter-row:hover {
+  background: var(--belki-hover);
+}
+
+.belki-filter-row-with-actions {
+  grid-template-columns: minmax(0, 1fr) auto;
+  overflow: visible;
+  padding: 0;
+}
+
+.belki-filter-row-main,
+button.belki-filter-row-main {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  min-height: 48px;
+  min-width: 0;
+  padding: 0 0 0 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.belki-filter-row-main:hover,
+button.belki-filter-row-main:hover,
+button.belki-filter-row-main:focus-visible {
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+}
+
+.belki-label-actions-button,
+button.belki-label-actions-button {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  box-shadow: none;
+  color: var(--belki-muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: 32px;
+  justify-content: center;
+  margin: 0 8px;
+  padding: 0;
+  width: 32px;
+}
+
+.belki-label-actions-button:hover,
+button.belki-label-actions-button:hover,
+.belki-label-actions-button:focus-visible,
+button.belki-label-actions-button:focus-visible {
+  background: var(--belki-hover);
+  box-shadow: none;
+  color: var(--belki-text);
+  outline: none;
+}
+
+.belki-filter-dot {
+  align-items: center;
+  border-radius: 999px;
+  color: var(--belki-muted);
+  display: inline-flex;
+  font-size: 12px;
+  height: 18px;
+  justify-content: center;
+  width: 18px;
+}
+
+.belki-label-dot {
+  height: 10px;
+  width: 10px;
+}
+
+.belki-filter-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.belki-row-count {
+  color: var(--belki-muted);
+  font-size: 13px;
+  min-width: 24px;
+  text-align: right;
+}
+
+.belki-labels-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  min-height: 32px;
+}
+
+.belki-label-add,
+.belki-back-button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  box-shadow: none;
+  color: var(--belki-accent);
+  cursor: pointer;
+  font: inherit;
+  min-height: 28px;
+  min-width: 28px;
+  padding: 4px 8px;
+}
+
+.belki-label-add:hover,
+.belki-back-button:hover {
+  background: var(--belki-hover);
+}
+
+.belki-back-button {
+  color: var(--belki-muted);
+  font-size: 12px;
+  margin: 8px 0;
+}
