@@ -1296,6 +1296,53 @@ button.belki-add-inline {
   position: relative;
 }
 
+.belki-floating-composer-backdrop {
+  align-items: flex-start;
+  background: color-mix(in srgb, var(--belki-bg) 20%, transparent);
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  left: 280px;
+  padding: clamp(24px, 8vh, 72px) 18px 24px;
+  pointer-events: auto;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 1200;
+}
+
+.belki-root.is-sidebar-collapsed .belki-floating-composer-backdrop {
+  left: 72px;
+}
+
+.belki-floating-composer-card {
+  border-radius: 12px;
+  box-shadow: 0 18px 58px rgba(0, 0, 0, 0.18);
+  box-sizing: border-box;
+  max-height: min(680px, calc(100% - 24px));
+  max-width: min(720px, calc(100% - 24px));
+  overflow: visible;
+  position: relative;
+  width: min(640px, calc(100% - 24px));
+}
+
+.theme-dark .belki-floating-composer-card {
+  box-shadow: 0 20px 64px rgba(0, 0, 0, 0.36);
+}
+
+.belki-floating-composer-body {
+  min-width: 0;
+}
+
+.belki-floating-composer-card .belki-composer {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.belki-composer.is-floating {
+  width: 100%;
+}
+
 .belki-composer-title,
 .belki-composer-description {
   border-color: transparent;
@@ -1413,6 +1460,11 @@ button.belki-add-inline {
   top: calc(100% + 8px);
   transform: translateX(var(--belki-popover-shift-x, 0));
   z-index: 1000;
+}
+
+.belki-composer-popover.is-floating-popover,
+.belki-project-menu.is-floating-popover {
+  z-index: 1300;
 }
 
 .belki-composer-menu.is-align-right,
@@ -2053,9 +2105,16 @@ button.belki-add-inline {
   min-height: 0;
   opacity: 0;
   outline: none;
-  padding: 0;
+  padding: 0 12px;
   position: absolute;
+  text-align: center;
+  text-align-last: center;
   width: 100%;
+}
+
+.belki-chip-select-wrap > .belki-chip-select option {
+  padding: 6px 12px;
+  text-align: center;
 }
 
 .belki-chip-select-wrap > .belki-chip-select:hover,

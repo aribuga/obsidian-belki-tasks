@@ -26,6 +26,14 @@ import {
 import { TaskStore } from "../taskStore";
 import { BelkiSortMode, BelkiTask, BoardViewMode, CreateTaskInput, OVERDUE_RANGES, Priority } from "../types";
 import { AddTaskComposer } from "./AddTaskComposer";
+import { renderDesktopFloatingTaskComposer } from "./composer/DesktopFloatingTaskComposer";
+import {
+  AddTaskComposerContext,
+  AddTaskComposerContextOverride,
+  getBaseAddTaskComposerContext,
+  resolveAddTaskComposerContext,
+  shouldUseDesktopFloatingTaskComposer
+} from "./composer/composerContext";
 import { dedupeLabels, displayLabel, normalizeLabelName } from "../labels";
 import { TaskDetailModal } from "./TaskDetailModal";
 import { DeleteLabelModal, RenameLabelModal } from "./LabelManagementModals";
@@ -89,6 +97,7 @@ export class TaskBoardView extends ItemView {
   private searchQuery = "";
   private searchOpen = false;
   private composerOpen = false;
+  private composerContext: AddTaskComposerContext | null = null;
   private mobileComposerOpen = false;
   private highlightedTaskId: string | null = null;
   private activeFilter: string | null = null;
@@ -192,8 +201,7 @@ export class TaskBoardView extends ItemView {
 
     if (this.composerOpen) {
       this.stopEscape(event);
-      this.composerOpen = false;
-      this.render();
+      this.closeDesktopComposer();
       return;
     }
 
@@ -366,6 +374,7 @@ export class TaskBoardView extends ItemView {
       this.renderSearchOverlay(containerEl);
     }
     this.renderMobileQuickAdd(containerEl);
+    this.renderDesktopFloatingComposer(containerEl);
 
     this.restoreSidebarScroll(sidebarScrollLeft);
   }
@@ -678,19 +687,13 @@ export class TaskBoardView extends ItemView {
     }
 
     const addArea = main.createDiv({ cls: "belki-add-area" });
-    if (this.composerOpen) {
-      this.renderAddTaskComposer(addArea, () => {
-        this.composerOpen = false;
-        this.render();
-      });
-    } else {
-      const inlineAdd = addArea.createEl("button", { cls: "belki-add-inline" });
-      createBelkiIcon(inlineAdd, "add", { className: "belki-add-plus", size: 18 });
-      inlineAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
-      inlineAdd.addEventListener("click", () => {
-        this.openAddComposer();
-      });
-    }
+    const inlineAdd = addArea.createEl("button", { cls: "belki-add-inline" });
+    inlineAdd.toggleClass("is-active", this.composerOpen && !Platform.isMobile);
+    createBelkiIcon(inlineAdd, "add", { className: "belki-add-plus", size: 18 });
+    inlineAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
+    inlineAdd.addEventListener("click", () => {
+      this.openAddComposer();
+    });
 
     if (tasks.length === 0) {
       main.createDiv({
@@ -700,7 +703,7 @@ export class TaskBoardView extends ItemView {
     }
   }
 
-  private openAddComposer(): void {
+  private openAddComposer(contextOverride: AddTaskComposerContextOverride = {}): void {
     if (!this.shouldShowContextualAddTask()) {
       return;
     }
@@ -709,31 +712,67 @@ export class TaskBoardView extends ItemView {
     this.projectActionsOpen = null;
     this.searchOpen = false;
     this.searchQuery = "";
+    this.composerContext = this.resolveComposerContext(contextOverride);
 
     if (Platform.isMobile) {
       this.mobileComposerReturnScroll = this.getMainScrollSnapshot();
       this.mobileComposerOpen = true;
       this.composerOpen = false;
+      this.render();
     } else {
       this.composerOpen = true;
       this.mobileComposerOpen = false;
       this.mobileComposerReturnScroll = null;
+      this.renderPreservingMainScroll();
     }
+  }
 
-    this.render();
+  private closeDesktopComposer(): void {
+    this.composerOpen = false;
+    this.composerContext = null;
+    this.renderPreservingMainScroll();
   }
 
   private closeMobileComposer(): void {
     const snapshot = this.mobileComposerReturnScroll;
     this.mobileComposerReturnScroll = null;
     this.mobileComposerOpen = false;
+    this.composerContext = null;
     this.render();
     if (snapshot) {
       this.restoreMainScrollSnapshot(snapshot);
     }
   }
 
-  private renderAddTaskComposer(parent: HTMLElement, onClose: () => void): void {
+  private renderDesktopFloatingComposer(parent: HTMLElement): void {
+    if (!this.composerOpen || !shouldUseDesktopFloatingTaskComposer(Platform.isMobile)) {
+      return;
+    }
+
+    const floatingCleanup = renderDesktopFloatingTaskComposer(parent, {
+      onClose: () => this.closeDesktopComposer(),
+      renderComposer: (body) => {
+        this.renderAddTaskComposer(
+          body,
+          () => this.closeDesktopComposer(),
+          "floating",
+          this.getCurrentComposerContext()
+        );
+      }
+    });
+    const composerCleanup = this.composerCleanup;
+    this.composerCleanup = () => {
+      composerCleanup?.();
+      floatingCleanup();
+    };
+  }
+
+  private renderAddTaskComposer(
+    parent: HTMLElement,
+    onClose: () => void,
+    presentation: "default" | "floating" | "mobile-screen" = Platform.isMobile ? "mobile-screen" : "default",
+    context: AddTaskComposerContext = this.getCurrentComposerContext()
+  ): void {
     const composer = new AddTaskComposer();
     this.composerCleanup = composer.render(parent, {
       app: this.app,
@@ -741,8 +780,8 @@ export class TaskBoardView extends ItemView {
       labels: this.getAllLabels(),
       labelColors: this.settings.labelColors,
       projectColors: this.settings.projectColors,
-      defaultProject: this.selectedProject || "",
-      defaultDue: this.getComposerDefaultDue(),
+      defaultProject: context.defaultProject,
+      defaultDue: context.defaultDue,
       onCancel: onClose,
       onEnsureLabel: (label) => {
         this.ensureLabelColor(label);
@@ -751,7 +790,7 @@ export class TaskBoardView extends ItemView {
         await this.createTaskFromComposer(input);
         onClose();
       },
-      presentation: Platform.isMobile ? "mobile-screen" : "default"
+      presentation
     });
 
     const ownerWindow = parent.ownerDocument.defaultView || window;
@@ -759,7 +798,7 @@ export class TaskBoardView extends ItemView {
       if (Platform.isMobile) {
         composer.focusTitleForMobileCapture();
       } else {
-        composer.focus();
+        composer.focus({ preventScroll: true });
       }
     });
   }
@@ -817,16 +856,23 @@ export class TaskBoardView extends ItemView {
     return this.mode === "inbox" || this.mode === "today" || this.mode === "upcoming";
   }
 
-  private getComposerDefaultDue(): string | undefined {
-    if (this.mode === "today") {
-      return todayIso();
-    }
+  private getBaseComposerContext(): AddTaskComposerContext {
+    return getBaseAddTaskComposerContext({
+      mode: this.mode,
+      selectedProject: this.selectedProject,
+      today: todayIso(),
+      tomorrow: addDaysIso(1)
+    });
+  }
 
-    if (this.mode === "upcoming") {
-      return addDaysIso(1);
-    }
+  private getCurrentComposerContext(): AddTaskComposerContext {
+    return this.composerContext || this.getBaseComposerContext();
+  }
 
-    return undefined;
+  private resolveComposerContext(
+    override: AddTaskComposerContextOverride = {}
+  ): AddTaskComposerContext {
+    return resolveAddTaskComposerContext(this.getBaseComposerContext(), override);
   }
 
   private groupTasks(tasks: BelkiTask[]): Map<string, BelkiTask[]> {

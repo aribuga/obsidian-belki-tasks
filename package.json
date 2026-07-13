@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build:css": "node scripts/build-styles.mjs",
+    "typecheck": "tsc --noEmit --skipLibCheck",
+    "test": "tsc --project tsconfig.test.json && node --test .test-dist/tests",
     "build": "pnpm run build:css && tsc --noEmit --skipLibCheck && node esbuild.config.mjs production"
   },
   "keywords": [
