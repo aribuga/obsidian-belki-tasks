@@ -294,6 +294,10 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  .belki-sidebar-top {
+    display: none;
+  }
+
   .belki-sidebar::-webkit-scrollbar {
     display: none;
   }
@@ -840,6 +844,11 @@
   padding: calc(8px + var(--belki-mobile-safe-top)) 10px 8px;
   white-space: nowrap;
   -webkit-overflow-scrolling: touch;
+}
+
+.belki-root.is-mobile .belki-sidebar-top,
+:where(.is-mobile, .mod-mobile) .belki-root .belki-sidebar-top {
+  display: none;
 }
 
 .belki-root.is-mobile .belki-sidebar::-webkit-scrollbar,
