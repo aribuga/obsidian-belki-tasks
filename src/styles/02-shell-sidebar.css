@@ -401,6 +401,15 @@ button.belki-project-button.is-active {
   position: relative;
 }
 
+button.belki-sidebar-add-project,
+button.belki-sidebar-add-project:hover,
+button.belki-sidebar-add-project:focus-visible,
+button.belki-sidebar-add-project:active {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
 .belki-root.is-sidebar-collapsed .belki-sidebar-add-project {
   margin-top: 0;
   width: 40px;
@@ -411,7 +420,6 @@ button.belki-project-button.is-active {
 }
 
 .belki-sidebar-add-project:hover {
-  background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
