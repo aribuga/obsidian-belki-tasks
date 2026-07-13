@@ -22,7 +22,14 @@
   overflow-x: visible;
   padding: 18px 10px;
   position: relative;
+  scrollbar-width: none;
   z-index: 20;
+}
+
+.belki-root.is-sidebar-collapsed .belki-sidebar::-webkit-scrollbar {
+  display: none;
+  height: 0;
+  width: 0;
 }
 
 .belki-add-sidebar,
@@ -52,7 +59,7 @@
   align-items: center;
   background: transparent;
   border-radius: 6px;
-  color: var(--belki-muted);
+  color: var(--belki-faint);
   display: inline-flex;
   font-size: 13px;
   font-weight: 600;
@@ -64,13 +71,38 @@
 
 .belki-sidebar-collapse-button:hover,
 .belki-sidebar-collapse-button:focus-visible {
-  background: var(--belki-hover);
-  color: var(--belki-text);
+  background: transparent;
+  color: color-mix(in srgb, var(--belki-muted) 82%, transparent);
   outline: none;
 }
 
+.belki-root button.belki-sidebar-collapse-button,
+.belki-root button.belki-sidebar-collapse-button:hover,
+.belki-root button.belki-sidebar-collapse-button:focus-visible,
+.belki-root button.belki-sidebar-collapse-button:active {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.belki-root button.belki-sidebar-collapse-button,
+.belki-root button.belki-sidebar-collapse-button:active {
+  color: var(--belki-faint);
+}
+
+.belki-root button.belki-sidebar-collapse-button:hover,
+.belki-root button.belki-sidebar-collapse-button:focus-visible {
+  color: color-mix(in srgb, var(--belki-muted) 82%, transparent);
+}
+
 .belki-sidebar-collapse-icon {
+  color: inherit;
   flex: 0 0 auto;
+}
+
+.belki-sidebar-collapse-icon svg {
+  color: inherit;
+  stroke: currentColor;
 }
 
 .belki-root.is-sidebar-collapsed .belki-sidebar-top {

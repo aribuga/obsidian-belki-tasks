@@ -7501,13 +7501,9 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
         "data-sidebar-label": this.settings.sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
       }
     });
-    createBelkiIcon(toggle, this.settings.sidebarCollapsed ? "expand" : "collapse", {
+    createBelkiIcon(toggle, this.settings.sidebarCollapsed ? "panel-left-open" : "panel-left-close", {
       className: "belki-sidebar-collapse-icon",
       size: 18
-    });
-    toggle.createSpan({
-      cls: "belki-sidebar-collapse-label",
-      text: this.settings.sidebarCollapsed ? "Expand" : "Collapse"
     });
     toggle.addEventListener("click", (event) => {
       event.preventDefault();
