@@ -200,6 +200,7 @@ export default class BelkiPlugin extends Plugin {
       taskTitleFont: normalizeFontOption(saved?.taskTitleFont),
       taskDescriptionFont: normalizeFontOption(saved?.taskDescriptionFont),
       labelFont: normalizeFontOption(saved?.labelFont),
+      sidebarCollapsed: saved?.sidebarCollapsed ?? DEFAULT_SETTINGS.sidebarCollapsed,
       dailyNotesIntegrationEnabled:
         saved?.dailyNotesIntegrationEnabled ?? DEFAULT_SETTINGS.dailyNotesIntegrationEnabled,
       dailyNotesAutoInsertCompletedBlock:

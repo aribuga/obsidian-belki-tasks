@@ -416,6 +416,7 @@ var DEFAULT_SETTINGS = {
   taskTitleFont: "system",
   taskDescriptionFont: "system",
   labelFont: "system",
+  sidebarCollapsed: false,
   dailyNotesIntegrationEnabled: true,
   dailyNotesAutoInsertCompletedBlock: false,
   dailyNoteDateFormat: DEFAULT_DAILY_NOTE_DATE_FORMAT
@@ -7300,6 +7301,7 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     containerEl.addClass("belki-root");
     containerEl.addClass("belki-view");
     containerEl.toggleClass("is-mobile", import_obsidian16.Platform.isMobile);
+    containerEl.toggleClass("is-sidebar-collapsed", this.settings.sidebarCollapsed && !import_obsidian16.Platform.isMobile);
     applyBelkiFontSettings(containerEl, this.settings);
     containerEl.addEventListener("keydown", this.handleRootKeyDown, true);
     containerEl.addEventListener("click", this.handleRootClick, true);
@@ -7367,8 +7369,17 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     sidebar.addEventListener("scroll", () => {
       this.sidebarScrollLeft = sidebar.scrollLeft;
     });
+    this.renderSidebarHeader(sidebar);
     if (this.shouldShowContextualAddTask()) {
-      const sidebarAdd = sidebar.createEl("button", { cls: "belki-add-sidebar" });
+      const sidebarAdd = sidebar.createEl("button", {
+        cls: "belki-add-sidebar",
+        attr: {
+          type: "button",
+          title: "Add task",
+          "aria-label": "Add task",
+          "data-sidebar-label": "Add task"
+        }
+      });
       createBelkiIcon(sidebarAdd, "add", { className: "belki-add-plus", size: 18 });
       sidebarAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
       sidebarAdd.addEventListener("click", () => {
@@ -7390,7 +7401,12 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     projectsHeadingRow.createDiv({ cls: "belki-sidebar-heading", text: "Projects" });
     const addProjectBtn = projectsHeadingRow.createEl("button", {
       cls: "belki-sidebar-add-project",
-      attr: { type: "button", "aria-label": "New project" }
+      attr: {
+        type: "button",
+        title: "New project",
+        "aria-label": "New project",
+        "data-sidebar-label": "New project"
+      }
     });
     createBelkiIcon(addProjectBtn, "add");
     addProjectBtn.createSpan({ cls: "belki-sidebar-add-project-label", text: "Project" });
@@ -7408,7 +7424,13 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     for (const cleanProject of this.getActiveProjects()) {
       const count = activeTopLevel.filter((task) => normalizeTaskProject(task.project) === cleanProject).length;
       const button = projectsSection.createEl("button", {
-        cls: "belki-project-button"
+        cls: "belki-project-button",
+        attr: {
+          type: "button",
+          title: `${cleanProject} (${count})`,
+          "aria-label": `${cleanProject} (${count})`,
+          "data-sidebar-label": `${cleanProject} (${count})`
+        }
       });
       button.toggleClass(
         "is-active",
@@ -7436,7 +7458,13 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     }
     if (this.settings.archivedProjects.length > 0) {
       const archiveButton = projectsSection.createEl("button", {
-        cls: "belki-project-button belki-archived-button"
+        cls: "belki-project-button belki-archived-button",
+        attr: {
+          type: "button",
+          title: `Archived (${this.settings.archivedProjects.length})`,
+          "aria-label": `Archived (${this.settings.archivedProjects.length})`,
+          "data-sidebar-label": `Archived (${this.settings.archivedProjects.length})`
+        }
       });
       archiveButton.toggleClass("is-active", this.mode === "archived");
       createBelkiIcon(archiveButton, "archive", { className: "belki-nav-icon", size: 18 });
@@ -7461,8 +7489,39 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
       "completed"
     );
   }
+  renderSidebarHeader(parent) {
+    const header = parent.createDiv({ cls: "belki-sidebar-top" });
+    const toggle = header.createEl("button", {
+      cls: "belki-sidebar-collapse-button",
+      attr: {
+        type: "button",
+        title: this.settings.sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar",
+        "aria-label": this.settings.sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar",
+        "aria-pressed": String(this.settings.sidebarCollapsed),
+        "data-sidebar-label": this.settings.sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+      }
+    });
+    createBelkiIcon(toggle, this.settings.sidebarCollapsed ? "panel-left-open" : "panel-left-close", {
+      className: "belki-sidebar-collapse-icon",
+      size: 18
+    });
+    toggle.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      void this.toggleSidebarCollapsed();
+    });
+  }
   renderNavButton(parent, label, mode, count, iconKey) {
-    const button = parent.createEl("button", { cls: "belki-nav-button" });
+    const tooltipLabel = count !== void 0 ? `${label} (${count})` : label;
+    const button = parent.createEl("button", {
+      cls: "belki-nav-button",
+      attr: {
+        type: "button",
+        title: tooltipLabel,
+        "aria-label": tooltipLabel,
+        "data-sidebar-label": tooltipLabel
+      }
+    });
     const active = label === "Search" ? false : label === "Projects" ? this.mode === "projects" && this.selectedProject === null : this.mode === mode;
     button.toggleClass("is-active", active);
     const iconEl = button.createEl("span", { cls: "belki-nav-icon" });
@@ -7494,6 +7553,11 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
       this.sortPopoverOpen = false;
       this.render();
     });
+  }
+  async toggleSidebarCollapsed() {
+    this.settings.sidebarCollapsed = !this.settings.sidebarCollapsed;
+    await this.saveSettings();
+    this.render();
   }
   renderMain(parent) {
     const main = parent.createEl("main", { cls: "belki-main" });
@@ -9648,7 +9712,7 @@ var BelkiPlugin = class extends import_obsidian19.Plugin {
     }
   }
   async loadSettings() {
-    var _a, _b;
+    var _a, _b, _c;
     const saved = toSettingsData(await this.loadData());
     this.settings = {
       ...DEFAULT_SETTINGS,
@@ -9682,8 +9746,9 @@ var BelkiPlugin = class extends import_obsidian19.Plugin {
       taskTitleFont: normalizeFontOption(saved == null ? void 0 : saved.taskTitleFont),
       taskDescriptionFont: normalizeFontOption(saved == null ? void 0 : saved.taskDescriptionFont),
       labelFont: normalizeFontOption(saved == null ? void 0 : saved.labelFont),
-      dailyNotesIntegrationEnabled: (_a = saved == null ? void 0 : saved.dailyNotesIntegrationEnabled) != null ? _a : DEFAULT_SETTINGS.dailyNotesIntegrationEnabled,
-      dailyNotesAutoInsertCompletedBlock: (_b = saved == null ? void 0 : saved.dailyNotesAutoInsertCompletedBlock) != null ? _b : DEFAULT_SETTINGS.dailyNotesAutoInsertCompletedBlock,
+      sidebarCollapsed: (_a = saved == null ? void 0 : saved.sidebarCollapsed) != null ? _a : DEFAULT_SETTINGS.sidebarCollapsed,
+      dailyNotesIntegrationEnabled: (_b = saved == null ? void 0 : saved.dailyNotesIntegrationEnabled) != null ? _b : DEFAULT_SETTINGS.dailyNotesIntegrationEnabled,
+      dailyNotesAutoInsertCompletedBlock: (_c = saved == null ? void 0 : saved.dailyNotesAutoInsertCompletedBlock) != null ? _c : DEFAULT_SETTINGS.dailyNotesAutoInsertCompletedBlock,
       dailyNoteDateFormat: normalizeDailyNoteDateFormat(saved == null ? void 0 : saved.dailyNoteDateFormat)
     };
   }

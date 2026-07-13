@@ -32,6 +32,7 @@ export interface BelkiSettings {
   taskDescriptionFont: BelkiFontOption;
   labelFont: BelkiFontOption;
   archivedProjects: string[];
+  sidebarCollapsed: boolean;
   dailyNotesIntegrationEnabled: boolean;
   dailyNotesAutoInsertCompletedBlock: boolean;
   dailyNoteDateFormat: string;
@@ -74,6 +75,7 @@ export const DEFAULT_SETTINGS: BelkiSettings = {
   taskTitleFont: "system",
   taskDescriptionFont: "system",
   labelFont: "system",
+  sidebarCollapsed: false,
   dailyNotesIntegrationEnabled: true,
   dailyNotesAutoInsertCompletedBlock: false,
   dailyNoteDateFormat: DEFAULT_DAILY_NOTE_DATE_FORMAT
