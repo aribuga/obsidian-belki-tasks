@@ -21,6 +21,7 @@ pnpm-debug.log*
 .cache/
 .parcel-cache/
 .eslintcache
+.test-dist/
 *.tsbuildinfo
 
 # Temporary files

@@ -30,7 +30,7 @@ interface ComposerOptions {
   onCancel: () => void;
   onEnsureLabel: (label: string) => void;
   onSubmit: (input: CreateTaskInput) => Promise<void>;
-  presentation?: "default" | "mobile-screen";
+  presentation?: "default" | "floating" | "mobile-screen";
 }
 
 export class AddTaskComposer {
@@ -40,6 +40,7 @@ export class AddTaskComposer {
     const form = parent.createEl("form", { cls: "belki-composer" });
     const isMobileScreen = options.presentation === "mobile-screen";
     form.toggleClass("is-mobile-screen", isMobileScreen);
+    form.toggleClass("is-floating", options.presentation === "floating");
 
     this.titleInput = form.createEl("textarea", {
       cls: "belki-composer-title",
@@ -137,6 +138,7 @@ export class AddTaskComposer {
     const attachments = renderComposerAttachments({ chipRow, form });
 
     const mobilePanelSide = Platform.isMobile ? "above" : "below";
+    const useFixedPopovers = options.presentation === "floating";
     let detachOutsideListener = () => undefined;
     let dateRepeat: ComposerDateRepeatController = {
       close: () => undefined,
@@ -179,6 +181,7 @@ export class AddTaskComposer {
       options: LocalPopoverOptions = {}
     ) => {
       clearOutsideListener();
+      const restoreFixedPopover = moveFixedPopoverToHost(wrapper, popover, options);
       alignLocalPopover(wrapper, popover, options);
       const ownerDocument = wrapper.ownerDocument;
       const handleOutsideClick = (event: PointerEvent) => {
@@ -195,6 +198,7 @@ export class AddTaskComposer {
       ownerDocument.addEventListener("pointerdown", handleOutsideClick, true);
       detachOutsideListener = () => {
         ownerDocument.removeEventListener("pointerdown", handleOutsideClick, true);
+        restoreFixedPopover();
       };
     };
 
@@ -206,7 +210,10 @@ export class AddTaskComposer {
       closePopovers: closeComposerPopovers,
       onEnsureLabel: options.onEnsureLabel,
       watchPopover: (wrapper, popover) => {
-        watchLocalPopover(wrapper, popover, { preferredSide: mobilePanelSide });
+        watchLocalPopover(wrapper, popover, {
+          preferredSide: mobilePanelSide,
+          useFixed: useFixedPopovers
+        });
       }
     });
     const deadlineWrap = chipRow.createDiv({ cls: "belki-composer-deadline-wrap" });
@@ -220,11 +227,15 @@ export class AddTaskComposer {
       closePopovers: closeComposerPopovers,
       clearOutsideListener,
       watchPopover: (wrapper, popover, popoverOptions) => {
-        watchLocalPopover(wrapper, popover, popoverOptions);
+        watchLocalPopover(wrapper, popover, {
+          ...popoverOptions,
+          useFixed: useFixedPopovers
+        });
       }
     });
 
     const footer = form.createDiv({ cls: "belki-composer-footer" });
+    const projectPopoverSide = options.presentation === "floating" ? "below" : "above";
     projects = renderComposerProjects({
       footer,
       projects: options.projects,
@@ -233,7 +244,11 @@ export class AddTaskComposer {
       closePopovers: closeComposerPopovers,
       clearOutsideListener,
       watchPopover: (wrapper, popover, popoverOptions) => {
-        watchLocalPopover(wrapper, popover, popoverOptions);
+        watchLocalPopover(wrapper, popover, {
+          ...popoverOptions,
+          preferredSide: projectPopoverSide,
+          useFixed: useFixedPopovers
+        });
       }
     });
 
@@ -259,7 +274,12 @@ export class AddTaskComposer {
       }
     });
 
-    const cleanup = () => { projects.remove(); closeWikilinkDropdown(); closeQuickAddDropdown(); };
+    const cleanup = () => {
+      closeComposerPopovers();
+      projects.remove();
+      closeWikilinkDropdown();
+      closeQuickAddDropdown();
+    };
     cancelButton.addEventListener("click", () => { cleanup(); options.onCancel(); });
     form.addEventListener("submit", () => cleanup());
     form.addEventListener("submit", (event) => {
@@ -333,6 +353,7 @@ function alignLocalPopover(
   options: LocalPopoverOptions = {}
 ): void {
   const margin = 12;
+  const offset = 4;
   const preferredSide = options.preferredSide || "below";
 
   popover.removeClass("is-align-right");
@@ -340,12 +361,17 @@ function alignLocalPopover(
   popover.removeClass("is-open-down");
   popover.setCssProps({ "--belki-popover-shift-x": "0px" });
 
-  const wrapperRect = wrapper.getBoundingClientRect();
+  const ownerWindow = wrapper.ownerDocument.defaultView || window;
+  const anchor = getPopoverAnchor(wrapper);
+  const wrapperRect = anchor.getBoundingClientRect();
 
   if (options.useFixed) {
     // Fixed positioning — use viewport coordinates so containers with
     // overflow:hidden or transforms cannot clip the popover.
+    const host = popover.parentElement || wrapper;
+    const hostRect = host.getBoundingClientRect();
     popover.setCssStyles({
+      position: "absolute",
       top: "",
       bottom: "",
       left: "",
@@ -355,21 +381,22 @@ function alignLocalPopover(
     const popoverWidth = popover.offsetWidth || 240;
     const popoverHeight = popover.offsetHeight || 220;
 
-    let left = wrapperRect.left;
-    if (left + popoverWidth > window.innerWidth - margin) {
-      left = wrapperRect.right - popoverWidth;
+    let left = wrapperRect.left - hostRect.left;
+    if (wrapperRect.left + popoverWidth > ownerWindow.innerWidth - margin) {
+      left = wrapperRect.right - hostRect.left - popoverWidth;
     }
     const fixedStyles: Partial<CSSStyleDeclaration> = {
-      left: `${Math.max(margin, left)}px`
+      left: `${Math.max(margin, left)}px`,
+      zIndex: "1300"
     };
 
-    const fitsBelow = wrapperRect.bottom + popoverHeight + margin <= window.innerHeight;
+    const fitsBelow = wrapperRect.bottom + popoverHeight + margin <= ownerWindow.innerHeight;
     const fitsAbove = wrapperRect.top - popoverHeight - margin >= 0;
     if ((preferredSide === "above" && fitsAbove) || (preferredSide === "above" && !fitsBelow)) {
-      fixedStyles.bottom = `${window.innerHeight - wrapperRect.top + 8}px`;
+      fixedStyles.bottom = `${hostRect.bottom - wrapperRect.top + offset}px`;
       popover.addClass("is-open-up");
     } else {
-      fixedStyles.top = `${wrapperRect.bottom + 8}px`;
+      fixedStyles.top = `${wrapperRect.bottom - hostRect.top + offset}px`;
       popover.addClass("is-open-down");
     }
     popover.setCssStyles(fixedStyles);
@@ -379,7 +406,6 @@ function alignLocalPopover(
   const popoverRect = popover.getBoundingClientRect();
   const popoverWidth = popoverRect.width || 240;
   const popoverHeight = popoverRect.height || 220;
-  const ownerWindow = wrapper.ownerDocument.defaultView || window;
 
   let shiftX = 0;
   const rightOverflow = wrapperRect.left + popoverWidth - (ownerWindow.innerWidth - margin);
@@ -410,4 +436,61 @@ function alignLocalPopover(
   }
 
   popover.addClass("is-open-down");
+}
+
+function getPopoverAnchor(wrapper: HTMLElement): HTMLElement {
+  for (const child of Array.from(wrapper.children)) {
+    if (!(child instanceof HTMLElement)) {
+      continue;
+    }
+    if (child.matches("button.belki-chip-button, button.belki-project-picker, button")) {
+      return child;
+    }
+  }
+
+  return wrapper;
+}
+
+function moveFixedPopoverToHost(
+  wrapper: HTMLElement,
+  popover: HTMLElement,
+  options: LocalPopoverOptions
+): () => void {
+  if (!options.useFixed) {
+    return () => undefined;
+  }
+
+  const originalParent = popover.parentElement;
+  const originalNextSibling = popover.nextSibling;
+  const host =
+    wrapper.closest<HTMLElement>(".belki-floating-composer-card") ||
+    wrapper.closest<HTMLElement>(".belki-root") ||
+    wrapper.ownerDocument.body;
+  popover.addClass("is-floating-popover");
+  if (popover.parentElement !== host) {
+    host.appendChild(popover);
+  }
+
+  return () => {
+    popover.removeClass("is-floating-popover");
+    popover.setCssStyles({
+      position: "",
+      top: "",
+      bottom: "",
+      left: "",
+      right: "",
+      zIndex: ""
+    });
+
+    if (!originalParent || !popover.isConnected) {
+      return;
+    }
+
+    if (originalNextSibling && originalNextSibling.parentElement === originalParent) {
+      originalParent.insertBefore(popover, originalNextSibling);
+      return;
+    }
+
+    originalParent.appendChild(popover);
+  };
 }

@@ -4133,6 +4133,7 @@ var AddTaskComposer = class {
     const form = parent.createEl("form", { cls: "belki-composer" });
     const isMobileScreen = options.presentation === "mobile-screen";
     form.toggleClass("is-mobile-screen", isMobileScreen);
+    form.toggleClass("is-floating", options.presentation === "floating");
     this.titleInput = form.createEl("textarea", {
       cls: "belki-composer-title",
       attr: {
@@ -4213,6 +4214,7 @@ var AddTaskComposer = class {
     updatePriorityStyle();
     const attachments = renderComposerAttachments({ chipRow, form });
     const mobilePanelSide = import_obsidian12.Platform.isMobile ? "above" : "below";
+    const useFixedPopovers = options.presentation === "floating";
     let detachOutsideListener = () => void 0;
     let dateRepeat = {
       close: () => void 0,
@@ -4247,6 +4249,7 @@ var AddTaskComposer = class {
     };
     const watchLocalPopover = (wrapper, popover, options2 = {}) => {
       clearOutsideListener();
+      const restoreFixedPopover = moveFixedPopoverToHost(wrapper, popover, options2);
       alignLocalPopover(wrapper, popover, options2);
       const ownerDocument = wrapper.ownerDocument;
       const handleOutsideClick = (event) => {
@@ -4258,6 +4261,7 @@ var AddTaskComposer = class {
       ownerDocument.addEventListener("pointerdown", handleOutsideClick, true);
       detachOutsideListener = () => {
         ownerDocument.removeEventListener("pointerdown", handleOutsideClick, true);
+        restoreFixedPopover();
       };
     };
     labels = renderComposerLabels({
@@ -4268,7 +4272,10 @@ var AddTaskComposer = class {
       closePopovers: closeComposerPopovers,
       onEnsureLabel: options.onEnsureLabel,
       watchPopover: (wrapper, popover) => {
-        watchLocalPopover(wrapper, popover, { preferredSide: mobilePanelSide });
+        watchLocalPopover(wrapper, popover, {
+          preferredSide: mobilePanelSide,
+          useFixed: useFixedPopovers
+        });
       }
     });
     const deadlineWrap = chipRow.createDiv({ cls: "belki-composer-deadline-wrap" });
@@ -4282,10 +4289,14 @@ var AddTaskComposer = class {
       closePopovers: closeComposerPopovers,
       clearOutsideListener,
       watchPopover: (wrapper, popover, popoverOptions) => {
-        watchLocalPopover(wrapper, popover, popoverOptions);
+        watchLocalPopover(wrapper, popover, {
+          ...popoverOptions,
+          useFixed: useFixedPopovers
+        });
       }
     });
     const footer = form.createDiv({ cls: "belki-composer-footer" });
+    const projectPopoverSide = options.presentation === "floating" ? "below" : "above";
     projects = renderComposerProjects({
       footer,
       projects: options.projects,
@@ -4294,7 +4305,11 @@ var AddTaskComposer = class {
       closePopovers: closeComposerPopovers,
       clearOutsideListener,
       watchPopover: (wrapper, popover, popoverOptions) => {
-        watchLocalPopover(wrapper, popover, popoverOptions);
+        watchLocalPopover(wrapper, popover, {
+          ...popoverOptions,
+          preferredSide: projectPopoverSide,
+          useFixed: useFixedPopovers
+        });
       }
     });
     const hasOpenComposerPopover = () => labels.isOpen() || dateRepeat.isOpen() || projects.isOpen();
@@ -4315,6 +4330,7 @@ var AddTaskComposer = class {
       }
     });
     const cleanup = () => {
+      closeComposerPopovers();
       projects.remove();
       closeWikilinkDropdown();
       closeQuickAddDropdown();
@@ -4375,14 +4391,20 @@ function createIcon(parent, iconName, className = "belki-chip-icon") {
 }
 function alignLocalPopover(wrapper, popover, options = {}) {
   const margin = 12;
+  const offset = 4;
   const preferredSide = options.preferredSide || "below";
   popover.removeClass("is-align-right");
   popover.removeClass("is-open-up");
   popover.removeClass("is-open-down");
   popover.setCssProps({ "--belki-popover-shift-x": "0px" });
-  const wrapperRect = wrapper.getBoundingClientRect();
+  const ownerWindow = wrapper.ownerDocument.defaultView || window;
+  const anchor = getPopoverAnchor(wrapper);
+  const wrapperRect = anchor.getBoundingClientRect();
   if (options.useFixed) {
+    const host = popover.parentElement || wrapper;
+    const hostRect = host.getBoundingClientRect();
     popover.setCssStyles({
+      position: "absolute",
       top: "",
       bottom: "",
       left: "",
@@ -4390,20 +4412,21 @@ function alignLocalPopover(wrapper, popover, options = {}) {
     });
     const popoverWidth2 = popover.offsetWidth || 240;
     const popoverHeight2 = popover.offsetHeight || 220;
-    let left = wrapperRect.left;
-    if (left + popoverWidth2 > window.innerWidth - margin) {
-      left = wrapperRect.right - popoverWidth2;
+    let left = wrapperRect.left - hostRect.left;
+    if (wrapperRect.left + popoverWidth2 > ownerWindow.innerWidth - margin) {
+      left = wrapperRect.right - hostRect.left - popoverWidth2;
     }
     const fixedStyles = {
-      left: `${Math.max(margin, left)}px`
+      left: `${Math.max(margin, left)}px`,
+      zIndex: "1300"
     };
-    const fitsBelow2 = wrapperRect.bottom + popoverHeight2 + margin <= window.innerHeight;
+    const fitsBelow2 = wrapperRect.bottom + popoverHeight2 + margin <= ownerWindow.innerHeight;
     const fitsAbove2 = wrapperRect.top - popoverHeight2 - margin >= 0;
     if (preferredSide === "above" && fitsAbove2 || preferredSide === "above" && !fitsBelow2) {
-      fixedStyles.bottom = `${window.innerHeight - wrapperRect.top + 8}px`;
+      fixedStyles.bottom = `${hostRect.bottom - wrapperRect.top + offset}px`;
       popover.addClass("is-open-up");
     } else {
-      fixedStyles.top = `${wrapperRect.bottom + 8}px`;
+      fixedStyles.top = `${wrapperRect.bottom - hostRect.top + offset}px`;
       popover.addClass("is-open-down");
     }
     popover.setCssStyles(fixedStyles);
@@ -4412,7 +4435,6 @@ function alignLocalPopover(wrapper, popover, options = {}) {
   const popoverRect = popover.getBoundingClientRect();
   const popoverWidth = popoverRect.width || 240;
   const popoverHeight = popoverRect.height || 220;
-  const ownerWindow = wrapper.ownerDocument.defaultView || window;
   let shiftX = 0;
   const rightOverflow = wrapperRect.left + popoverWidth - (ownerWindow.innerWidth - margin);
   if (rightOverflow > 0) {
@@ -4440,6 +4462,101 @@ function alignLocalPopover(wrapper, popover, options = {}) {
     return;
   }
   popover.addClass("is-open-down");
+}
+function getPopoverAnchor(wrapper) {
+  for (const child of Array.from(wrapper.children)) {
+    if (!(child instanceof HTMLElement)) {
+      continue;
+    }
+    if (child.matches("button.belki-chip-button, button.belki-project-picker, button")) {
+      return child;
+    }
+  }
+  return wrapper;
+}
+function moveFixedPopoverToHost(wrapper, popover, options) {
+  if (!options.useFixed) {
+    return () => void 0;
+  }
+  const originalParent = popover.parentElement;
+  const originalNextSibling = popover.nextSibling;
+  const host = wrapper.closest(".belki-floating-composer-card") || wrapper.closest(".belki-root") || wrapper.ownerDocument.body;
+  popover.addClass("is-floating-popover");
+  if (popover.parentElement !== host) {
+    host.appendChild(popover);
+  }
+  return () => {
+    popover.removeClass("is-floating-popover");
+    popover.setCssStyles({
+      position: "",
+      top: "",
+      bottom: "",
+      left: "",
+      right: "",
+      zIndex: ""
+    });
+    if (!originalParent || !popover.isConnected) {
+      return;
+    }
+    if (originalNextSibling && originalNextSibling.parentElement === originalParent) {
+      originalParent.insertBefore(popover, originalNextSibling);
+      return;
+    }
+    originalParent.appendChild(popover);
+  };
+}
+
+// src/views/composer/DesktopFloatingTaskComposer.ts
+function renderDesktopFloatingTaskComposer(parent, options) {
+  const backdrop = parent.createDiv({ cls: "belki-floating-composer-backdrop" });
+  const card = backdrop.createDiv({
+    cls: "belki-floating-composer-card",
+    attr: {
+      role: "dialog",
+      "aria-modal": "false",
+      "aria-label": "Add task"
+    }
+  });
+  const body = card.createDiv({ cls: "belki-floating-composer-body" });
+  let isClosing = false;
+  const close = () => {
+    if (isClosing) {
+      return;
+    }
+    isClosing = true;
+    options.onClose();
+  };
+  backdrop.addEventListener("pointerdown", (event) => {
+    if (event.target !== backdrop) {
+      return;
+    }
+    event.preventDefault();
+    close();
+  });
+  options.renderComposer(body);
+  return () => {
+    backdrop.remove();
+  };
+}
+
+// src/views/composer/composerContext.ts
+function getBaseAddTaskComposerContext(options) {
+  const defaultProject = options.mode === "projects" ? options.selectedProject || "" : "";
+  if (options.mode === "today") {
+    return { defaultProject, defaultDue: options.today };
+  }
+  if (options.mode === "upcoming") {
+    return { defaultProject, defaultDue: options.tomorrow };
+  }
+  return { defaultProject };
+}
+function resolveAddTaskComposerContext(base, override = {}) {
+  const defaultProject = override.defaultProject !== void 0 ? override.defaultProject || "" : base.defaultProject;
+  const defaultDue = override.defaultDue !== void 0 ? override.defaultDue || void 0 : base.defaultDue;
+  return defaultDue ? { defaultProject, defaultDue } : { defaultProject };
+}
+function shouldUseDesktopFloatingTaskComposer(isMobile) {
+  return !isMobile;
 }
 
 // src/views/TaskDetailModal.ts
@@ -7079,6 +7196,7 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     this.searchQuery = "";
     this.searchOpen = false;
     this.composerOpen = false;
+    this.composerContext = null;
     this.mobileComposerOpen = false;
     this.highlightedTaskId = null;
     this.activeFilter = null;
@@ -7164,8 +7282,7 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
       }
       if (this.composerOpen) {
         this.stopEscape(event);
-        this.composerOpen = false;
-        this.render();
+        this.closeDesktopComposer();
         return;
       }
       if (this.mobileComposerOpen) {
@@ -7312,6 +7429,7 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
       this.renderSearchOverlay(containerEl);
     }
     this.renderMobileQuickAdd(containerEl);
+    this.renderDesktopFloatingComposer(containerEl);
     this.restoreSidebarScroll(sidebarScrollLeft);
   }
   getMainScrollSnapshot() {
@@ -7580,19 +7698,13 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
       return;
     }
     const addArea = main.createDiv({ cls: "belki-add-area" });
-    if (this.composerOpen) {
-      this.renderAddTaskComposer(addArea, () => {
-        this.composerOpen = false;
-        this.render();
-      });
-    } else {
-      const inlineAdd = addArea.createEl("button", { cls: "belki-add-inline" });
-      createBelkiIcon(inlineAdd, "add", { className: "belki-add-plus", size: 18 });
-      inlineAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
-      inlineAdd.addEventListener("click", () => {
-        this.openAddComposer();
-      });
-    }
+    const inlineAdd = addArea.createEl("button", { cls: "belki-add-inline" });
+    inlineAdd.toggleClass("is-active", this.composerOpen && !import_obsidian16.Platform.isMobile);
+    createBelkiIcon(inlineAdd, "add", { className: "belki-add-plus", size: 18 });
+    inlineAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
+    inlineAdd.addEventListener("click", () => {
+      this.openAddComposer();
+    });
     if (tasks.length === 0) {
       main.createDiv({
         cls: "belki-empty",
@@ -7600,7 +7712,7 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
       });
     }
   }
-  openAddComposer() {
+  openAddComposer(contextOverride = {}) {
     if (!this.shouldShowContextualAddTask()) {
       return;
     }
@@ -7608,27 +7720,56 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     this.projectActionsOpen = null;
     this.searchOpen = false;
     this.searchQuery = "";
+    this.composerContext = this.resolveComposerContext(contextOverride);
     if (import_obsidian16.Platform.isMobile) {
       this.mobileComposerReturnScroll = this.getMainScrollSnapshot();
       this.mobileComposerOpen = true;
       this.composerOpen = false;
+      this.render();
     } else {
       this.composerOpen = true;
       this.mobileComposerOpen = false;
       this.mobileComposerReturnScroll = null;
+      this.renderPreservingMainScroll();
     }
-    this.render();
+  }
+  closeDesktopComposer() {
+    this.composerOpen = false;
+    this.composerContext = null;
+    this.renderPreservingMainScroll();
   }
   closeMobileComposer() {
     const snapshot = this.mobileComposerReturnScroll;
     this.mobileComposerReturnScroll = null;
     this.mobileComposerOpen = false;
+    this.composerContext = null;
     this.render();
     if (snapshot) {
       this.restoreMainScrollSnapshot(snapshot);
     }
   }
-  renderAddTaskComposer(parent, onClose) {
+  renderDesktopFloatingComposer(parent) {
+    if (!this.composerOpen || !shouldUseDesktopFloatingTaskComposer(import_obsidian16.Platform.isMobile)) {
+      return;
+    }
+    const floatingCleanup = renderDesktopFloatingTaskComposer(parent, {
+      onClose: () => this.closeDesktopComposer(),
+      renderComposer: (body) => {
+        this.renderAddTaskComposer(
+          body,
+          () => this.closeDesktopComposer(),
+          "floating",
+          this.getCurrentComposerContext()
+        );
+      }
+    });
+    const composerCleanup = this.composerCleanup;
+    this.composerCleanup = () => {
+      composerCleanup == null ? void 0 : composerCleanup();
+      floatingCleanup();
+    };
+  }
+  renderAddTaskComposer(parent, onClose, presentation = import_obsidian16.Platform.isMobile ? "mobile-screen" : "default", context = this.getCurrentComposerContext()) {
     const composer = new AddTaskComposer();
     this.composerCleanup = composer.render(parent, {
       app: this.app,
@@ -7636,8 +7777,8 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
       labels: this.getAllLabels(),
       labelColors: this.settings.labelColors,
       projectColors: this.settings.projectColors,
-      defaultProject: this.selectedProject || "",
-      defaultDue: this.getComposerDefaultDue(),
+      defaultProject: context.defaultProject,
+      defaultDue: context.defaultDue,
       onCancel: onClose,
       onEnsureLabel: (label) => {
         this.ensureLabelColor(label);
@@ -7646,14 +7787,14 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
         await this.createTaskFromComposer(input);
         onClose();
       },
-      presentation: import_obsidian16.Platform.isMobile ? "mobile-screen" : "default"
+      presentation
     });
     const ownerWindow = parent.ownerDocument.defaultView || window;
     ownerWindow.requestAnimationFrame(() => {
       if (import_obsidian16.Platform.isMobile) {
         composer.focusTitleForMobileCapture();
       } else {
-        composer.focus();
+        composer.focus({ preventScroll: true });
       }
     });
   }
@@ -7703,14 +7844,19 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     }
     return this.mode === "inbox" || this.mode === "today" || this.mode === "upcoming";
   }
-  getComposerDefaultDue() {
-    if (this.mode === "today") {
-      return todayIso();
-    }
-    if (this.mode === "upcoming") {
-      return addDaysIso2(1);
-    }
-    return void 0;
+  getBaseComposerContext() {
+    return getBaseAddTaskComposerContext({
+      mode: this.mode,
+      selectedProject: this.selectedProject,
+      today: todayIso(),
+      tomorrow: addDaysIso2(1)
+    });
+  }
+  getCurrentComposerContext() {
+    return this.composerContext || this.getBaseComposerContext();
+  }
+  resolveComposerContext(override = {}) {
+    return resolveAddTaskComposerContext(this.getBaseComposerContext(), override);
   }
   groupTasks(tasks) {
     const result = /* @__PURE__ */ new Map();
