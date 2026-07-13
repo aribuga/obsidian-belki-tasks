@@ -101,6 +101,7 @@ export type BoardViewMode =
   | "upcoming"
   | "projects"
   | "activity"
+  | "calendar"
   | "completed"
   | "search"
   | "filters"

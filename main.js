@@ -98,6 +98,18 @@ function formatDueDateChip(value) {
     ...year !== thisYear ? { year: "numeric" } : {}
   }).format(date);
 }
+function formatDateLabel(value) {
+  if (!isIsoDate(value)) {
+    return value;
+  }
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return new Intl.DateTimeFormat(void 0, {
+    weekday: "short",
+    month: "short",
+    day: "numeric"
+  }).format(date);
+}
 function isoDateToUtcDay(value) {
   if (!isIsoDate(value)) {
     return null;
@@ -7051,6 +7063,313 @@ function createTaskActionMenuButton(parent, label, onClick) {
   });
 }
 
+// src/views/calendar/calendarUtils.ts
+var CALENDAR_WEEK_START = 1;
+var CALENDAR_WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+function calendarMonthFromDate(date) {
+  return {
+    year: date.getFullYear(),
+    month: date.getMonth()
+  };
+}
+function calendarMonthFromIsoDate(value) {
+  const date = parseIsoDateLocal(value);
+  return date ? calendarMonthFromDate(date) : null;
+}
+function addCalendarMonths(month, amount) {
+  return calendarMonthFromDate(new Date(month.year, month.month + amount, 1));
+}
+function selectedDateForCalendarMonth(month, preferredDate) {
+  const preferred = preferredDate ? parseIsoDateLocal(preferredDate) : null;
+  const preferredDay = (preferred == null ? void 0 : preferred.getDate()) || 1;
+  const day = Math.min(preferredDay, daysInCalendarMonth(month));
+  return toIsoDate(new Date(month.year, month.month, day));
+}
+function formatCalendarMonthLabel(month) {
+  return new Intl.DateTimeFormat(void 0, {
+    month: "long",
+    year: "numeric"
+  }).format(new Date(month.year, month.month, 1));
+}
+function parseIsoDateLocal(value) {
+  if (!isIsoDate(value)) {
+    return null;
+  }
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return null;
+  }
+  return date;
+}
+function isValidCalendarDate(value) {
+  return Boolean(parseIsoDateLocal(value));
+}
+function daysInCalendarMonth(month) {
+  return new Date(month.year, month.month + 1, 0).getDate();
+}
+
+// src/views/calendar/calendarModel.ts
+function buildCalendarTaskGroups(tasks) {
+  const dueTasksByDate = /* @__PURE__ */ new Map();
+  const deadlineTasksByDate = /* @__PURE__ */ new Map();
+  for (const task of tasks) {
+    if (isValidCalendarDate(task.due)) {
+      appendTask(dueTasksByDate, task.due, task);
+    }
+    if (isValidCalendarDate(task.deadline) && task.deadline !== task.due) {
+      appendTask(deadlineTasksByDate, task.deadline, task);
+    }
+  }
+  sortTaskGroups(dueTasksByDate);
+  sortTaskGroups(deadlineTasksByDate);
+  return {
+    dueTasksByDate,
+    deadlineTasksByDate
+  };
+}
+function buildMonthGrid(options) {
+  var _a;
+  const today = isValidCalendarDate(options.today) ? options.today : todayIso();
+  const selectedDate = isValidCalendarDate(options.selectedDate) ? options.selectedDate : void 0;
+  const weekStartsOn = (_a = options.weekStartsOn) != null ? _a : CALENDAR_WEEK_START;
+  const firstOfMonth = new Date(options.month.year, options.month.month, 1);
+  const leadingDayCount = (firstOfMonth.getDay() - weekStartsOn + 7) % 7;
+  const gridStart = new Date(options.month.year, options.month.month, 1 - leadingDayCount);
+  const days = [];
+  for (let index = 0; index < 42; index += 1) {
+    const date = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + index);
+    const isoDate = toIsoDate(date);
+    const dueTasks = options.taskGroups.dueTasksByDate.get(isoDate) || [];
+    const deadlineTasks = options.taskGroups.deadlineTasksByDate.get(isoDate) || [];
+    days.push({
+      date: isoDate,
+      dayNumber: date.getDate(),
+      isCurrentMonth: date.getFullYear() === options.month.year && date.getMonth() === options.month.month,
+      isToday: isoDate === today,
+      isSelected: isoDate === selectedDate,
+      isOverdue: isoDate < today && dueTasks.some((task) => !task.completed),
+      dueTasks,
+      deadlineTasks,
+      deadlineCount: deadlineTasks.length,
+      totalCount: dueTasks.length + deadlineTasks.length
+    });
+  }
+  return days;
+}
+function getCalendarTasksForDate(taskGroups, date) {
+  const dueTasks = taskGroups.dueTasksByDate.get(date) || [];
+  const deadlineTasks = taskGroups.deadlineTasksByDate.get(date) || [];
+  const entries = dueTasks.map((task) => ({ task, role: "due" }));
+  const seenTaskIds = new Set(dueTasks.map((task) => task.id));
+  for (const task of deadlineTasks) {
+    if (!seenTaskIds.has(task.id)) {
+      entries.push({ task, role: "deadline" });
+    }
+  }
+  return entries;
+}
+function hasCalendarDate(task) {
+  return isValidCalendarDate(task.due) || isValidCalendarDate(task.deadline);
+}
+function appendTask(groups, date, task) {
+  const tasks = groups.get(date);
+  if (tasks) {
+    tasks.push(task);
+  } else {
+    groups.set(date, [task]);
+  }
+}
+function sortTaskGroups(groups) {
+  for (const [date, tasks] of groups) {
+    if (!parseIsoDateLocal(date)) {
+      groups.delete(date);
+      continue;
+    }
+    groups.set(date, [...tasks].sort((a, b) => a.order - b.order));
+  }
+}
+
+// src/views/calendar/CalendarView.ts
+var MAX_VISIBLE_CHIPS = 3;
+function renderCalendarView(options) {
+  const taskGroups = buildCalendarTaskGroups(options.tasks);
+  const today = todayIso();
+  const days = buildMonthGrid({
+    month: options.month,
+    taskGroups,
+    selectedDate: options.selectedDate,
+    today
+  });
+  const selectedEntries = sortEntries(
+    getCalendarTasksForDate(taskGroups, options.selectedDate),
+    options.sortTasks
+  );
+  const calendar = options.parent.createDiv({ cls: "belki-calendar" });
+  renderCalendarToolbar(calendar, options, today);
+  renderCalendarGrid(calendar, days, options);
+  renderSelectedDay(calendar, options.selectedDate, selectedEntries, options);
+}
+function renderCalendarToolbar(parent, options, today) {
+  const toolbar = parent.createDiv({ cls: "belki-calendar-toolbar" });
+  const previous = toolbar.createEl("button", {
+    cls: "belki-calendar-nav-button",
+    attr: { type: "button", "aria-label": "Previous month" }
+  });
+  createBelkiIcon(previous, "chevron-left");
+  previous.addEventListener("click", () => {
+    const month = addCalendarMonths(options.month, -1);
+    options.onNavigate(month, selectedDateForCalendarMonth(month, options.selectedDate));
+  });
+  toolbar.createDiv({
+    cls: "belki-calendar-month-label",
+    text: formatCalendarMonthLabel(options.month)
+  });
+  const next = toolbar.createEl("button", {
+    cls: "belki-calendar-nav-button",
+    attr: { type: "button", "aria-label": "Next month" }
+  });
+  createBelkiIcon(next, "chevron-right");
+  next.addEventListener("click", () => {
+    const month = addCalendarMonths(options.month, 1);
+    options.onNavigate(month, selectedDateForCalendarMonth(month, options.selectedDate));
+  });
+  toolbar.createEl("button", {
+    cls: "belki-calendar-today-button",
+    text: "Today",
+    attr: { type: "button" }
+  }).addEventListener("click", () => {
+    options.onNavigate(calendarMonthFromDate(/* @__PURE__ */ new Date()), today);
+  });
+}
+function renderCalendarGrid(parent, days, options) {
+  const grid = parent.createDiv({ cls: "belki-calendar-grid" });
+  for (const label of CALENDAR_WEEKDAY_LABELS) {
+    grid.createDiv({ cls: "belki-calendar-weekday", text: label });
+  }
+  for (const day of days) {
+    renderCalendarDay(grid, day, options);
+  }
+}
+function renderCalendarDay(parent, day, options) {
+  const classes = [
+    "belki-calendar-day",
+    day.isCurrentMonth ? void 0 : "is-muted",
+    day.isToday ? "is-today" : void 0,
+    day.isSelected ? "is-selected" : void 0,
+    day.isOverdue ? "is-overdue" : void 0,
+    day.totalCount > 0 ? "has-tasks" : void 0
+  ].filter(Boolean).join(" ");
+  const dayEl = parent.createEl("div", {
+    cls: classes,
+    attr: {
+      role: "button",
+      tabindex: "0",
+      "aria-label": `${formatDateLabel(day.date)}, ${day.totalCount} task${day.totalCount === 1 ? "" : "s"}`
+    }
+  });
+  dayEl.addEventListener("click", () => selectDay(day, options));
+  dayEl.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      selectDay(day, options);
+    }
+  });
+  const header = dayEl.createDiv({ cls: "belki-calendar-day-header" });
+  header.createSpan({ cls: "belki-calendar-day-number", text: String(day.dayNumber) });
+  if (day.deadlineCount > 0) {
+    const deadline = header.createSpan({
+      cls: "belki-calendar-deadline-indicator",
+      attr: {
+        "aria-label": `${day.deadlineCount} deadline${day.deadlineCount === 1 ? "" : "s"}`
+      }
+    });
+    createBelkiIcon(deadline, "deadline", { size: 12 });
+    deadline.createSpan({ text: String(day.deadlineCount) });
+  }
+  if (day.totalCount > 0) {
+    dayEl.createDiv({
+      cls: "belki-calendar-mobile-count",
+      text: String(day.totalCount)
+    });
+  }
+  renderDayChips(dayEl, day, options);
+}
+function renderDayChips(parent, day, options) {
+  if (day.dueTasks.length === 0) {
+    return;
+  }
+  const chips = parent.createDiv({ cls: "belki-calendar-task-chips" });
+  const sortedTasks = options.sortTasks(day.dueTasks);
+  for (const task of sortedTasks.slice(0, MAX_VISIBLE_CHIPS)) {
+    const chip = chips.createEl("button", {
+      cls: "belki-calendar-task-chip",
+      text: task.title,
+      attr: { type: "button" }
+    });
+    chip.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      options.onOpenTask(task);
+    });
+  }
+  if (sortedTasks.length > MAX_VISIBLE_CHIPS) {
+    chips.createDiv({
+      cls: "belki-calendar-more",
+      text: `+${sortedTasks.length - MAX_VISIBLE_CHIPS} more`
+    });
+  }
+}
+function renderSelectedDay(parent, selectedDate, entries, options) {
+  const panel = parent.createDiv({ cls: "belki-calendar-selected" });
+  const header = panel.createDiv({ cls: "belki-calendar-selected-header" });
+  header.createEl("h2", { text: formatDateLabel(selectedDate) });
+  header.createSpan({
+    cls: "belki-calendar-selected-count",
+    text: `${entries.length} task${entries.length === 1 ? "" : "s"}`
+  });
+  if (entries.length === 0) {
+    panel.createDiv({
+      cls: "belki-calendar-empty",
+      text: "No dated tasks for this day."
+    });
+    return;
+  }
+  const list = panel.createDiv({ cls: "belki-calendar-selected-list" });
+  for (const entry of entries) {
+    const row = list.createEl("button", {
+      cls: `belki-calendar-selected-task is-${entry.role}`,
+      attr: { type: "button" }
+    });
+    row.addEventListener("click", () => options.onOpenTask(entry.task));
+    row.createSpan({
+      cls: "belki-calendar-selected-role",
+      text: entry.role === "due" ? "Due" : "Deadline"
+    });
+    const content = row.createDiv({ cls: "belki-calendar-selected-content" });
+    content.createDiv({ cls: "belki-calendar-selected-title", text: entry.task.title });
+    content.createDiv({
+      cls: "belki-calendar-selected-meta",
+      text: entry.role === "deadline" && entry.task.due ? `Due ${formatDateLabel(entry.task.due)}` : entry.task.deadline && entry.task.deadline !== selectedDate ? `Deadline ${formatDateLabel(entry.task.deadline)}` : ""
+    });
+  }
+}
+function selectDay(day, options) {
+  const month = day.isCurrentMonth ? options.month : calendarMonthFromIsoDate(day.date) || options.month;
+  options.onSelectDate(day.date, month);
+}
+function sortEntries(entries, sortTasks) {
+  return [
+    ...sortEntriesByRole(entries, "due", sortTasks),
+    ...sortEntriesByRole(entries, "deadline", sortTasks)
+  ];
+}
+function sortEntriesByRole(entries, role, sortTasks) {
+  const roleEntries = entries.filter((entry) => entry.role === role);
+  const entriesByTaskId = new Map(roleEntries.map((entry) => [entry.task.id, entry]));
+  return sortTasks(roleEntries.map((entry) => entry.task)).map((task) => entriesByTaskId.get(task.id)).filter((entry) => Boolean(entry));
+}
+
 // src/views/TaskBoardView.ts
 var VIEW_TYPE_BELKI = "belki-task-board";
 function markdownPreviewText(text) {
@@ -7085,6 +7404,8 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     this.dailyNoteDate = null;
     this.dailyNoteSourcePath = null;
     this.activitySelectedDate = null;
+    this.calendarMonth = calendarMonthFromDate(/* @__PURE__ */ new Date());
+    this.calendarSelectedDate = todayIso();
     this.activityCache = null;
     this.draggedTaskId = null;
     this.sortPopoverOpen = false;
@@ -7382,6 +7703,7 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     this.renderNavButton(nav, "Inbox", "inbox", this.getInboxTasks(activeTopLevel).length, "inbox");
     this.renderNavButton(nav, "Today", "today", this.getTodayTasks(activeTopLevel).length, "today");
     this.renderNavButton(nav, "Upcoming", "upcoming", this.getUpcomingTasks(activeTopLevel).length, "upcoming");
+    this.renderNavButton(nav, "Calendar", "calendar", void 0, "calendar");
     this.renderNavButton(nav, "Filters & Labels", "filters", void 0, "filters");
     this.renderNavButton(nav, "Projects", "projects", void 0, "projects");
     this.renderNavButton(nav, "Activity", "activity", void 0, "activity");
@@ -7507,7 +7829,7 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
       cls: "belki-subtitle",
       text: activityData ? `${activityData.allTimeCount} completed task${activityData.allTimeCount === 1 ? "" : "s"}` : `${visible.length} task${visible.length === 1 ? "" : "s"}`
     });
-    if (this.mode !== "activity" && this.mode !== "daily-note") {
+    if (this.mode !== "activity" && this.mode !== "daily-note" && this.mode !== "calendar") {
       this.renderSortingControl(header);
     }
     const sections = main.createDiv({ cls: "belki-sections" });
@@ -7830,6 +8152,27 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     }
     if (this.mode === "activity") {
       this.renderActivityView(parent, allTasks);
+      return;
+    }
+    if (this.mode === "calendar") {
+      renderCalendarView({
+        parent,
+        month: this.calendarMonth,
+        selectedDate: this.calendarSelectedDate,
+        tasks: this.sortTasks(active.filter(hasCalendarDate)),
+        sortTasks: (tasks) => this.sortTasks(tasks),
+        onNavigate: (month, selectedDate) => {
+          this.calendarMonth = month;
+          this.calendarSelectedDate = selectedDate;
+          this.render();
+        },
+        onSelectDate: (date, month) => {
+          this.calendarSelectedDate = date;
+          this.calendarMonth = month;
+          this.render();
+        },
+        onOpenTask: (task) => this.openTaskDetail(task)
+      });
       return;
     }
     if (this.mode === "daily-note") {
@@ -8751,6 +9094,9 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     if (this.mode === "activity") {
       return [];
     }
+    if (this.mode === "calendar") {
+      return this.sortTasks(active.filter(hasCalendarDate));
+    }
     if (this.mode === "daily-note") {
       return this.dailyNoteDate ? this.store.getCompletedTasksForDate(this.dailyNoteDate) : [];
     }
@@ -8873,6 +9219,9 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     }
     if (this.mode === "activity") {
       return "Activity";
+    }
+    if (this.mode === "calendar") {
+      return "Calendar";
     }
     if (this.mode === "daily-note") {
       return "Daily Note";

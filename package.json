@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build:css": "node scripts/build-styles.mjs",
-    "build": "pnpm run build:css && tsc --noEmit --skipLibCheck && node esbuild.config.mjs production"
+    "build": "pnpm run build:css && tsc --noEmit --skipLibCheck && node esbuild.config.mjs production",
+    "test": "node -e \"require('node:fs').rmSync('tmp/test-dist',{recursive:true,force:true})\" && tsc --project tsconfig.test.json && node --test tmp/test-dist/tests"
   },
   "keywords": [
     "obsidian",

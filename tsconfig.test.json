@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "outDir": "tmp/test-dist",
+    "rootDir": ".",
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "src/dateUtils.ts",
+    "src/types.ts",
+    "src/views/calendar/**/*.ts",
+    "tests/**/*.ts"
+  ]
+}

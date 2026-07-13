@@ -51,6 +51,10 @@ import { openLabelActionsMenu as openLabelActionsMenuElement } from "./labels/la
 import { renderFiltersAndLabelsView } from "./filters/FiltersAndLabelsView";
 import type { FilterDefinition } from "./filters/FiltersAndLabelsView";
 import { renderTaskActionMenu, renderTaskActions } from "./tasks/taskActions";
+import { renderCalendarView } from "./calendar/CalendarView";
+import { hasCalendarDate } from "./calendar/calendarModel";
+import { calendarMonthFromDate } from "./calendar/calendarUtils";
+import type { CalendarMonth } from "./calendar/calendarTypes";
 
 export const VIEW_TYPE_BELKI = "belki-task-board";
 
@@ -96,6 +100,8 @@ export class TaskBoardView extends ItemView {
   private dailyNoteDate: string | null = null;
   private dailyNoteSourcePath: string | null = null;
   private activitySelectedDate: string | null = null;
+  private calendarMonth: CalendarMonth = calendarMonthFromDate(new Date());
+  private calendarSelectedDate = todayIso();
   private activityCache: { signature: string; data: ActivityData } | null = null;
   private draggedTaskId: string | null = null;
   private sortPopoverOpen = false;
@@ -449,6 +455,7 @@ export class TaskBoardView extends ItemView {
     this.renderNavButton(nav, "Inbox", "inbox", this.getInboxTasks(activeTopLevel).length, "inbox");
     this.renderNavButton(nav, "Today", "today", this.getTodayTasks(activeTopLevel).length, "today");
     this.renderNavButton(nav, "Upcoming", "upcoming", this.getUpcomingTasks(activeTopLevel).length, "upcoming");
+    this.renderNavButton(nav, "Calendar", "calendar", undefined, "calendar");
     this.renderNavButton(nav, "Filters & Labels", "filters", undefined, "filters");
     this.renderNavButton(nav, "Projects", "projects", undefined, "projects");
     this.renderNavButton(nav, "Activity", "activity", undefined, "activity");
@@ -540,7 +547,7 @@ export class TaskBoardView extends ItemView {
     label: string,
     mode: BoardViewMode,
     count?: number,
-    iconKey?: keyof BelkiIconSettings
+    iconKey?: keyof BelkiIconSettings | "calendar"
   ): void {
     const button = parent.createEl("button", { cls: "belki-nav-button" });
     const active =
@@ -599,7 +606,7 @@ export class TaskBoardView extends ItemView {
         ? `${activityData.allTimeCount} completed task${activityData.allTimeCount === 1 ? "" : "s"}`
         : `${visible.length} task${visible.length === 1 ? "" : "s"}`
     });
-    if (this.mode !== "activity" && this.mode !== "daily-note") {
+    if (this.mode !== "activity" && this.mode !== "daily-note" && this.mode !== "calendar") {
       this.renderSortingControl(header);
     }
 
@@ -971,6 +978,28 @@ export class TaskBoardView extends ItemView {
 
     if (this.mode === "activity") {
       this.renderActivityView(parent, allTasks);
+      return;
+    }
+
+    if (this.mode === "calendar") {
+      renderCalendarView({
+        parent,
+        month: this.calendarMonth,
+        selectedDate: this.calendarSelectedDate,
+        tasks: this.sortTasks(active.filter(hasCalendarDate)),
+        sortTasks: (tasks) => this.sortTasks(tasks),
+        onNavigate: (month, selectedDate) => {
+          this.calendarMonth = month;
+          this.calendarSelectedDate = selectedDate;
+          this.render();
+        },
+        onSelectDate: (date, month) => {
+          this.calendarSelectedDate = date;
+          this.calendarMonth = month;
+          this.render();
+        },
+        onOpenTask: (task) => this.openTaskDetail(task)
+      });
       return;
     }
 
@@ -2034,6 +2063,10 @@ export class TaskBoardView extends ItemView {
       return [];
     }
 
+    if (this.mode === "calendar") {
+      return this.sortTasks(active.filter(hasCalendarDate));
+    }
+
     if (this.mode === "daily-note") {
       return this.dailyNoteDate
         ? this.store.getCompletedTasksForDate(this.dailyNoteDate)
@@ -2195,6 +2228,9 @@ export class TaskBoardView extends ItemView {
     }
     if (this.mode === "activity") {
       return "Activity";
+    }
+    if (this.mode === "calendar") {
+      return "Calendar";
     }
     if (this.mode === "daily-note") {
       return "Daily Note";
