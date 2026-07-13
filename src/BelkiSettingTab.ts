@@ -37,6 +37,10 @@ export class BelkiSettingTab extends PluginSettingTab {
   }
 
   display(): void {
+    this.renderSettings();
+  }
+
+  private renderSettings(): void {
     const { containerEl } = this;
     containerEl.empty();
     applyBelkiFontSettings(containerEl, this.plugin.settings);
@@ -241,7 +245,7 @@ export class BelkiSettingTab extends PluginSettingTab {
             this.plugin.settings[key] = normalizeFontOption(value);
             await this.plugin.saveSettings();
             this.plugin.refreshBelkiViews();
-            this.display();
+            this.renderSettings();
           });
       });
   }
@@ -266,7 +270,7 @@ export class BelkiSettingTab extends PluginSettingTab {
             delete this.plugin.settings.projectColors[project];
             await this.plugin.saveSettings();
             this.plugin.refreshBelkiViews();
-            this.display();
+            this.renderSettings();
           })();
         });
       });
@@ -297,7 +301,7 @@ export class BelkiSettingTab extends PluginSettingTab {
             ]);
             await this.plugin.saveSettings();
             this.plugin.refreshBelkiViews();
-            this.display();
+            this.renderSettings();
           })();
         });
       });
@@ -321,7 +325,7 @@ export class BelkiSettingTab extends PluginSettingTab {
         button.setButtonText("Rename").onClick(() => {
           new RenameLabelModal(this.app, label, this.plugin.getLabelNames(), async (newLabel) => {
             await this.plugin.renameLabel(label, newLabel);
-            this.display();
+            this.renderSettings();
           }).open();
         });
       })
@@ -333,7 +337,7 @@ export class BelkiSettingTab extends PluginSettingTab {
             this.plugin.getLabelTaskCount(label),
             async () => {
               await this.plugin.deleteLabel(label);
-              this.display();
+              this.renderSettings();
             }
           ).open();
         });
@@ -344,7 +348,7 @@ export class BelkiSettingTab extends PluginSettingTab {
             delete this.plugin.settings.labelColors[label];
             await this.plugin.saveSettings();
             this.plugin.refreshBelkiViews();
-            this.display();
+            this.renderSettings();
           })();
         });
       });

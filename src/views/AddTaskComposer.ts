@@ -440,7 +440,7 @@ function alignLocalPopover(
 
 function getPopoverAnchor(wrapper: HTMLElement): HTMLElement {
   for (const child of Array.from(wrapper.children)) {
-    if (!(child instanceof HTMLElement)) {
+    if (!child.instanceOf(HTMLElement)) {
       continue;
     }
     if (child.matches("button.belki-chip-button, button.belki-project-picker, button")) {
