@@ -377,6 +377,15 @@
     min-height: 42px;
   }
 
+  .belki-calendar-event-strip {
+    margin: 8px 0;
+    padding: 5px;
+  }
+
+  .belki-calendar-event-row {
+    min-height: 32px;
+  }
+
   .belki-overdue-range-select {
     min-height: 36px;
   }

@@ -7,6 +7,7 @@
     "module": "CommonJS",
     "outDir": ".test-dist",
     "rootDir": ".",
+    "skipLibCheck": true,
     "target": "ES2020",
     "types": ["node"]
   },

@@ -4,6 +4,8 @@ import {
 } from "./dailyNotes";
 import { dedupeLabels, normalizeLabelName } from "./labels";
 import { normalizeTaskProject } from "./projects";
+import { normalizeIcalCalendarFeeds } from "./calendar/icalFeedSettings";
+import type { IcalCalendarFeed } from "./calendar/calendarTypes";
 import {
   BelkiFontOption,
   BelkiSortMode,
@@ -36,6 +38,7 @@ export interface BelkiSettings {
   dailyNotesIntegrationEnabled: boolean;
   dailyNotesAutoInsertCompletedBlock: boolean;
   dailyNoteDateFormat: string;
+  icalCalendarFeeds: IcalCalendarFeed[];
 }
 
 export interface BelkiIconSettings {
@@ -78,7 +81,8 @@ export const DEFAULT_SETTINGS: BelkiSettings = {
   sidebarCollapsed: false,
   dailyNotesIntegrationEnabled: true,
   dailyNotesAutoInsertCompletedBlock: false,
-  dailyNoteDateFormat: DEFAULT_DAILY_NOTE_DATE_FORMAT
+  dailyNoteDateFormat: DEFAULT_DAILY_NOTE_DATE_FORMAT,
+  icalCalendarFeeds: []
 };
 
 const OVERDUE_RANGE_LABELS: Record<OverdueRange, string> = {
@@ -170,6 +174,15 @@ export function normalizeFontOption(value: string | undefined): BelkiFontOption 
 
 export function normalizeDefaultProject(value: string | undefined): string {
   return normalizeTaskProject(value) || "";
+}
+
+export function normalizeCalendarSettings(settings: Partial<BelkiSettings>): Pick<
+  BelkiSettings,
+  | "icalCalendarFeeds"
+> {
+  return {
+    icalCalendarFeeds: normalizeIcalCalendarFeeds(settings.icalCalendarFeeds)
+  };
 }
 
 export function fontOptionLabel(option: BelkiFontOption): string {

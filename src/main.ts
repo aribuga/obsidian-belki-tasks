@@ -10,6 +10,7 @@ import {
   normalizeFontOption,
   normalizeLabelColorMap,
   normalizeLabelRegistry,
+  normalizeCalendarSettings,
   normalizeOverdueRange,
   normalizeSortMode,
   normalizeProjectRegistry
@@ -20,6 +21,8 @@ import { TaskBoardView, VIEW_TYPE_BELKI } from "./views/TaskBoardView";
 import { cleanProjectName, uniqueRealProjects } from "./projects";
 import { QuickAddModal } from "./views/QuickAddModal";
 import { DailyNoteCompletedBlock } from "./views/DailyNoteCompletedBlock";
+import { CalendarService } from "./calendar/CalendarService";
+import { IcalCalendarProvider } from "./calendar/IcalCalendarProvider";
 
 const BELKI_COMPLETED_CODE_BLOCK = "```belki-completed\n```";
 const BELKI_COMPLETED_CODE_BLOCK_RE = /```belki-completed\b[\s\S]*?```/i;
@@ -27,17 +30,30 @@ const BELKI_COMPLETED_CODE_BLOCK_RE = /```belki-completed\b[\s\S]*?```/i;
 export default class BelkiPlugin extends Plugin {
   settings: BelkiSettings;
   store: TaskStore;
+  calendarService: CalendarService;
   private reloadDebounceTimer: number | null = null;
 
   async onload(): Promise<void> {
     await this.loadSettings();
 
     this.store = new TaskStore(this.app, this.settings);
+    this.calendarService = new CalendarService({
+      settings: this.settings,
+      provider: new IcalCalendarProvider(),
+      saveSettings: () => this.saveSettings(),
+      onChanged: () => {}
+    });
 
     this.registerView(
       VIEW_TYPE_BELKI,
       (leaf: WorkspaceLeaf) =>
-        new TaskBoardView(leaf, this.store, this.settings, () => this.saveSettings())
+        new TaskBoardView(
+          leaf,
+          this.store,
+          this.settings,
+          () => this.saveSettings(),
+          this.calendarService
+        )
     );
 
     this.addRibbonIcon("check-circle-2", "Open belki", () => {
@@ -147,6 +163,22 @@ export default class BelkiPlugin extends Plugin {
       })
     );
 
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", () => {
+        this.calendarService.requestStaleRefresh();
+      })
+    );
+
+    this.registerDomEvent(window, "focus", () => {
+      this.calendarService.requestStaleRefresh();
+    });
+
+    this.registerDomEvent(document, "visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        this.calendarService.requestStaleRefresh();
+      }
+    });
+
     this.registerMarkdownCodeBlockProcessor("belki-completed", (source, el, ctx) => {
       this.renderCompletedTasksCodeBlock(source, el, ctx);
     });
@@ -158,10 +190,12 @@ export default class BelkiPlugin extends Plugin {
     if (this.reloadDebounceTimer !== null) {
       window.clearTimeout(this.reloadDebounceTimer);
     }
+    this.calendarService?.dispose();
   }
 
   async loadSettings(): Promise<void> {
-    const saved = toSettingsData(await this.loadData());
+    const data = toPluginData(await this.loadData());
+    const saved = data.settings;
     this.settings = {
       ...DEFAULT_SETTINGS,
       ...saved,
@@ -200,12 +234,13 @@ export default class BelkiPlugin extends Plugin {
       dailyNotesAutoInsertCompletedBlock:
         saved?.dailyNotesAutoInsertCompletedBlock ??
         DEFAULT_SETTINGS.dailyNotesAutoInsertCompletedBlock,
-      dailyNoteDateFormat: normalizeDailyNoteDateFormat(saved?.dailyNoteDateFormat)
+      dailyNoteDateFormat: normalizeDailyNoteDateFormat(saved?.dailyNoteDateFormat),
+      ...normalizeCalendarSettings(saved)
     };
   }
 
   async saveSettings(): Promise<void> {
-    await this.saveData(this.settings);
+    await this.savePluginData();
   }
 
   async reloadTasks(): Promise<void> {
@@ -472,6 +507,7 @@ export default class BelkiPlugin extends Plugin {
   private async initializeStore(): Promise<void> {
     try {
       await this.store.load();
+      void this.calendarService.refreshStartup();
     } catch (error) {
       new Notice("belki could not initialize task storage. Open the developer console for details.");
       console.error("[belki] Failed to initialize task storage.", error, {
@@ -479,6 +515,12 @@ export default class BelkiPlugin extends Plugin {
         tasksFilePath: this.settings.tasksFilePath
       });
     }
+  }
+
+  private async savePluginData(): Promise<void> {
+    await this.saveData({
+      settings: this.settings
+    });
   }
 }
 
@@ -488,4 +530,20 @@ function toSettingsData(value: unknown): Partial<BelkiSettings> {
   }
 
   return value;
+}
+
+interface BelkiPluginData {
+  settings: Partial<BelkiSettings>;
+}
+
+function toPluginData(value: unknown): BelkiPluginData {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { settings: {} };
+  }
+
+  const record = value as Record<string, unknown>;
+  const settings = toSettingsData(record.settings || value);
+  return {
+    settings
+  };
 }

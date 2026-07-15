@@ -57,6 +57,20 @@ belki can show completed tasks in its own Daily Note panel or with a `belki-comp
 
 ---
 
+## Calendar
+
+The Calendar settings group controls optional read-only iCal subscriptions.
+
+- **Add iCal calendar** subscribes to a private or public iCal feed.
+- Each calendar has a local name, masked URL, color, and enabled toggle.
+- **Refresh** reloads one feed or all feeds.
+- **Edit** changes the name, color, enabled state, or replaces the saved URL.
+- **Remove** clears the saved URL and cached events for that feed.
+
+Calendar events are not written to belki task Markdown files and are not counted as tasks. See [Calendar Subscriptions](calendar-subscriptions.md) for setup and troubleshooting.
+
+---
+
 ## Fonts
 
 Set the font used for different text areas inside belki:
