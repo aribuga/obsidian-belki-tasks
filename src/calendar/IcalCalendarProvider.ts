@@ -1,4 +1,5 @@
 import { requestUrl } from "obsidian";
+import type { RequestUrlResponse } from "obsidian";
 import type {
   CalendarFetchRange,
   CalendarProviderError,
@@ -24,7 +25,7 @@ export class IcalCalendarProvider implements IcalCalendarProviderInterface {
   async fetchFeed(feed: IcalCalendarFeed, range: CalendarFetchRange): Promise<IcalFeedFetchResult> {
     const headers = buildIcalRequestHeaders(feed);
 
-    let response;
+    let response: RequestUrlResponse;
     try {
       response = await requestUrl({
         url: feed.url,
@@ -32,7 +33,7 @@ export class IcalCalendarProvider implements IcalCalendarProviderInterface {
         headers,
         throw: false
       });
-    } catch (error) {
+    } catch {
       throw providerError(feed, "network", `${feed.name} could not be refreshed.`);
     }
 
@@ -117,10 +118,18 @@ function providerError(
   feed: IcalCalendarFeed,
   kind: CalendarProviderError["kind"],
   message: string
-): CalendarProviderError {
-  return {
-    kind,
-    message: sanitizeIcalErrorMessage(message, feed.name),
-    calendarId: feed.id
-  };
+): IcalCalendarProviderError {
+  return new IcalCalendarProviderError(feed, kind, message);
+}
+
+class IcalCalendarProviderError extends Error implements CalendarProviderError {
+  readonly kind: CalendarProviderError["kind"];
+  readonly calendarId: string;
+
+  constructor(feed: IcalCalendarFeed, kind: CalendarProviderError["kind"], message: string) {
+    super(sanitizeIcalErrorMessage(message, feed.name));
+    this.name = "IcalCalendarProviderError";
+    this.kind = kind;
+    this.calendarId = feed.id;
+  }
 }

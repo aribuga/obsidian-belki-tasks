@@ -173,8 +173,8 @@ export default class BelkiPlugin extends Plugin {
       this.calendarService.requestStaleRefresh();
     });
 
-    this.registerDomEvent(document, "visibilitychange", () => {
-      if (document.visibilityState === "visible") {
+    this.registerDomEvent(activeDocument, "visibilitychange", () => {
+      if (activeDocument.visibilityState === "visible") {
         this.calendarService.requestStaleRefresh();
       }
     });

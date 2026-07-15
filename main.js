@@ -1253,7 +1253,7 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
     }
   }
   calendarFeedDescription(feed, loading) {
-    const fragment = document.createDocumentFragment();
+    const fragment = activeDocument.createDocumentFragment();
     fragment.appendText(maskIcalFeedUrl(feed.url));
     fragment.appendText(` - ${calendarFeedStatusText(feed, loading)}`);
     return fragment;
@@ -1488,7 +1488,7 @@ var RemoveIcalCalendarFeedModal = class extends import_obsidian4.Modal {
       text: `Remove ${this.feed.name} from belki. This clears its saved iCal URL and cached events, but does not modify tasks.`
     });
     new import_obsidian4.Setting(contentEl).addButton((button) => {
-      button.setButtonText("Remove").setWarning().onClick(() => {
+      button.setButtonText("Remove").setDestructive().onClick(() => {
         void (async () => {
           await this.onConfirm();
           new import_obsidian4.Notice("Calendar removed.");
@@ -2035,12 +2035,12 @@ var KNOWN_PROPERTIES2 = /* @__PURE__ */ new Set([
   "repeat",
   "completedoccurrences"
 ]);
-function serializeTaskDocument(document2, tasks) {
+function serializeTaskDocument(document, tasks) {
   const orderedTasks = [...tasks].sort((a, b) => a.order - b.order);
   const tasksById = new Map(orderedTasks.map((task) => [task.id, task]));
   const serializedTaskIds = /* @__PURE__ */ new Set();
   const outputLines = [];
-  for (const block of document2.blocks) {
+  for (const block of document.blocks) {
     if (block.type === "raw") {
       outputLines.push(...block.lines);
       continue;
@@ -2713,9 +2713,9 @@ var TaskStore = class {
     }
     for (const file of files.sort((a, b) => a.path.localeCompare(b.path))) {
       const content = await this.app.vault.read(file);
-      const document2 = parseTaskDocument(content, file.path);
-      nextDocuments.set(file.path, document2);
-      for (const task of document2.tasks) {
+      const document = parseTaskDocument(content, file.path);
+      nextDocuments.set(file.path, document);
+      for (const task of document.tasks) {
         nextTasks.push({
           ...task,
           created: task.created || todayIso(),
@@ -3067,9 +3067,9 @@ var TaskStore = class {
   async saveBulkSources(sourcePaths, previousTasks, previousDocuments) {
     const rollbackContents = /* @__PURE__ */ new Map();
     for (const sourcePath of dedupeStrings(sourcePaths.filter(Boolean))) {
-      const document2 = previousDocuments.get(sourcePath) || { blocks: [], tasks: [] };
+      const document = previousDocuments.get(sourcePath) || { blocks: [], tasks: [] };
       const tasks = previousTasks.filter((task) => task.sourcePath === sourcePath).map((task) => normalizeTaskForSave(task, sourcePath));
-      rollbackContents.set(sourcePath, serializeTaskDocument(document2, tasks));
+      rollbackContents.set(sourcePath, serializeTaskDocument(document, tasks));
     }
     try {
       await this.saveSources(sourcePaths);
@@ -3098,9 +3098,9 @@ var TaskStore = class {
   async writeSources(sourcePaths) {
     for (const sourcePath of dedupeStrings(sourcePaths.filter(Boolean))) {
       await this.ensureSourceDocument(sourcePath);
-      const document2 = this.documents.get(sourcePath) || { blocks: [], tasks: [] };
+      const document = this.documents.get(sourcePath) || { blocks: [], tasks: [] };
       const tasks = this.tasks.filter((task) => task.sourcePath === sourcePath).map((task) => normalizeTaskForSave(task, sourcePath));
-      const content = serializeTaskDocument(document2, tasks);
+      const content = serializeTaskDocument(document, tasks);
       const file = await this.ensureFile(sourcePath, "");
       if (!file) {
         continue;
@@ -3115,18 +3115,18 @@ var TaskStore = class {
     }
   }
   reorderDocumentBlocksForSource(sourcePath) {
-    const document2 = this.documents.get(sourcePath);
-    if (!document2) {
+    const document = this.documents.get(sourcePath);
+    if (!document) {
       return;
     }
     const existingBlockIds = new Set(
-      document2.blocks.filter((block) => block.type === "task").map((block) => block.taskId)
+      document.blocks.filter((block) => block.type === "task").map((block) => block.taskId)
     );
     const orderedTaskIds = this.tasks.filter((task) => task.sourcePath === sourcePath && existingBlockIds.has(task.id)).sort((a, b) => a.order - b.order).map((task) => task.id);
     let cursor = 0;
     this.documents.set(sourcePath, {
-      ...document2,
-      blocks: document2.blocks.map((block) => {
+      ...document,
+      blocks: document.blocks.map((block) => {
         if (block.type !== "task") {
           return block;
         }
@@ -6230,10 +6230,12 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
     this.closeWikilinkDropdown = null;
     this.closeQuickAddDropdown = null;
     this.closeDescriptionToolbar = null;
+    this.closeProjectMenu = null;
     this.hideDescriptionToolbar = null;
     this.descriptionToolbarVisible = false;
     this.markdownRenderComponent = null;
     this.handleEscape = (event) => {
+      var _a;
       if (event.key !== "Escape") {
         return;
       }
@@ -6242,6 +6244,12 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
         event.stopPropagation();
         event.stopImmediatePropagation();
         this.hideDescriptionToolbar();
+        return;
+      }
+      if ((_a = this.closeProjectMenu) == null ? void 0 : _a.call(this)) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         return;
       }
       if (event.target instanceof HTMLElement && event.target.closest(".belki-detail-project-create")) {
@@ -6524,14 +6532,16 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
     }
   }
   onClose() {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e;
     (_a = this.closeQuickAddDropdown) == null ? void 0 : _a.call(this);
     (_b = this.closeWikilinkDropdown) == null ? void 0 : _b.call(this);
     (_c = this.closeDescriptionToolbar) == null ? void 0 : _c.call(this);
+    (_d = this.closeProjectMenu) == null ? void 0 : _d.call(this);
     this.closeDescriptionToolbar = null;
+    this.closeProjectMenu = null;
     this.hideDescriptionToolbar = null;
     this.descriptionToolbarVisible = false;
-    (_d = this.markdownRenderComponent) == null ? void 0 : _d.unload();
+    (_e = this.markdownRenderComponent) == null ? void 0 : _e.unload();
     this.markdownRenderComponent = null;
     this.modalEl.removeEventListener("keydown", this.handleEscape, true);
   }
@@ -6912,12 +6922,22 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
   }
   renderProject(parent) {
     const field = this.createField(parent, "Project");
-    const projectPicker = field.createDiv({ cls: "belki-project-picker belki-detail-project-picker" });
+    field.addClass("belki-detail-project-field");
+    const projectPicker = field.createEl("button", {
+      cls: "belki-project-picker belki-detail-project-picker",
+      attr: {
+        type: "button",
+        "aria-haspopup": "listbox",
+        "aria-expanded": "false"
+      }
+    });
     const projectDot = projectPicker.createSpan({
       cls: "belki-project-dot belki-detail-project-dot"
     });
-    const select = projectPicker.createEl("select", {
-      cls: "belki-detail-input belki-detail-select"
+    const projectLabel = projectPicker.createSpan({ cls: "belki-project-trigger-label" });
+    const projectMenu = field.createEl("div", {
+      cls: "belki-project-menu belki-detail-project-menu is-hidden",
+      attr: { role: "listbox" }
     });
     const createRow = field.createDiv({ cls: "belki-detail-project-create is-hidden" });
     const createInput = createRow.createEl("input", {
@@ -6945,16 +6965,86 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
       this.draft.project
     ]);
     const renderOptions = () => {
-      select.empty();
-      select.createEl("option", { text: "No project", value: "" });
-      for (const project of getProjects()) {
-        select.createEl("option", { text: project, value: project });
+      const currentProject = normalizeTaskProject(this.draft.project) || "";
+      const projects = getProjects();
+      projectMenu.empty();
+      renderProjectOption("No project", "", void 0, currentProject === "");
+      if (projects.length > 0) {
+        projectMenu.createDiv({ cls: "belki-project-section-label", text: "Projects" });
       }
-      select.createEl("option", { text: "Create project...", value: createValue });
-      select.value = normalizeTaskProject(this.draft.project) || "";
+      for (const project of projects) {
+        renderProjectOption(
+          project,
+          project,
+          getProjectColor(project, this.options.settings.projectColors),
+          currentProject === project
+        );
+      }
+      renderProjectOption("Create project...", createValue, void 0, false);
     };
+    const handleOutsidePointer = (event) => {
+      const target = event.target;
+      if (target && field.contains(target)) {
+        return;
+      }
+      closeProjectMenu();
+    };
+    const closeProjectMenu = () => {
+      if (projectMenu.hasClass("is-hidden")) {
+        return false;
+      }
+      projectMenu.addClass("is-hidden");
+      projectPicker.setAttr("aria-expanded", "false");
+      activeDocument.removeEventListener("pointerdown", handleOutsidePointer, true);
+      return true;
+    };
+    const openProjectMenu = () => {
+      renderOptions();
+      projectMenu.removeClass("is-hidden");
+      projectPicker.setAttr("aria-expanded", "true");
+      activeDocument.addEventListener("pointerdown", handleOutsidePointer, true);
+    };
+    const selectProject = (value) => {
+      if (value === createValue) {
+        createRow.removeClass("is-hidden");
+        closeProjectMenu();
+        createInput.focus();
+        return;
+      }
+      this.draft.project = normalizeTaskProject(value);
+      createRow.addClass("is-hidden");
+      closeProjectMenu();
+      updateProjectStyle();
+      renderOptions();
+    };
+    function renderProjectOption(label, value, projectColor, selected) {
+      const option = projectMenu.createEl("button", {
+        cls: "belki-project-option",
+        attr: {
+          type: "button",
+          role: "option",
+          "aria-selected": String(selected)
+        }
+      });
+      option.toggleClass("has-project", Boolean(projectColor));
+      option.toggleClass("is-selected", selected);
+      option.createSpan({
+        cls: "belki-project-option-check",
+        text: selected ? "\u2713" : ""
+      });
+      if (projectColor) {
+        option.createSpan({ cls: "belki-project-dot" }).setCssStyles({ backgroundColor: projectColor.regular });
+      }
+      option.createSpan({ cls: "belki-project-option-label", text: label });
+      option.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        selectProject(value);
+      });
+    }
     const updateProjectStyle = () => {
       const project = normalizeTaskProject(this.draft.project);
+      projectLabel.setText(project || "No project");
       if (!project) {
         projectDot.setCssStyles({ backgroundColor: "var(--belki-faint)" });
         projectPicker.setCssStyles({
@@ -6973,7 +7063,8 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
     const hideCreateRow = () => {
       createInput.value = "";
       createRow.addClass("is-hidden");
-      select.value = normalizeTaskProject(this.draft.project) || "";
+      renderOptions();
+      updateProjectStyle();
     };
     const createProject = () => {
       const project = normalizeTaskProject(createInput.value);
@@ -6983,19 +7074,15 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
       }
       this.draft.project = project;
       hideCreateRow();
-      renderOptions();
-      updateProjectStyle();
     };
-    select.addEventListener("change", () => {
-      if (select.value === createValue) {
-        createRow.removeClass("is-hidden");
-        select.value = normalizeTaskProject(this.draft.project) || "";
-        createInput.focus();
+    projectPicker.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (projectMenu.hasClass("is-hidden")) {
+        openProjectMenu();
         return;
       }
-      this.draft.project = normalizeTaskProject(select.value);
-      createRow.addClass("is-hidden");
-      updateProjectStyle();
+      closeProjectMenu();
     });
     createButton.addEventListener("click", createProject);
     cancelCreateButton.addEventListener("click", hideCreateRow);
@@ -7012,6 +7099,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
     });
     renderOptions();
     updateProjectStyle();
+    this.closeProjectMenu = closeProjectMenu;
   }
   renderPriority(parent) {
     const field = this.createField(parent, "Priority");
@@ -10983,7 +11071,8 @@ var CalendarService = class {
   }
   getConnectionState() {
     const feeds = this.getFeeds();
-    const lastRefreshAt = feeds.map((feed) => feed.lastSuccessfulRefreshAt).filter(Boolean).sort().at(-1);
+    const successfulRefreshes = feeds.map((feed) => feed.lastSuccessfulRefreshAt).filter((value) => typeof value === "string" && value.length > 0).sort();
+    const lastRefreshAt = successfulRefreshes[successfulRefreshes.length - 1];
     return {
       enabled: feeds.some((feed) => feed.enabled),
       loading: this.loadingFeeds.size > 0,
@@ -11294,7 +11383,12 @@ var CalendarService = class {
   }
   rebuildEventsByDate() {
     const enabledFeedIds = new Set(this.getFeeds().filter((feed) => feed.enabled).map((feed) => feed.id));
-    const events = [...this.eventsByFeed.entries()].filter(([feedId]) => enabledFeedIds.has(feedId)).flatMap(([, feedEvents]) => feedEvents);
+    const events = [];
+    for (const [feedId, feedEvents] of this.eventsByFeed) {
+      if (enabledFeedIds.has(feedId)) {
+        events.push(...feedEvents);
+      }
+    }
     this.eventsByDate = groupVisibleCalendarEvents(events);
   }
   applyFeedDisplay(events, feed) {
@@ -11413,12 +11507,11 @@ var CalendarService = class {
   }
 };
 function normalizeServiceError(error, calendarName, calendarId) {
-  if (error && typeof error === "object" && "kind" in error && "message" in error) {
-    const providerError2 = error;
+  if (isCalendarProviderError(error)) {
     return {
-      ...providerError2,
-      message: sanitizeIcalErrorMessage(providerError2.message, calendarName),
-      calendarId
+      kind: error.kind,
+      message: sanitizeIcalErrorMessage(error.message, calendarName),
+      calendarId: error.calendarId || calendarId
     };
   }
   return {
@@ -11426,6 +11519,27 @@ function normalizeServiceError(error, calendarName, calendarId) {
     message: sanitizeIcalErrorMessage(error, calendarName),
     calendarId
   };
+}
+var CALENDAR_PROVIDER_ERROR_KINDS = /* @__PURE__ */ new Set([
+  "network",
+  "rate_limited",
+  "malformed_response",
+  "calendar_failed",
+  "unsafe_url",
+  "too_large",
+  "not_found",
+  "not_modified",
+  "unknown"
+]);
+function isCalendarProviderError(value) {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const record = value;
+  return isCalendarProviderErrorKind(record.kind) && typeof record.message === "string";
+}
+function isCalendarProviderErrorKind(value) {
+  return typeof value === "string" && CALENDAR_PROVIDER_ERROR_KINDS.has(value);
 }
 function backoffDelayForFailureCount(count) {
   if (count <= 1) {
@@ -18844,7 +18958,7 @@ function parseIcalFeed(ics, feed, range) {
   const source = normalizeIcalSource(ics);
   let component;
   try {
-    component = new ICAL.Component(ICAL.parse(source));
+    component = ICAL.Component.fromString(source);
   } catch (e) {
     throw new Error("Calendar feed could not be parsed.");
   }
@@ -19004,13 +19118,17 @@ function normalizeSummary(value) {
   return (value || "").trim().replace(/\s+/g, " ") || "Untitled event";
 }
 function sourceTimezone(event) {
-  var _a;
   const property = event.component.getFirstProperty("dtstart");
   const parameter = property == null ? void 0 : property.getParameter("tzid");
   if (Array.isArray(parameter)) {
-    return (_a = parameter.find((value) => typeof value === "string" && value.trim())) == null ? void 0 : _a.trim();
+    const match = parameter.filter((value) => typeof value === "string").find((value) => value.trim().length > 0);
+    return match == null ? void 0 : match.trim();
   }
-  return typeof parameter === "string" && parameter.trim() ? parameter.trim() : void 0;
+  if (typeof parameter !== "string") {
+    return void 0;
+  }
+  const trimmed = parameter.trim();
+  return trimmed || void 0;
 }
 function normalizeEventUrl(value) {
   if (!value) {
@@ -19106,7 +19224,7 @@ var IcalCalendarProvider = class {
         headers,
         throw: false
       });
-    } catch (error) {
+    } catch (e) {
       throw providerError(feed, "network", `${feed.name} could not be refreshed.`);
     }
     const responseHeaders = response.headers || {};
@@ -19176,12 +19294,16 @@ var IcalCalendarProvider = class {
   }
 };
 function providerError(feed, kind, message) {
-  return {
-    kind,
-    message: sanitizeIcalErrorMessage(message, feed.name),
-    calendarId: feed.id
-  };
+  return new IcalCalendarProviderError(feed, kind, message);
 }
+var IcalCalendarProviderError = class extends Error {
+  constructor(feed, kind, message) {
+    super(sanitizeIcalErrorMessage(message, feed.name));
+    this.name = "IcalCalendarProviderError";
+    this.kind = kind;
+    this.calendarId = feed.id;
+  }
+};
 
 // src/main.ts
 var BELKI_COMPLETED_CODE_BLOCK = "```belki-completed\n```";
@@ -19309,8 +19431,8 @@ var BelkiPlugin = class extends import_obsidian20.Plugin {
     this.registerDomEvent(window, "focus", () => {
       this.calendarService.requestStaleRefresh();
     });
-    this.registerDomEvent(document, "visibilitychange", () => {
-      if (document.visibilityState === "visible") {
+    this.registerDomEvent(activeDocument, "visibilitychange", () => {
+      if (activeDocument.visibilityState === "visible") {
         this.calendarService.requestStaleRefresh();
       }
     });

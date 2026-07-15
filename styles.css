@@ -2406,9 +2406,15 @@ button.belki-add-inline {
   min-height: 0;
   opacity: 0;
   outline: none;
-  padding: 0;
+  padding: 0 12px;
   position: absolute;
   width: 100%;
+}
+
+.belki-priority-select-wrap > .belki-priority-select option {
+  color: var(--text-normal);
+  padding: 6px 12px;
+  text-indent: 12px;
 }
 
 .belki-priority-select-wrap > .belki-priority-select:hover,
@@ -2526,6 +2532,10 @@ button.belki-add-inline {
   flex: 0 0 auto;
 }
 
+.belki-detail-project-field {
+  position: relative;
+}
+
 .belki-composer-actions {
   display: flex;
   gap: 8px;
@@ -2533,15 +2543,9 @@ button.belki-add-inline {
   margin-left: auto;
 }
 
-.belki-detail-project-picker .belki-detail-select {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  color: var(--belki-text);
-  cursor: pointer;
-  min-height: 36px;
-  padding: 0;
+.belki-detail-project-picker {
+  justify-content: flex-start;
+  text-align: left;
 }
 
 .belki-location-picker {
@@ -2570,6 +2574,16 @@ button.belki-add-inline {
   position: fixed;
   width: max-content;
   z-index: 9999;
+}
+
+.belki-detail-project-menu {
+  left: 0;
+  max-width: none;
+  min-width: 0;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  width: auto;
 }
 
 .belki-project-option {

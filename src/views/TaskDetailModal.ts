@@ -56,6 +56,7 @@ export class TaskDetailModal extends Modal {
   private closeWikilinkDropdown: (() => void) | null = null;
   private closeQuickAddDropdown: (() => void) | null = null;
   private closeDescriptionToolbar: (() => void) | null = null;
+  private closeProjectMenu: (() => boolean) | null = null;
   private hideDescriptionToolbar: (() => void) | null = null;
   private descriptionToolbarVisible = false;
   private markdownRenderComponent: Component | null = null;
@@ -69,6 +70,13 @@ export class TaskDetailModal extends Modal {
       event.stopPropagation();
       event.stopImmediatePropagation();
       this.hideDescriptionToolbar();
+      return;
+    }
+
+    if (this.closeProjectMenu?.()) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
       return;
     }
 
@@ -404,7 +412,9 @@ export class TaskDetailModal extends Modal {
     this.closeQuickAddDropdown?.();
     this.closeWikilinkDropdown?.();
     this.closeDescriptionToolbar?.();
+    this.closeProjectMenu?.();
     this.closeDescriptionToolbar = null;
+    this.closeProjectMenu = null;
     this.hideDescriptionToolbar = null;
     this.descriptionToolbarVisible = false;
     this.markdownRenderComponent?.unload();
@@ -849,12 +859,22 @@ export class TaskDetailModal extends Modal {
 
   private renderProject(parent: HTMLElement): void {
     const field = this.createField(parent, "Project");
-    const projectPicker = field.createDiv({ cls: "belki-project-picker belki-detail-project-picker" });
+    field.addClass("belki-detail-project-field");
+    const projectPicker = field.createEl("button", {
+      cls: "belki-project-picker belki-detail-project-picker",
+      attr: {
+        type: "button",
+        "aria-haspopup": "listbox",
+        "aria-expanded": "false"
+      }
+    });
     const projectDot = projectPicker.createSpan({
       cls: "belki-project-dot belki-detail-project-dot"
     });
-    const select = projectPicker.createEl("select", {
-      cls: "belki-detail-input belki-detail-select"
+    const projectLabel = projectPicker.createSpan({ cls: "belki-project-trigger-label" });
+    const projectMenu = field.createEl("div", {
+      cls: "belki-project-menu belki-detail-project-menu is-hidden",
+      attr: { role: "listbox" }
     });
     const createRow = field.createDiv({ cls: "belki-detail-project-create is-hidden" });
     const createInput = createRow.createEl("input", {
@@ -885,18 +905,103 @@ export class TaskDetailModal extends Modal {
       ]);
 
     const renderOptions = () => {
-      select.empty();
-      select.createEl("option", { text: "No project", value: "" });
-      for (const project of getProjects()) {
-        select.createEl("option", { text: project, value: project });
+      const currentProject = normalizeTaskProject(this.draft.project) || "";
+      const projects = getProjects();
+      projectMenu.empty();
+      renderProjectOption("No project", "", undefined, currentProject === "");
+      if (projects.length > 0) {
+        projectMenu.createDiv({ cls: "belki-project-section-label", text: "Projects" });
+      }
+      for (const project of projects) {
+        renderProjectOption(
+          project,
+          project,
+          getProjectColor(project, this.options.settings.projectColors),
+          currentProject === project
+        );
       }
 
-      select.createEl("option", { text: "Create project...", value: createValue });
-      select.value = normalizeTaskProject(this.draft.project) || "";
+      renderProjectOption("Create project...", createValue, undefined, false);
     };
+
+    const handleOutsidePointer = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (target && field.contains(target)) {
+        return;
+      }
+
+      closeProjectMenu();
+    };
+
+    const closeProjectMenu = (): boolean => {
+      if (projectMenu.hasClass("is-hidden")) {
+        return false;
+      }
+
+      projectMenu.addClass("is-hidden");
+      projectPicker.setAttr("aria-expanded", "false");
+      activeDocument.removeEventListener("pointerdown", handleOutsidePointer, true);
+      return true;
+    };
+
+    const openProjectMenu = () => {
+      renderOptions();
+      projectMenu.removeClass("is-hidden");
+      projectPicker.setAttr("aria-expanded", "true");
+      activeDocument.addEventListener("pointerdown", handleOutsidePointer, true);
+    };
+
+    const selectProject = (value: string) => {
+      if (value === createValue) {
+        createRow.removeClass("is-hidden");
+        closeProjectMenu();
+        createInput.focus();
+        return;
+      }
+
+      this.draft.project = normalizeTaskProject(value);
+      createRow.addClass("is-hidden");
+      closeProjectMenu();
+      updateProjectStyle();
+      renderOptions();
+    };
+
+    function renderProjectOption(
+      label: string,
+      value: string,
+      projectColor: ReturnType<typeof getProjectColor> | undefined,
+      selected: boolean
+    ): void {
+      const option = projectMenu.createEl("button", {
+        cls: "belki-project-option",
+        attr: {
+          type: "button",
+          role: "option",
+          "aria-selected": String(selected)
+        }
+      });
+      option.toggleClass("has-project", Boolean(projectColor));
+      option.toggleClass("is-selected", selected);
+      option.createSpan({
+        cls: "belki-project-option-check",
+        text: selected ? "\u2713" : ""
+      });
+      if (projectColor) {
+        option
+          .createSpan({ cls: "belki-project-dot" })
+          .setCssStyles({ backgroundColor: projectColor.regular });
+      }
+      option.createSpan({ cls: "belki-project-option-label", text: label });
+      option.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        selectProject(value);
+      });
+    }
 
     const updateProjectStyle = () => {
       const project = normalizeTaskProject(this.draft.project);
+      projectLabel.setText(project || "No project");
       if (!project) {
         projectDot.setCssStyles({ backgroundColor: "var(--belki-faint)" });
         projectPicker.setCssStyles({
@@ -917,7 +1022,8 @@ export class TaskDetailModal extends Modal {
     const hideCreateRow = () => {
       createInput.value = "";
       createRow.addClass("is-hidden");
-      select.value = normalizeTaskProject(this.draft.project) || "";
+      renderOptions();
+      updateProjectStyle();
     };
 
     const createProject = () => {
@@ -929,21 +1035,17 @@ export class TaskDetailModal extends Modal {
 
       this.draft.project = project;
       hideCreateRow();
-      renderOptions();
-      updateProjectStyle();
     };
 
-    select.addEventListener("change", () => {
-      if (select.value === createValue) {
-        createRow.removeClass("is-hidden");
-        select.value = normalizeTaskProject(this.draft.project) || "";
-        createInput.focus();
+    projectPicker.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (projectMenu.hasClass("is-hidden")) {
+        openProjectMenu();
         return;
       }
 
-      this.draft.project = normalizeTaskProject(select.value);
-      createRow.addClass("is-hidden");
-      updateProjectStyle();
+      closeProjectMenu();
     });
     createButton.addEventListener("click", createProject);
     cancelCreateButton.addEventListener("click", hideCreateRow);
@@ -961,6 +1063,7 @@ export class TaskDetailModal extends Modal {
 
     renderOptions();
     updateProjectStyle();
+    this.closeProjectMenu = closeProjectMenu;
   }
 
   private renderPriority(parent: HTMLElement): void {

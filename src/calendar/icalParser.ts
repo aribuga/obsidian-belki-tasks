@@ -31,7 +31,7 @@ export function parseIcalFeed(
   const source = normalizeIcalSource(ics);
   let component: ICALComponent;
   try {
-    component = new ICAL.Component(ICAL.parse(source));
+    component = ICAL.Component.fromString(source);
   } catch {
     throw new Error("Calendar feed could not be parsed.");
   }
@@ -235,10 +235,18 @@ function sourceTimezone(event: ICALEvent): string | undefined {
   const property = event.component.getFirstProperty("dtstart");
   const parameter = property?.getParameter("tzid");
   if (Array.isArray(parameter)) {
-    return parameter.find((value) => typeof value === "string" && value.trim())?.trim();
+    const match = parameter
+      .filter((value): value is string => typeof value === "string")
+      .find((value) => value.trim().length > 0);
+    return match?.trim();
   }
 
-  return typeof parameter === "string" && parameter.trim() ? parameter.trim() : undefined;
+  if (typeof parameter !== "string") {
+    return undefined;
+  }
+
+  const trimmed = parameter.trim();
+  return trimmed || undefined;
 }
 
 function normalizeEventUrl(value: string | undefined): string | undefined {
