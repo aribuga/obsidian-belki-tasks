@@ -113,7 +113,7 @@ export function normalizeIcalSource(value: string): string {
   const beginIndex = withoutNulls.search(/BEGIN:VCALENDAR\b/i);
   const endMatch = /END:VCALENDAR\b/i.exec(withoutNulls);
   if (beginIndex === -1 || !endMatch) {
-    return withoutNulls.trimStart();
+    return withoutNulls.replace(/^\s+/, "");
   }
 
   const endIndex = endMatch.index + endMatch[0].length;

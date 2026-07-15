@@ -1488,7 +1488,9 @@ var RemoveIcalCalendarFeedModal = class extends import_obsidian4.Modal {
       text: `Remove ${this.feed.name} from belki. This clears its saved iCal URL and cached events, but does not modify tasks.`
     });
     new import_obsidian4.Setting(contentEl).addButton((button) => {
-      button.setButtonText("Remove").setDestructive().onClick(() => {
+      button.setButtonText("Remove");
+      button.buttonEl.addClass("mod-warning");
+      button.onClick(() => {
         void (async () => {
           await this.onConfirm();
           new import_obsidian4.Notice("Calendar removed.");
@@ -19030,7 +19032,7 @@ function normalizeIcalSource(value) {
   const beginIndex = withoutNulls.search(/BEGIN:VCALENDAR\b/i);
   const endMatch = /END:VCALENDAR\b/i.exec(withoutNulls);
   if (beginIndex === -1 || !endMatch) {
-    return withoutNulls.trimStart();
+    return withoutNulls.replace(/^\s+/, "");
   }
   const endIndex = endMatch.index + endMatch[0].length;
   return withoutNulls.slice(beginIndex, endIndex);

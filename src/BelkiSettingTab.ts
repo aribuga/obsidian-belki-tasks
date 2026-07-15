@@ -697,7 +697,9 @@ class RemoveIcalCalendarFeedModal extends Modal {
 
     new Setting(contentEl)
       .addButton((button) => {
-        button.setButtonText("Remove").setDestructive().onClick(() => {
+        button.setButtonText("Remove");
+        button.buttonEl.addClass("mod-warning");
+        button.onClick(() => {
           void (async () => {
             await this.onConfirm();
             new Notice("Calendar removed.");
