@@ -1,4 +1,58 @@
 
+.belki-calendar-settings-description,
+.belki-calendar-help {
+  margin-bottom: 8px;
+}
+
+.belki-calendar-feed-color {
+  background: var(--belki-calendar-color, var(--belki-accent));
+  border-radius: 999px;
+  display: inline-block;
+  height: 9px;
+  margin-left: 8px;
+  vertical-align: middle;
+  width: 9px;
+}
+
+.belki-calendar-status,
+.belki-calendar-modal-status,
+.belki-calendar-feed-error {
+  border-radius: 6px;
+  margin: 6px 0;
+  padding: 6px 8px;
+}
+
+.belki-calendar-url-setting .setting-item-control {
+  flex: 1 1 min(420px, 100%);
+}
+
+.belki-calendar-url-setting input[type="text"] {
+  width: min(520px, 100%);
+}
+
+.belki-calendar-url-hint {
+  margin: -4px 0 8px;
+}
+
+.belki-calendar-status.is-loading,
+.belki-calendar-modal-status.is-loading {
+  background: color-mix(in srgb, var(--belki-accent) 7%, transparent);
+}
+
+.belki-calendar-status.is-warning {
+  background: color-mix(in srgb, #d9730d 10%, transparent);
+}
+
+.belki-calendar-status.is-error,
+.belki-calendar-modal-status.is-error,
+.belki-calendar-feed-error {
+  background: color-mix(in srgb, var(--belki-danger) 9%, transparent);
+}
+
+.belki-calendar-modal-status.is-success {
+  background: color-mix(in srgb, #2f9e44 10%, transparent);
+}
+
 .belki-button,
 .belki-ui-button {
   background: var(--belki-hover);

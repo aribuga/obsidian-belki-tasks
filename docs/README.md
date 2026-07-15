@@ -20,6 +20,7 @@ belki is a calm Todoist-like task manager for Obsidian. Your tasks are stored as
 | [Attachments](attachments.md) | Adding files and images to tasks |
 | [Activity](activity.md) | Completed task history and stats |
 | [Daily Notes](daily-notes.md) | Show completed tasks in a belki panel or daily-note code block |
+| [Calendar Subscriptions](calendar-subscriptions.md) | Read-only inline iCal events in Today and Upcoming |
 | [Mobile](mobile.md) | Using belki on mobile |
 | [Settings](settings.md) | Configuration options |
 | [Markdown storage](markdown-storage.md) | How belki stores task data on disk |

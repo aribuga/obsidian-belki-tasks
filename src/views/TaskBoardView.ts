@@ -59,6 +59,10 @@ import { openLabelActionsMenu as openLabelActionsMenuElement } from "./labels/la
 import { renderFiltersAndLabelsView } from "./filters/FiltersAndLabelsView";
 import type { FilterDefinition } from "./filters/FiltersAndLabelsView";
 import { renderTaskActionMenu, renderTaskActions } from "./tasks/taskActions";
+import type { CalendarFetchRange } from "../calendar/calendarTypes";
+import { CalendarService } from "../calendar/CalendarService";
+import { collectUpcomingSectionDates } from "../calendar/calendarGrouping";
+import { renderCalendarEventStrip } from "./calendar/CalendarEventStrip";
 
 export const VIEW_TYPE_BELKI = "belki-task-board";
 
@@ -94,6 +98,7 @@ export class TaskBoardView extends ItemView {
   private mode: BoardViewMode = "today";
   private selectedProject: string | null = null;
   private unsubscribe?: () => void;
+  private unsubscribeCalendar?: () => void;
   private searchQuery = "";
   private searchOpen = false;
   private composerOpen = false;
@@ -112,6 +117,7 @@ export class TaskBoardView extends ItemView {
   private labelActionsOpen: string | null = null;
   private taskActionsOpenId: string | null = null;
   private expandedSubtaskPreviewIds = new Set<string>();
+  private expandedCalendarEventDates = new Set<string>();
   private suppressNextStoreRender = false;
   private projectMenuEl: HTMLElement | null = null;
   private labelMenuEl: HTMLElement | null = null;
@@ -122,6 +128,7 @@ export class TaskBoardView extends ItemView {
   private mobileComposerReturnScroll: { top: number; left: number } | null = null;
   private composerCleanup: (() => void) | null = null;
   private renderScheduled = false;
+  private calendarRangeRequestKey: string | null = null;
   private handleRootClick = (event: MouseEvent): void => {
     const target = event.target;
     if (
@@ -233,7 +240,8 @@ export class TaskBoardView extends ItemView {
     leaf: WorkspaceLeaf,
     private store: TaskStore,
     private settings: BelkiSettings,
-    private saveSettings: () => Promise<void>
+    private saveSettings: () => Promise<void>,
+    private calendarService: CalendarService
   ) {
     super(leaf);
   }
@@ -258,6 +266,9 @@ export class TaskBoardView extends ItemView {
       }
       this.renderPreservingMainScroll();
     });
+    this.unsubscribeCalendar = this.calendarService.subscribe(() => {
+      this.renderPreservingMainScroll();
+    });
     this.render();
   }
 
@@ -270,6 +281,7 @@ export class TaskBoardView extends ItemView {
     this.containerEl.removeEventListener("keydown", this.handleRootKeyDown, true);
     this.containerEl.removeEventListener("click", this.handleRootClick, true);
     this.unsubscribe?.();
+    this.unsubscribeCalendar?.();
   }
 
   private removeProjectMenu(): void {
@@ -322,6 +334,7 @@ export class TaskBoardView extends ItemView {
     this.sortPopoverOpen = false;
     this.projectActionsOpen = null;
     this.labelActionsOpen = null;
+    this.calendarRangeRequestKey = null;
     this.render();
   }
 
@@ -649,6 +662,7 @@ export class TaskBoardView extends ItemView {
       this.mobileComposerReturnScroll = null;
       this.searchOpen = false;
       this.sortPopoverOpen = false;
+      this.calendarRangeRequestKey = null;
       this.render();
     });
   }
@@ -997,10 +1011,13 @@ export class TaskBoardView extends ItemView {
     const active = this.getActiveTopLevelTasks(allTasks);
 
     if (this.mode === "today") {
+      const today = todayIso();
+      this.ensureCalendarRangeLoaded(this.calendarService.getTaskViewCalendarRange(today));
       const todayTasks = this.sortTasks(active.filter((task) => isToday(task.due)));
 
-      const todaySection = this.createSection(parent, formatGroupHeader(todayIso()), todayTasks.length);
+      const todaySection = this.createSection(parent, formatGroupHeader(today), todayTasks.length);
       this.enableTodayDrop(todaySection);
+      this.renderCalendarEventsForDate(todaySection, today);
       this.renderTaskList(todaySection, todayTasks);
 
       const overdue = this.sortTasks(this.getOverdueTasks(active));
@@ -1016,17 +1033,27 @@ export class TaskBoardView extends ItemView {
     }
 
     if (this.mode === "upcoming") {
+      const today = todayIso();
+      const upcomingRange = this.calendarService.getUpcomingRange(today);
+      this.ensureCalendarRangeLoaded(this.calendarService.getTaskViewCalendarRange(today));
       const groups = groupByDueDate(
         active.filter((task) => isAfterToday(task.due))
       );
+      const taskGroups = new Map(groups);
+      const dates = collectUpcomingSectionDates(
+        taskGroups.keys(),
+        this.calendarService.getEventDatesInRange(upcomingRange)
+      );
 
-      for (const [date, tasks] of groups) {
+      for (const date of dates) {
+        const tasks = taskGroups.get(date) || [];
         const section = this.createSection(parent, formatGroupHeader(date), tasks.length);
         this.enableDueDateDrop(section, date);
+        this.renderCalendarEventsForDate(section, date);
         this.renderTaskList(section, this.sortTasks(tasks));
       }
 
-      if (groups.length === 0) {
+      if (dates.length === 0) {
         this.renderEmptySection(parent, "No upcoming tasks.");
       }
       return;
@@ -1414,6 +1441,47 @@ export class TaskBoardView extends ItemView {
     header.createSpan({ cls: "belki-section-count", text: String(count) });
     renderHeaderAction?.(header);
     return section;
+  }
+
+  private renderCalendarEventsForDate(section: HTMLElement, date: string): void {
+    const events = this.calendarService.getEventsForDate(date);
+    renderCalendarEventStrip(section, {
+      date,
+      events,
+      feedById: new Map(this.calendarService.getFeeds().map((feed) => [feed.id, feed])),
+      expanded: this.expandedCalendarEventDates.has(date),
+      onToggle: (targetDate) => {
+        if (this.expandedCalendarEventDates.has(targetDate)) {
+          this.expandedCalendarEventDates.delete(targetDate);
+        } else {
+          this.expandedCalendarEventDates.add(targetDate);
+        }
+        this.renderPreservingMainScroll();
+      }
+    });
+  }
+
+  private ensureCalendarRangeLoaded(range: CalendarFetchRange): void {
+    if (!this.calendarService.shouldShowEvents()) {
+      this.calendarRangeRequestKey = null;
+      return;
+    }
+
+    const key = [
+      range.startDate,
+      range.endDate,
+      this.settings.icalCalendarFeeds
+        .map((feed) => `${feed.id}:${feed.enabled}:${feed.lastSuccessfulRefreshAt || ""}`)
+        .join(","),
+      this.calendarService.getDataVersion()
+    ].join("|");
+
+    if (this.calendarRangeRequestKey === key) {
+      return;
+    }
+
+    this.calendarRangeRequestKey = key;
+    void this.calendarService.refresh(range);
   }
 
   private getActiveProjects(): string[] {
@@ -2272,13 +2340,18 @@ export class TaskBoardView extends ItemView {
   }
 
   private getUpcomingDropDates(): string[] {
-    return [...new Set(
+    const taskDates = [...new Set(
       this.store
         .getTasks()
         .filter((task) => !task.completed && isAfterToday(task.due))
         .map((task) => task.due)
         .filter((due): due is string => Boolean(due))
-    )].sort(compareIsoDates);
+    )];
+    const calendarDates = this.calendarService.getEventDatesInRange(
+      this.calendarService.getUpcomingRange(todayIso())
+    );
+
+    return [...new Set([...taskDates, ...calendarDates])].sort(compareIsoDates);
   }
 
   private sortTasks(tasks: BelkiTask[]): BelkiTask[] {

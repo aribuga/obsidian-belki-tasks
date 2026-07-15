@@ -94,6 +94,151 @@
   margin: 0;
 }
 
+.belki-calendar-event-strip {
+  background: color-mix(in srgb, var(--belki-muted) 5%, transparent);
+  border: 1px solid var(--belki-border-soft);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 8px 0;
+  padding: 6px;
+  position: relative;
+}
+
+.belki-calendar-event-list {
+  display: grid;
+  gap: 2px;
+}
+
+.belki-calendar-event-row {
+  align-items: center;
+  border-radius: 6px;
+  color: var(--belki-text);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 3px auto minmax(0, 1fr) auto;
+  min-height: 28px;
+  padding: 3px 6px;
+}
+
+.belki-calendar-event-strip.has-overflow .belki-calendar-event-list > .belki-calendar-event-row:first-child {
+  padding-right: 52px;
+}
+
+.belki-calendar-event-row.is-clickable {
+  cursor: pointer;
+}
+
+.belki-calendar-event-row.is-clickable:hover,
+.belki-calendar-event-row.is-clickable:focus-visible {
+  background: var(--belki-hover);
+  outline: none;
+}
+
+.belki-calendar-event-color {
+  align-self: stretch;
+  background: var(--belki-calendar-color, var(--belki-accent));
+  border-radius: 999px;
+  min-height: 18px;
+  width: 3px;
+}
+
+.belki-calendar-event-time {
+  color: var(--belki-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.belki-calendar-event-title {
+  color: var(--belki-text);
+  font-size: 13px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.belki-calendar-event-link-icon {
+  color: var(--belki-faint);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.belki-calendar-event-row.is-clickable:hover .belki-calendar-event-link-icon,
+.belki-calendar-event-row.is-clickable:focus-visible .belki-calendar-event-link-icon {
+  opacity: 1;
+}
+
+.belki-root .belki-calendar-event-strip button.belki-calendar-event-toggle {
+  --button-shadow: none;
+  --button-shadow-hover: none;
+  --button-shadow-active: none;
+  align-items: center;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  background-color: transparent;
+  background-image: none;
+  border: 0;
+  border-radius: 4px;
+  box-shadow: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  gap: 1px;
+  height: 24px;
+  justify-content: center;
+  line-height: 1;
+  margin: 0;
+  min-height: 0;
+  min-width: 24px;
+  outline: none;
+  padding: 0 4px;
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  transform: none;
+  z-index: 1;
+}
+
+.belki-root .belki-calendar-event-strip button.belki-calendar-event-toggle:hover {
+  background: var(--background-modifier-hover);
+  background-color: var(--background-modifier-hover);
+  background-image: none;
+  border: 0;
+  box-shadow: none;
+  color: var(--text-muted);
+}
+
+.belki-root .belki-calendar-event-strip button.belki-calendar-event-toggle:focus-visible {
+  background: var(--background-modifier-hover);
+  background-color: var(--background-modifier-hover);
+  background-image: none;
+  border: 0;
+  box-shadow: none;
+  color: var(--text-muted);
+  outline: 2px solid color-mix(in srgb, var(--belki-accent) 52%, transparent);
+  outline-offset: 2px;
+}
+
+.belki-root .belki-calendar-event-strip button.belki-calendar-event-toggle:active {
+  background: var(--background-modifier-hover);
+  background-color: var(--background-modifier-hover);
+  background-image: none;
+  border: 0;
+  box-shadow: none;
+  color: var(--text-muted);
+  transform: none;
+}
+
+.belki-calendar-event-more {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+}
+
 .belki-overdue-range-select {
   appearance: none;
   background: var(--belki-surface);

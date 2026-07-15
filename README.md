@@ -19,11 +19,11 @@
 
 ---
 
-belki is a Todoist-inspired task manager that lives entirely inside your Obsidian vault. There is no account, no external service, and no sync layer. Your tasks are stored as plain Markdown files you own.
+belki is a Todoist-inspired task manager that lives inside your Obsidian vault. Your tasks are stored as plain Markdown files you own. Optional read-only calendar subscriptions never turn events into belki tasks or write event data into task Markdown files.
 
 belki aims to sit between lightweight checkbox-based task plugins and heavier task-note systems: structured enough to work as a real task manager, but small enough to stay calm and easy to use.
 
-> belki is **not** a Todoist integration. It does not connect to Todoist or any external service.
+> belki is **not** a Todoist integration. It does not connect to Todoist.
 
 ---
 
@@ -113,6 +113,14 @@ belki aims to sit between lightweight checkbox-based task plugins and heavier ta
 - Mobile task detail screen with back navigation.
 - Mobile-friendly date picker and repeat controls.
 - Task action menu includes Move to Today, Move to Tomorrow, Pick date, and Clear date.
+
+### Optional Integrations
+
+- iCal calendar subscription events can appear read-only inline inside Today and Upcoming.
+- Google Calendar is supported through its private "Secret address in iCal format" link.
+- No Calendar page or sidebar item is added.
+- Calendar events are not stored as belki tasks and are not written to task Markdown files.
+- See [Calendar Subscriptions](docs/calendar-subscriptions.md) for setup and security details.
 
 ---
 
