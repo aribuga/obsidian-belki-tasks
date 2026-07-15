@@ -4,6 +4,7 @@ interface RenderCustomDatePickerOptions {
   triggerLabel?: string;
   triggerAriaLabel?: string;
   triggerRole?: string;
+  alwaysShowTriggerLabel?: boolean;
 }
 
 export function renderCustomDatePicker(
@@ -27,8 +28,14 @@ export function renderCustomDatePicker(
       ...(options.triggerAriaLabel ? { "aria-label": options.triggerAriaLabel } : {})
     }
   });
+  const triggerText =
+    options.alwaysShowTriggerLabel && options.triggerLabel
+      ? options.triggerLabel
+      : currentValue
+        ? formatDueDateChip(currentValue)
+        : options.triggerLabel || "Custom date\u2026";
   trigger.createSpan({
-    text: currentValue ? formatDueDateChip(currentValue) : options.triggerLabel || "Custom date\u2026"
+    text: triggerText
   });
   if (currentValue) trigger.addClass("is-active");
 
