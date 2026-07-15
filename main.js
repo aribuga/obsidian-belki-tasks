@@ -2565,6 +2565,70 @@ function legacyBackupPathCandidate(path, index) {
   return index <= 1 ? `${base}.migrated-backup.md` : `${base}.migrated-backup-${index}.md`;
 }
 
+// src/taskBulkActions.ts
+function getOverdueRangeDates(today = todayIso()) {
+  return {
+    today,
+    yesterday: addDaysToIsoDate2(today, -1),
+    last7Start: addDaysToIsoDate2(today, -7),
+    last30Start: addDaysToIsoDate2(today, -30)
+  };
+}
+function getVisibleOverdueTasksForBulkReschedule(tasks, range, dates = getOverdueRangeDates()) {
+  return tasks.filter((task) => isVisibleOverdueTaskForRange(task, range, dates));
+}
+function isVisibleOverdueTaskForRange(task, range, dates = getOverdueRangeDates()) {
+  if (task.completed || task.parentId || !task.due || task.due >= dates.today) {
+    return false;
+  }
+  if (range === "yesterday") {
+    return task.due === dates.yesterday;
+  }
+  if (range === "last7") {
+    return task.due >= dates.last7Start;
+  }
+  if (range === "last30") {
+    return task.due >= dates.last30Start;
+  }
+  return task.due < dates.last30Start;
+}
+function dueDateForBulkRescheduleShortcut(shortcut) {
+  if (shortcut === "today") {
+    return todayIso();
+  }
+  if (shortcut === "tomorrow") {
+    return addDaysIso(1);
+  }
+  return addDaysIso(7);
+}
+function createTaskDueDateUpdatePlan(tasks, taskIds, due) {
+  const idSet = new Set(taskIds);
+  const changedIds = [];
+  const nextTasks = tasks.map((task) => {
+    if (!idSet.has(task.id) || task.due === due) {
+      return task;
+    }
+    changedIds.push(task.id);
+    return {
+      ...task,
+      due
+    };
+  });
+  return {
+    tasks: nextTasks,
+    changedIds
+  };
+}
+function addDaysToIsoDate2(value, days) {
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + days);
+  const nextYear = date.getFullYear();
+  const nextMonth = String(date.getMonth() + 1).padStart(2, "0");
+  const nextDay = String(date.getDate()).padStart(2, "0");
+  return `${nextYear}-${nextMonth}-${nextDay}`;
+}
+
 // src/taskStore.ts
 var TaskStore = class {
   constructor(app, settings) {
@@ -2733,6 +2797,32 @@ var TaskStore = class {
     });
     await this.saveSources([sourcePath]);
   }
+  async updateTaskDueDates(taskIds, due) {
+    const normalizedDue = normalizeOptional(due);
+    if (!normalizedDue || taskIds.length === 0) {
+      return;
+    }
+    const previousTasks = this.tasks;
+    const previousDocuments = new Map(this.documents);
+    const plan = createTaskDueDateUpdatePlan(this.tasks, taskIds, normalizedDue);
+    if (plan.changedIds.length === 0) {
+      return;
+    }
+    const changedSources = /* @__PURE__ */ new Set();
+    for (const task of plan.tasks) {
+      if (plan.changedIds.includes(task.id)) {
+        changedSources.add(task.sourcePath || this.monthlyPathForDate(task.created || todayIso()));
+      }
+    }
+    this.tasks = plan.tasks;
+    try {
+      await this.saveBulkSources([...changedSources], previousTasks, previousDocuments);
+    } catch (error) {
+      this.tasks = previousTasks;
+      this.documents = previousDocuments;
+      throw error;
+    }
+  }
   async toggleComplete(id) {
     const task = this.tasks.find((candidate) => candidate.id === id);
     if (!task) {
@@ -2878,15 +2968,8 @@ var TaskStore = class {
   }
   async rescheduleOverdueToToday() {
     const today = todayIso();
-    const changedSources = /* @__PURE__ */ new Set();
-    this.tasks = this.tasks.map((task) => {
-      if (!task.completed && task.due && task.due < today) {
-        changedSources.add(task.sourcePath || this.monthlyPathForDate(task.created || today));
-        return { ...task, due: today };
-      }
-      return task;
-    });
-    await this.saveSources([...changedSources]);
+    const taskIds = this.tasks.filter((task) => !task.completed && task.due && task.due < today).map((task) => task.id);
+    await this.updateTaskDueDates(taskIds, today);
   }
   async normalizeLabels() {
     const changedSources = /* @__PURE__ */ new Set();
@@ -2980,6 +3063,37 @@ var TaskStore = class {
   async saveSources(sourcePaths) {
     await this.writeSources(sourcePaths);
     await this.load();
+  }
+  async saveBulkSources(sourcePaths, previousTasks, previousDocuments) {
+    const rollbackContents = /* @__PURE__ */ new Map();
+    for (const sourcePath of dedupeStrings(sourcePaths.filter(Boolean))) {
+      const document2 = previousDocuments.get(sourcePath) || { blocks: [], tasks: [] };
+      const tasks = previousTasks.filter((task) => task.sourcePath === sourcePath).map((task) => normalizeTaskForSave(task, sourcePath));
+      rollbackContents.set(sourcePath, serializeTaskDocument(document2, tasks));
+    }
+    try {
+      await this.saveSources(sourcePaths);
+    } catch (error) {
+      await this.rollbackSourceContents(rollbackContents);
+      throw error;
+    }
+  }
+  async rollbackSourceContents(contents) {
+    for (const [sourcePath, content] of contents) {
+      const file = await this.ensureFile(sourcePath, "");
+      if (!file) {
+        continue;
+      }
+      this.writingPaths.add((0, import_obsidian8.normalizePath)(sourcePath));
+      try {
+        await this.app.vault.modify(file, content);
+        this.documents.set(sourcePath, parseTaskDocument(content, sourcePath));
+      } catch (rollbackError) {
+        console.warn("[belki] Failed to roll back task source after bulk update failure.", rollbackError);
+      } finally {
+        this.writingPaths.delete((0, import_obsidian8.normalizePath)(sourcePath));
+      }
+    }
   }
   async writeSources(sourcePaths) {
     for (const sourcePath of dedupeStrings(sourcePaths.filter(Boolean))) {
@@ -5351,6 +5465,97 @@ var ImagePreviewModal = class extends import_obsidian13.Modal {
   }
 };
 
+// src/views/datePicker.ts
+function renderCustomDatePicker(parent, currentValue, onSelect, options = {}) {
+  const todayStr = todayIso();
+  const initDate = currentValue ? /* @__PURE__ */ new Date(currentValue + "T00:00:00") : /* @__PURE__ */ new Date();
+  let viewYear = initDate.getFullYear();
+  let viewMonth = initDate.getMonth();
+  const container = parent.createDiv({ cls: "belki-date-custom-wrap" });
+  const trigger = container.createEl("button", {
+    cls: "belki-date-preset belki-cal-trigger",
+    attr: {
+      type: "button",
+      ...options.triggerRole ? { role: options.triggerRole } : {},
+      ...options.triggerAriaLabel ? { "aria-label": options.triggerAriaLabel } : {}
+    }
+  });
+  trigger.createSpan({
+    text: currentValue ? formatDueDateChip(currentValue) : options.triggerLabel || "Custom date\u2026"
+  });
+  if (currentValue) trigger.addClass("is-active");
+  const calWrap = container.createDiv({ cls: "belki-cal-wrap is-hidden" });
+  function renderCal() {
+    calWrap.empty();
+    const header = calWrap.createDiv({ cls: "belki-cal-header" });
+    const prevBtn = header.createEl("button", { cls: "belki-cal-nav", attr: { type: "button" } });
+    prevBtn.setText("\u2039");
+    header.createSpan({
+      cls: "belki-cal-title",
+      text: new Date(viewYear, viewMonth, 1).toLocaleDateString(void 0, { month: "long", year: "numeric" })
+    });
+    const nextBtn = header.createEl("button", { cls: "belki-cal-nav", attr: { type: "button" } });
+    nextBtn.setText("\u203A");
+    prevBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      prevBtn.blur();
+      if (--viewMonth < 0) {
+        viewMonth = 11;
+        viewYear--;
+      }
+      renderCal();
+    });
+    nextBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      nextBtn.blur();
+      if (++viewMonth > 11) {
+        viewMonth = 0;
+        viewYear++;
+      }
+      renderCal();
+    });
+    const grid = calWrap.createDiv({ cls: "belki-cal-grid" });
+    for (const d of ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]) {
+      grid.createSpan({ cls: "belki-cal-day-hdr", text: d });
+    }
+    const firstDow = new Date(viewYear, viewMonth, 1).getDay();
+    const leadingEmpties = firstDow === 0 ? 6 : firstDow - 1;
+    for (let i = 0; i < leadingEmpties; i++) {
+      grid.createDiv({ cls: "belki-cal-day is-empty" });
+    }
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const cell = grid.createEl("button", {
+        cls: "belki-cal-day",
+        text: String(d),
+        attr: { type: "button" }
+      });
+      if (iso === todayStr) cell.addClass("is-today");
+      if (iso === currentValue) cell.addClass("is-selected");
+      cell.addEventListener("click", (e) => {
+        e.stopPropagation();
+        onSelect(iso);
+      });
+    }
+    const renderedCells = leadingEmpties + daysInMonth;
+    const trailingEmpties = 42 - renderedCells;
+    for (let i = 0; i < trailingEmpties; i++) {
+      grid.createDiv({ cls: "belki-cal-day is-empty" });
+    }
+  }
+  trigger.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const opening = calWrap.hasClass("is-hidden");
+    parent.toggleClass("is-calendar-open", opening);
+    calWrap.toggleClass("is-hidden", !opening);
+    if (opening) renderCal();
+  });
+}
+
 // src/views/task-detail/dateRepeatFields.ts
 function renderTaskDetailDateRepeatFields(parent, options) {
   renderDueDatePicker(parent, options);
@@ -5413,7 +5618,7 @@ function renderDueDatePicker(parent, options) {
     addPreset("Next week", addDaysIso(7));
     addPreset("Next weekend", nextWeekdayIso(6));
     popover.createDiv({ cls: "belki-date-divider" });
-    renderCustomDatePicker(popover, state.due, "calendar", selectDate);
+    renderCustomDatePicker(popover, state.due, selectDate);
     popover.createDiv({ cls: "belki-date-divider" });
     const repeatHeader = popover.createDiv({ cls: "belki-repeat-header" });
     createBelkiIcon(repeatHeader, "recurring", { className: "belki-chip-icon" });
@@ -5559,7 +5764,7 @@ function renderDeadlinePicker(parent, options) {
     addPreset("Tomorrow", addDaysIso(1));
     addPreset("Next week", addDaysIso(7));
     addPreset("Next weekend", nextWeekdayIso(6));
-    renderCustomDatePicker(popover, state.deadline, "deadline", selectDate);
+    renderCustomDatePicker(popover, state.deadline, selectDate);
     btn.addEventListener("click", () => {
       const isHidden = popover.hasClass("is-hidden");
       closePopover();
@@ -5578,89 +5783,6 @@ function createField(parent, label) {
   const field = parent.createDiv({ cls: "belki-detail-field" });
   field.createDiv({ cls: "belki-detail-label", text: label });
   return field;
-}
-function renderCustomDatePicker(parent, currentValue, _iconName, onSelect) {
-  const todayStr = todayIso();
-  const initDate = currentValue ? /* @__PURE__ */ new Date(currentValue + "T00:00:00") : /* @__PURE__ */ new Date();
-  let viewYear = initDate.getFullYear();
-  let viewMonth = initDate.getMonth();
-  const container = parent.createDiv({ cls: "belki-date-custom-wrap" });
-  const trigger = container.createEl("button", {
-    cls: "belki-date-preset belki-cal-trigger",
-    attr: { type: "button" }
-  });
-  trigger.createSpan({ text: currentValue ? formatDueDateChip(currentValue) : "Custom date\u2026" });
-  if (currentValue) trigger.addClass("is-active");
-  const calWrap = container.createDiv({ cls: "belki-cal-wrap is-hidden" });
-  function renderCal() {
-    calWrap.empty();
-    const header = calWrap.createDiv({ cls: "belki-cal-header" });
-    const prevBtn = header.createEl("button", { cls: "belki-cal-nav", attr: { type: "button" } });
-    prevBtn.setText("\u2039");
-    header.createSpan({
-      cls: "belki-cal-title",
-      text: new Date(viewYear, viewMonth, 1).toLocaleDateString(void 0, { month: "long", year: "numeric" })
-    });
-    const nextBtn = header.createEl("button", { cls: "belki-cal-nav", attr: { type: "button" } });
-    nextBtn.setText("\u203A");
-    prevBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      prevBtn.blur();
-      if (--viewMonth < 0) {
-        viewMonth = 11;
-        viewYear--;
-      }
-      renderCal();
-    });
-    nextBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      nextBtn.blur();
-      if (++viewMonth > 11) {
-        viewMonth = 0;
-        viewYear++;
-      }
-      renderCal();
-    });
-    const grid = calWrap.createDiv({ cls: "belki-cal-grid" });
-    for (const d of ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]) {
-      grid.createSpan({ cls: "belki-cal-day-hdr", text: d });
-    }
-    const firstDow = new Date(viewYear, viewMonth, 1).getDay();
-    const leadingEmpties = firstDow === 0 ? 6 : firstDow - 1;
-    for (let i = 0; i < leadingEmpties; i++) {
-      grid.createDiv({ cls: "belki-cal-day is-empty" });
-    }
-    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-    for (let d = 1; d <= daysInMonth; d++) {
-      const iso = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-      const cell = grid.createEl("button", {
-        cls: "belki-cal-day",
-        text: String(d),
-        attr: { type: "button" }
-      });
-      if (iso === todayStr) cell.addClass("is-today");
-      if (iso === currentValue) cell.addClass("is-selected");
-      cell.addEventListener("click", (e) => {
-        e.stopPropagation();
-        onSelect(iso);
-      });
-    }
-    const renderedCells = leadingEmpties + daysInMonth;
-    const trailingEmpties = 42 - renderedCells;
-    for (let i = 0; i < trailingEmpties; i++) {
-      grid.createDiv({ cls: "belki-cal-day is-empty" });
-    }
-  }
-  trigger.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const opening = calWrap.hasClass("is-hidden");
-    parent.toggleClass("is-calendar-open", opening);
-    calWrap.toggleClass("is-hidden", !opening);
-    if (opening) renderCal();
-  });
 }
 
 // src/views/task-detail/descriptionFormatting.ts
@@ -7896,6 +8018,97 @@ function createTaskActionMenuButton(parent, label, onClick) {
   });
 }
 
+// src/views/tasks/BulkReschedulePopover.ts
+function renderBulkReschedulePopover(options) {
+  const wrapper = options.parent.createDiv({ cls: "belki-bulk-reschedule" });
+  const button = wrapper.createEl("button", {
+    cls: "belki-reschedule",
+    text: `Reschedule ${options.count}`,
+    attr: {
+      type: "button",
+      "aria-haspopup": "menu",
+      "aria-expanded": "false",
+      "aria-label": `Reschedule ${options.count} overdue task${options.count === 1 ? "" : "s"}`
+    }
+  });
+  let popover = null;
+  let detachOutside = null;
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (popover) {
+      closePopover(true);
+    } else {
+      openPopover();
+    }
+  });
+  const openPopover = () => {
+    closePopover(false);
+    button.setAttr("aria-expanded", "true");
+    popover = wrapper.createDiv({
+      cls: "belki-bulk-reschedule-popover",
+      attr: { role: "menu", "aria-label": "Reschedule overdue tasks" }
+    });
+    popover.addEventListener("click", (event) => event.stopPropagation());
+    popover.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closePopover(true);
+      }
+    });
+    popover.createDiv({
+      cls: "belki-bulk-reschedule-title",
+      text: `Reschedule ${options.count} task${options.count === 1 ? "" : "s"}`
+    });
+    createPresetButton(popover, "Today", dueDateForBulkRescheduleShortcut("today"), selectDue);
+    createPresetButton(popover, "Tomorrow", dueDateForBulkRescheduleShortcut("tomorrow"), selectDue);
+    createPresetButton(popover, "Next week", dueDateForBulkRescheduleShortcut("nextWeek"), selectDue);
+    popover.createDiv({ cls: "belki-date-divider" });
+    renderCustomDatePicker(popover, void 0, (value) => {
+      selectDue(value, value);
+    }, {
+      triggerLabel: "Pick a date...",
+      triggerAriaLabel: "Pick bulk reschedule date",
+      triggerRole: "menuitem"
+    });
+    const ownerDocument = wrapper.ownerDocument;
+    const handleOutside = (event) => {
+      if (!wrapper.contains(event.target)) {
+        closePopover(false);
+      }
+    };
+    ownerDocument.addEventListener("click", handleOutside, { capture: true });
+    detachOutside = () => ownerDocument.removeEventListener("click", handleOutside, { capture: true });
+  };
+  const closePopover = (restoreFocus) => {
+    popover == null ? void 0 : popover.remove();
+    popover = null;
+    button.setAttr("aria-expanded", "false");
+    detachOutside == null ? void 0 : detachOutside();
+    detachOutside = null;
+    if (restoreFocus) {
+      button.focus();
+    }
+  };
+  const selectDue = (due, label) => {
+    closePopover(false);
+    options.onSelectDue(due, label);
+  };
+  return () => closePopover(false);
+}
+function createPresetButton(parent, label, due, onSelectDue) {
+  parent.createEl("button", {
+    cls: "belki-bulk-reschedule-option",
+    text: label,
+    attr: { type: "button", role: "menuitem" }
+  }).addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onSelectDue(due, label);
+  });
+}
+
 // src/calendar/calendarGrouping.ts
 function groupVisibleCalendarEvents(events) {
   return groupCalendarEventsByDate(events);
@@ -8114,6 +8327,7 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     this.pendingScrollSnapshot = null;
     this.mobileComposerReturnScroll = null;
     this.composerCleanup = null;
+    this.bulkRescheduleCleanup = null;
     this.renderScheduled = false;
     this.calendarRangeRequestKey = null;
     this.handleRootClick = (event) => {
@@ -8306,14 +8520,16 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     return this.mode === "daily-note";
   }
   render() {
-    var _a, _b, _c;
+    var _a, _b, _c, _d;
     (_a = this.composerCleanup) == null ? void 0 : _a.call(this);
     this.composerCleanup = null;
+    (_b = this.bulkRescheduleCleanup) == null ? void 0 : _b.call(this);
+    this.bulkRescheduleCleanup = null;
     this.removeProjectMenu();
     this.removeLabelMenu();
     this.removeTaskActionMenu();
     const { containerEl } = this;
-    const sidebarScrollLeft = (_c = (_b = containerEl.querySelector(".belki-sidebar")) == null ? void 0 : _b.scrollLeft) != null ? _c : this.sidebarScrollLeft;
+    const sidebarScrollLeft = (_d = (_c = containerEl.querySelector(".belki-sidebar")) == null ? void 0 : _c.scrollLeft) != null ? _d : this.sidebarScrollLeft;
     containerEl.empty();
     containerEl.addClass("belki-root");
     containerEl.addClass("belki-view");
@@ -8884,6 +9100,7 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
       if (hasAnyOverdue) {
         const section2 = this.createSection(parent, "Overdue", overdue.length, (header) => {
           this.renderOverdueRangeSelect(header);
+          this.renderBulkRescheduleAction(header, overdue);
         });
         this.renderTaskList(section2, overdue);
       }
@@ -9398,6 +9615,33 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
         this.renderPreservingMainScroll();
       })();
     });
+  }
+  renderBulkRescheduleAction(parent, visibleOverdueTasks) {
+    if (visibleOverdueTasks.length === 0) {
+      return;
+    }
+    this.bulkRescheduleCleanup = renderBulkReschedulePopover({
+      parent,
+      count: visibleOverdueTasks.length,
+      onSelectDue: (due, label) => {
+        void this.bulkRescheduleVisibleOverdueTasks(visibleOverdueTasks, due, label);
+      }
+    });
+  }
+  async bulkRescheduleVisibleOverdueTasks(visibleOverdueTasks, due, label) {
+    const taskIds = visibleOverdueTasks.map((task) => task.id);
+    if (taskIds.length === 0) {
+      this.renderPreservingMainScroll();
+      return;
+    }
+    try {
+      await this.store.updateTaskDueDates(taskIds, due);
+      new import_obsidian16.Notice(`${taskIds.length} task${taskIds.length === 1 ? "" : "s"} rescheduled to ${label}.`);
+      this.renderPreservingMainScroll();
+    } catch (error) {
+      console.warn("[belki] Failed to bulk reschedule overdue tasks.", error);
+      new import_obsidian16.Notice("belki could not reschedule those tasks. Please try again.");
+    }
   }
   enableTodayDrop(section) {
     section.addClass("belki-drop-zone");
@@ -9976,7 +10220,10 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     });
   }
   getOverdueTasks(tasks) {
-    return tasks.filter((task) => this.isInSelectedOverdueRange(task));
+    return getVisibleOverdueTasksForBulkReschedule(
+      tasks,
+      this.settings.defaultOverdueRange
+    );
   }
   isInSelectedOverdueRange(task) {
     if (task.completed || !task.due || task.due >= todayIso()) {

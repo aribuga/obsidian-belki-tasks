@@ -259,18 +259,91 @@
   color: var(--belki-text);
 }
 
-.belki-reschedule {
-  background: transparent;
-  border-radius: 6px;
-  color: var(--belki-accent);
-  font-size: 13px;
-  font-weight: 600;
-  margin-left: auto;
-  padding: 5px 8px;
+.belki-bulk-reschedule {
+  flex: 0 0 auto;
+  position: relative;
 }
 
-.belki-reschedule:hover {
+.belki-reschedule {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  box-shadow: none;
+  color: var(--belki-muted);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 600;
+  height: 28px;
+  justify-content: center;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.belki-reschedule:hover,
+.belki-reschedule:focus-visible,
+.belki-reschedule[aria-expanded="true"] {
   background: var(--belki-hover);
+  color: var(--belki-text);
+}
+
+.belki-reschedule:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--belki-accent) 52%, transparent);
+  outline-offset: 2px;
+}
+
+.belki-bulk-reschedule-popover {
+  background: var(--belki-surface);
+  border: 1px solid var(--belki-border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+  display: grid;
+  gap: 2px;
+  min-width: 190px;
+  padding: 6px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 90;
+}
+
+.belki-bulk-reschedule-popover.is-calendar-open {
+  min-width: min(280px, calc(100vw - 28px));
+}
+
+.belki-bulk-reschedule-title {
+  color: var(--belki-muted);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 8px 4px;
+}
+
+.belki-bulk-reschedule-option {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  box-shadow: none;
+  color: var(--belki-text);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: 13px;
+  justify-content: space-between;
+  min-height: 32px;
+  padding: 0 8px;
+  text-align: left;
+}
+
+.belki-bulk-reschedule-option:hover,
+.belki-bulk-reschedule-option:focus-visible {
+  background: var(--belki-hover);
+}
+
+.belki-bulk-reschedule-option:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--belki-accent) 52%, transparent);
+  outline-offset: 2px;
 }
 
 .belki-task-list {
