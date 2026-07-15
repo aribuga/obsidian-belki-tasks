@@ -1,4 +1,4 @@
-import { App, ItemView, Modal, Platform, WorkspaceLeaf } from "obsidian";
+import { App, ItemView, Modal, Notice, Platform, WorkspaceLeaf } from "obsidian";
 import {
   ActivityData,
   buildActivityData,
@@ -59,10 +59,12 @@ import { openLabelActionsMenu as openLabelActionsMenuElement } from "./labels/la
 import { renderFiltersAndLabelsView } from "./filters/FiltersAndLabelsView";
 import type { FilterDefinition } from "./filters/FiltersAndLabelsView";
 import { renderTaskActionMenu, renderTaskActions } from "./tasks/taskActions";
+import { renderBulkReschedulePopover } from "./tasks/BulkReschedulePopover";
 import type { CalendarFetchRange } from "../calendar/calendarTypes";
 import { CalendarService } from "../calendar/CalendarService";
 import { collectUpcomingSectionDates } from "../calendar/calendarGrouping";
 import { renderCalendarEventStrip } from "./calendar/CalendarEventStrip";
+import { getVisibleOverdueTasksForBulkReschedule } from "../taskBulkActions";
 
 export const VIEW_TYPE_BELKI = "belki-task-board";
 
@@ -127,6 +129,7 @@ export class TaskBoardView extends ItemView {
   private pendingScrollSnapshot: { top: number; left: number } | null = null;
   private mobileComposerReturnScroll: { top: number; left: number } | null = null;
   private composerCleanup: (() => void) | null = null;
+  private bulkRescheduleCleanup: (() => void) | null = null;
   private renderScheduled = false;
   private calendarRangeRequestKey: string | null = null;
   private handleRootClick = (event: MouseEvent): void => {
@@ -363,6 +366,8 @@ export class TaskBoardView extends ItemView {
   private render(): void {
     this.composerCleanup?.();
     this.composerCleanup = null;
+    this.bulkRescheduleCleanup?.();
+    this.bulkRescheduleCleanup = null;
     this.removeProjectMenu();
     this.removeLabelMenu();
     this.removeTaskActionMenu();
@@ -1026,6 +1031,7 @@ export class TaskBoardView extends ItemView {
       if (hasAnyOverdue) {
         const section = this.createSection(parent, "Overdue", overdue.length, (header) => {
           this.renderOverdueRangeSelect(header);
+          this.renderBulkRescheduleAction(header, overdue);
         });
         this.renderTaskList(section, overdue);
       }
@@ -1623,6 +1629,41 @@ export class TaskBoardView extends ItemView {
         this.renderPreservingMainScroll();
       })();
     });
+  }
+
+  private renderBulkRescheduleAction(parent: HTMLElement, visibleOverdueTasks: BelkiTask[]): void {
+    if (visibleOverdueTasks.length === 0) {
+      return;
+    }
+
+    this.bulkRescheduleCleanup = renderBulkReschedulePopover({
+      parent,
+      count: visibleOverdueTasks.length,
+      onSelectDue: (due, label) => {
+        void this.bulkRescheduleVisibleOverdueTasks(visibleOverdueTasks, due, label);
+      }
+    });
+  }
+
+  private async bulkRescheduleVisibleOverdueTasks(
+    visibleOverdueTasks: BelkiTask[],
+    due: string,
+    label: string
+  ): Promise<void> {
+    const taskIds = visibleOverdueTasks.map((task) => task.id);
+    if (taskIds.length === 0) {
+      this.renderPreservingMainScroll();
+      return;
+    }
+
+    try {
+      await this.store.updateTaskDueDates(taskIds, due);
+      new Notice(`${taskIds.length} task${taskIds.length === 1 ? "" : "s"} rescheduled to ${label}.`);
+      this.renderPreservingMainScroll();
+    } catch (error) {
+      console.warn("[belki] Failed to bulk reschedule overdue tasks.", error);
+      new Notice("belki could not reschedule those tasks. Please try again.");
+    }
   }
 
   private enableTodayDrop(section: HTMLElement): void {
@@ -2304,7 +2345,10 @@ export class TaskBoardView extends ItemView {
   }
 
   private getOverdueTasks(tasks: BelkiTask[]): BelkiTask[] {
-    return tasks.filter((task) => this.isInSelectedOverdueRange(task));
+    return getVisibleOverdueTasksForBulkReschedule(
+      tasks,
+      this.settings.defaultOverdueRange
+    );
   }
 
   private isInSelectedOverdueRange(task: BelkiTask): boolean {

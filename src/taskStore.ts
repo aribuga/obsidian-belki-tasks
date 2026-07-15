@@ -24,6 +24,7 @@ import {
   monthlyDataFilePath,
   taskAttachmentFolderPath
 } from "./storage/storagePaths";
+import { createTaskDueDateUpdatePlan } from "./taskBulkActions";
 
 type Listener = () => void;
 
@@ -237,6 +238,36 @@ export class TaskStore {
     await this.saveSources([sourcePath]);
   }
 
+  async updateTaskDueDates(taskIds: string[], due: string): Promise<void> {
+    const normalizedDue = normalizeOptional(due);
+    if (!normalizedDue || taskIds.length === 0) {
+      return;
+    }
+
+    const previousTasks = this.tasks;
+    const previousDocuments = new Map(this.documents);
+    const plan = createTaskDueDateUpdatePlan(this.tasks, taskIds, normalizedDue);
+    if (plan.changedIds.length === 0) {
+      return;
+    }
+
+    const changedSources = new Set<string>();
+    for (const task of plan.tasks) {
+      if (plan.changedIds.includes(task.id)) {
+        changedSources.add(task.sourcePath || this.monthlyPathForDate(task.created || todayIso()));
+      }
+    }
+
+    this.tasks = plan.tasks;
+    try {
+      await this.saveBulkSources([...changedSources], previousTasks, previousDocuments);
+    } catch (error) {
+      this.tasks = previousTasks;
+      this.documents = previousDocuments;
+      throw error;
+    }
+  }
+
   async toggleComplete(id: string): Promise<void> {
     const task = this.tasks.find((candidate) => candidate.id === id);
     if (!task) {
@@ -421,18 +452,10 @@ export class TaskStore {
 
   async rescheduleOverdueToToday(): Promise<void> {
     const today = todayIso();
-    const changedSources = new Set<string>();
-
-    this.tasks = this.tasks.map((task) => {
-      if (!task.completed && task.due && task.due < today) {
-        changedSources.add(task.sourcePath || this.monthlyPathForDate(task.created || today));
-        return { ...task, due: today };
-      }
-
-      return task;
-    });
-
-    await this.saveSources([...changedSources]);
+    const taskIds = this.tasks
+      .filter((task) => !task.completed && task.due && task.due < today)
+      .map((task) => task.id);
+    await this.updateTaskDueDates(taskIds, today);
   }
 
   async normalizeLabels(): Promise<void> {
@@ -549,6 +572,47 @@ export class TaskStore {
   private async saveSources(sourcePaths: string[]): Promise<void> {
     await this.writeSources(sourcePaths);
     await this.load();
+  }
+
+  private async saveBulkSources(
+    sourcePaths: string[],
+    previousTasks: BelkiTask[],
+    previousDocuments: Map<string, ParsedTaskDocument>
+  ): Promise<void> {
+    const rollbackContents = new Map<string, string>();
+    for (const sourcePath of dedupeStrings(sourcePaths.filter(Boolean))) {
+      const document = previousDocuments.get(sourcePath) || { blocks: [], tasks: [] };
+      const tasks = previousTasks
+        .filter((task) => task.sourcePath === sourcePath)
+        .map((task) => normalizeTaskForSave(task, sourcePath));
+      rollbackContents.set(sourcePath, serializeTaskDocument(document, tasks));
+    }
+
+    try {
+      await this.saveSources(sourcePaths);
+    } catch (error) {
+      await this.rollbackSourceContents(rollbackContents);
+      throw error;
+    }
+  }
+
+  private async rollbackSourceContents(contents: Map<string, string>): Promise<void> {
+    for (const [sourcePath, content] of contents) {
+      const file = await this.ensureFile(sourcePath, "");
+      if (!file) {
+        continue;
+      }
+
+      this.writingPaths.add(normalizePath(sourcePath));
+      try {
+        await this.app.vault.modify(file, content);
+        this.documents.set(sourcePath, parseTaskDocument(content, sourcePath));
+      } catch (rollbackError) {
+        console.warn("[belki] Failed to roll back task source after bulk update failure.", rollbackError);
+      } finally {
+        this.writingPaths.delete(normalizePath(sourcePath));
+      }
+    }
   }
 
   private async writeSources(sourcePaths: string[]): Promise<void> {
