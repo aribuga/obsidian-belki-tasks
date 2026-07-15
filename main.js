@@ -5482,8 +5482,9 @@ function renderCustomDatePicker(parent, currentValue, onSelect, options = {}) {
       ...options.triggerAriaLabel ? { "aria-label": options.triggerAriaLabel } : {}
     }
   });
+  const triggerText = options.alwaysShowTriggerLabel && options.triggerLabel ? options.triggerLabel : currentValue ? formatDueDateChip(currentValue) : options.triggerLabel || "Custom date\u2026";
   trigger.createSpan({
-    text: currentValue ? formatDueDateChip(currentValue) : options.triggerLabel || "Custom date\u2026"
+    text: triggerText
   });
   if (currentValue) trigger.addClass("is-active");
   const calWrap = container.createDiv({ cls: "belki-cal-wrap is-hidden" });
@@ -8093,20 +8094,9 @@ function renderTaskActions(options) {
     event.stopPropagation();
     options.onOpenMenu(actionButton);
   });
-  const deleteButton = actions.createEl("button", {
-    cls: "belki-task-delete",
-    attr: {
-      type: "button",
-      "aria-label": "Delete task"
-    }
-  });
-  createBelkiIcon(deleteButton, "delete");
-  deleteButton.addEventListener("click", (event) => {
-    event.stopPropagation();
-    options.onDelete();
-  });
 }
 function renderTaskActionMenu(options) {
+  var _a;
   const menu = options.container.createDiv({ cls: "belki-task-action-menu" });
   menu.addEventListener("click", (event) => event.stopPropagation());
   if (!options.task.completed && options.task.due !== todayIso()) {
@@ -8121,19 +8111,20 @@ function renderTaskActionMenu(options) {
     });
   }
   if (!options.task.completed) {
-    const pickDateItem = menu.createEl("label", { cls: "belki-task-action-menu-item" });
-    pickDateItem.createSpan({ text: "Pick date" });
-    const dateInput = pickDateItem.createEl("input", {
-      cls: "belki-task-action-date-input",
-      attr: {
-        type: "date",
-        value: options.task.due || todayIso(),
-        "aria-label": "Pick task date"
-      }
+    const datePickerWrap = menu.createDiv({ cls: "belki-task-action-date-picker" });
+    renderCustomDatePicker(datePickerWrap, options.task.due, (value) => {
+      options.onMoveDue(value);
+    }, {
+      triggerLabel: "Pick date",
+      triggerAriaLabel: "Pick task date",
+      alwaysShowTriggerLabel: true
     });
-    dateInput.addEventListener("click", (event) => event.stopPropagation());
-    dateInput.addEventListener("change", () => {
-      options.onMoveDue(dateInput.value || void 0);
+    (_a = datePickerWrap.querySelector(".belki-cal-trigger")) == null ? void 0 : _a.addEventListener("click", () => {
+      const ownerWindow = menu.ownerDocument.defaultView || window;
+      ownerWindow.requestAnimationFrame(() => {
+        menu.toggleClass("is-calendar-open", datePickerWrap.hasClass("is-calendar-open"));
+        positionTaskActionMenu(menu, options.trigger);
+      });
     });
   }
   if (!options.task.completed && options.task.due) {
@@ -8152,16 +8143,29 @@ function positionTaskActionMenu(menu, trigger) {
   const rect = trigger.getBoundingClientRect();
   const margin = 12;
   const gap = 6;
+  menu.style.maxHeight = "";
+  menu.style.overflowY = "";
   const menuWidth = menu.offsetWidth || 170;
   const menuHeight = menu.offsetHeight || 180;
   const maxLeft = ownerWindow.innerWidth - menuWidth - margin;
-  const left = Math.min(Math.max(margin, rect.right - menuWidth), Math.max(margin, maxLeft));
-  let top = rect.bottom + gap;
-  if (top + menuHeight > ownerWindow.innerHeight - margin) {
-    top = rect.top - menuHeight - gap;
-  }
-  if (top < margin) {
+  const storedLeft = Number.parseFloat(menu.dataset.anchorLeft || "");
+  const left = menu.hasClass("is-calendar-open") && Number.isFinite(storedLeft) ? Math.min(Math.max(margin, storedLeft), Math.max(margin, maxLeft)) : Math.min(Math.max(margin, rect.right - menuWidth), Math.max(margin, maxLeft));
+  const side = menu.dataset.anchorSide === "above" || menu.dataset.anchorSide === "below" ? menu.dataset.anchorSide : rect.bottom + gap + menuHeight > ownerWindow.innerHeight - margin && rect.top - menuHeight - gap >= margin ? "above" : "below";
+  menu.dataset.anchorSide = side;
+  menu.dataset.anchorLeft = String(left);
+  let top = side === "above" ? rect.top - menuHeight - gap : rect.bottom + gap;
+  let maxHeight = side === "above" ? rect.top - gap - margin : ownerWindow.innerHeight - top - margin;
+  if (side === "above" && top < margin) {
     top = margin;
+    maxHeight = Math.max(160, rect.top - gap - margin);
+  }
+  if (side === "below" && top < margin) {
+    top = margin;
+    maxHeight = ownerWindow.innerHeight - top - margin;
+  }
+  if (menuHeight > maxHeight) {
+    menu.style.maxHeight = `${Math.max(160, maxHeight)}px`;
+    menu.style.overflowY = "auto";
   }
   menu.setCssStyles({
     left: `${left}px`,
@@ -8485,6 +8489,7 @@ var TaskBoardView = class extends import_obsidian17.ItemView {
     this.labelMenuEl = null;
     this.taskActionMenuEl = null;
     this.projectMenuCleanup = null;
+    this.taskActionMenuCleanup = null;
     this.sidebarScrollLeft = 0;
     this.pendingScrollSnapshot = null;
     this.mobileComposerReturnScroll = null;
@@ -8627,8 +8632,10 @@ var TaskBoardView = class extends import_obsidian17.ItemView {
     this.labelMenuEl = null;
   }
   removeTaskActionMenu() {
-    var _a;
-    (_a = this.taskActionMenuEl) == null ? void 0 : _a.remove();
+    var _a, _b;
+    (_a = this.taskActionMenuCleanup) == null ? void 0 : _a.call(this);
+    this.taskActionMenuCleanup = null;
+    (_b = this.taskActionMenuEl) == null ? void 0 : _b.remove();
     this.taskActionMenuEl = null;
     this.taskActionsOpenId = null;
   }
@@ -10145,9 +10152,6 @@ var TaskBoardView = class extends import_obsidian17.ItemView {
       task,
       onOpenMenu: (button) => {
         this.toggleTaskActionMenu(task, button);
-      },
-      onDelete: () => {
-        this.openDeleteTaskConfirmation(task);
       }
     });
   }
@@ -10263,8 +10267,11 @@ var TaskBoardView = class extends import_obsidian17.ItemView {
       return;
     }
     this.taskActionsOpenId = task.id;
+    const ownerDocument = trigger.ownerDocument;
+    const ownerWindow = ownerDocument.defaultView || window;
     this.taskActionMenuEl = renderTaskActionMenu({
-      container: this.containerEl,
+      // Appended to body so Obsidian panel transforms don't trap the fixed menu.
+      container: ownerDocument.body,
       task,
       trigger,
       onMoveDue: (due) => {
@@ -10275,6 +10282,25 @@ var TaskBoardView = class extends import_obsidian17.ItemView {
         this.openDeleteTaskConfirmation(task);
       }
     });
+    const menu = this.taskActionMenuEl;
+    const onDocumentClick = (event) => {
+      const target = event.target;
+      if (!(target instanceof ownerWindow.Node)) return;
+      if (trigger.contains(target) || menu.contains(target)) return;
+      this.removeTaskActionMenu();
+    };
+    const onDocumentKeyDown = (event) => {
+      if (event.key !== "Escape") return;
+      this.stopEscape(event);
+      this.removeTaskActionMenu();
+      trigger.focus();
+    };
+    ownerDocument.addEventListener("click", onDocumentClick, true);
+    ownerDocument.addEventListener("keydown", onDocumentKeyDown, true);
+    this.taskActionMenuCleanup = () => {
+      ownerDocument.removeEventListener("click", onDocumentClick, true);
+      ownerDocument.removeEventListener("keydown", onDocumentKeyDown, true);
+    };
   }
   openDeleteTaskConfirmation(task) {
     new DeleteTaskConfirmationModal(this.app, {

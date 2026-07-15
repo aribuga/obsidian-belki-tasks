@@ -386,10 +386,6 @@
   pointer-events: none;
 }
 
-.belki-drag-preview .belki-task-delete {
-  display: none;
-}
-
 .belki-drag-preview .belki-task-actions {
   display: none;
 }
@@ -691,32 +687,6 @@
   --belki-priority-border: #dadad7;
 }
 
-.belki-task-delete {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  border-radius: 6px;
-  box-shadow: none;
-  color: var(--belki-muted);
-  cursor: pointer;
-  font-size: 18px;
-  height: 28px;
-  line-height: 24px;
-  opacity: 0;
-  padding: 0;
-  transition: opacity 120ms ease;
-  width: 28px;
-}
-
-.belki-task-row:hover .belki-task-delete {
-  opacity: 1;
-}
-
-.belki-task-delete:hover {
-  background: var(--belki-danger-light);
-  color: var(--belki-danger);
-}
-
 .belki-task-actions {
   align-items: center;
   display: flex;
@@ -728,39 +698,218 @@
 
 .belki-task-actions-button {
   align-items: center;
+  -webkit-appearance: none;
   appearance: none;
   background: transparent;
+  background-color: transparent;
+  background-image: none;
   border: 0;
   border-radius: 6px;
   box-shadow: none;
   color: var(--belki-muted);
   cursor: pointer;
-  display: none;
+  display: inline-flex;
   font: inherit;
   font-size: 18px;
   height: 28px;
   justify-content: center;
   line-height: 1;
+  min-height: 0;
+  opacity: 1;
   padding: 0;
+  pointer-events: auto;
+  transition: color 120ms ease, opacity 120ms ease;
   width: 28px;
 }
 
+.belki-root button.belki-task-actions-button,
+.belki-root button.belki-task-actions-button:hover,
+.belki-root button.belki-task-actions-button:focus,
+.belki-root button.belki-task-actions-button:active {
+  background: transparent;
+  background-color: transparent;
+  background-image: none;
+  border: 0;
+  box-shadow: none;
+}
+
 .belki-task-actions-button:hover {
-  background: var(--belki-hover);
   color: var(--belki-text);
 }
 
+.belki-task-actions-button:focus-visible {
+  outline: 1px solid var(--belki-faint);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .belki-task-actions-button {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .belki-task-row:hover .belki-task-actions-button,
+  .belki-task-row:focus-within .belki-task-actions-button,
+  .belki-task-actions-button:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
 .belki-task-action-menu {
-  background: var(--belki-surface);
-  border: 1px solid var(--belki-border);
+  background: var(--belki-surface, var(--background-primary));
+  background-color: var(--belki-surface, var(--background-primary));
+  background-clip: padding-box;
+  border: 1px solid var(--belki-border, var(--background-modifier-border));
   border-radius: 10px;
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.16);
   display: grid;
   gap: 2px;
   min-width: 170px;
+  overflow: hidden;
   padding: 6px;
   position: fixed;
-  z-index: 100;
+  z-index: 9999;
+}
+
+.belki-task-action-menu.is-calendar-open {
+  min-width: min(304px, calc(100vw - 24px));
+}
+
+.belki-task-action-menu.is-calendar-open > .belki-task-action-menu-item {
+  display: none;
+}
+
+.belki-task-action-date-picker,
+.belki-task-action-date-picker .belki-date-custom-wrap {
+  width: 100%;
+}
+
+.belki-task-action-date-picker .belki-cal-trigger {
+  align-items: center;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  background-color: transparent;
+  background-image: none;
+  border: 0;
+  border-radius: 7px;
+  box-shadow: none;
+  color: var(--belki-text, var(--text-normal));
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: 13px;
+  gap: 8px;
+  height: 34px;
+  justify-content: flex-start;
+  margin: 0;
+  min-height: 0;
+  padding: 0 10px;
+  text-align: left;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.belki-task-action-date-picker .belki-cal-trigger:hover,
+.belki-task-action-date-picker.is-calendar-open .belki-cal-trigger {
+  background: var(--belki-hover, var(--background-modifier-hover));
+  color: var(--belki-text, var(--text-normal));
+}
+
+.belki-task-action-date-picker .belki-cal-trigger.is-active {
+  background: transparent;
+  border: 0;
+  color: var(--belki-text, var(--text-normal));
+  font-weight: 400;
+}
+
+.belki-task-action-date-picker .belki-cal-trigger.is-active:hover,
+.belki-task-action-date-picker.is-calendar-open .belki-cal-trigger.is-active {
+  background: var(--belki-hover, var(--background-modifier-hover));
+  color: var(--belki-text, var(--text-normal));
+}
+
+.belki-task-action-date-picker .belki-cal-trigger:focus-visible {
+  background: var(--belki-hover, var(--background-modifier-hover));
+  outline: 1px solid var(--belki-faint, var(--text-faint));
+  outline-offset: 1px;
+}
+
+.belki-task-action-date-picker .belki-cal-wrap:not(.is-hidden) {
+  margin-top: 6px;
+  min-height: 286px;
+}
+
+.belki-task-action-menu .belki-cal-nav {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  background-color: transparent;
+  background-image: none;
+  border: 0;
+  box-shadow: none;
+  color: var(--belki-text, var(--text-normal));
+  min-height: 0;
+}
+
+.belki-task-action-menu .belki-cal-nav:hover,
+.belki-task-action-menu .belki-cal-nav:active {
+  background: var(--belki-hover, var(--background-modifier-hover));
+  border: 0;
+  box-shadow: none;
+}
+
+.belki-task-action-menu .belki-cal-nav:focus-visible {
+  background: var(--belki-hover, var(--background-modifier-hover));
+  outline: 1px solid var(--belki-faint, var(--text-faint));
+  outline-offset: 1px;
+}
+
+.belki-task-action-menu .belki-cal-title {
+  color: var(--belki-text, var(--text-normal));
+}
+
+.belki-task-action-menu .belki-cal-day-hdr {
+  color: var(--belki-muted, var(--text-muted));
+}
+
+.belki-task-action-menu .belki-cal-day {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  background-color: transparent;
+  background-image: none;
+  border: 0;
+  box-shadow: none;
+  color: var(--belki-text, var(--text-normal));
+  min-height: 0;
+}
+
+.belki-task-action-menu .belki-cal-day:not(.is-empty):hover,
+.belki-task-action-menu .belki-cal-day:not(.is-empty):active {
+  background: var(--belki-hover, var(--background-modifier-hover));
+  border: 0;
+  box-shadow: none;
+}
+
+.belki-task-action-menu .belki-cal-day:focus-visible {
+  background: var(--belki-hover, var(--background-modifier-hover));
+  outline: 1px solid var(--belki-faint, var(--text-faint));
+  outline-offset: 1px;
+}
+
+.belki-task-action-menu .belki-cal-day.is-today {
+  color: var(--belki-accent, var(--text-normal));
+  font-weight: 600;
+}
+
+.belki-task-action-menu .belki-cal-day.is-selected,
+.belki-task-action-menu .belki-cal-day.is-selected:hover,
+.belki-task-action-menu .belki-cal-day.is-selected:focus-visible {
+  background: var(--belki-accent, var(--text-normal));
+  background-color: var(--belki-accent, var(--text-normal));
+  color: var(--belki-on-accent, var(--background-primary));
 }
 
 .belki-task-action-menu-item {
@@ -770,7 +919,7 @@
   border: 0;
   border-radius: 7px;
   box-shadow: none;
-  color: var(--belki-text);
+  color: var(--belki-text, var(--text-normal));
   cursor: pointer;
   display: flex;
   font: inherit;
@@ -784,23 +933,28 @@
   white-space: nowrap;
 }
 
-.belki-task-action-menu-item:hover {
-  background: var(--belki-hover);
+.belki-task-action-menu button.belki-task-action-menu-item,
+.belki-task-action-menu label.belki-task-action-menu-item {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  background-color: transparent;
+  background-image: none;
+  border: 0;
+  box-shadow: none;
+  min-height: 0;
 }
 
-.belki-task-action-date-input {
-  cursor: pointer;
-  inset: 0;
-  opacity: 0;
-  position: absolute;
+.belki-task-action-menu button.belki-task-action-menu-item:hover,
+.belki-task-action-menu label.belki-task-action-menu-item:hover,
+.belki-task-action-menu button.belki-task-action-menu-item:active {
+  background: var(--belki-hover, var(--background-modifier-hover));
+  border: 0;
+  box-shadow: none;
 }
 
-@media (hover: none) {
-  .belki-task-actions-button {
-    display: inline-flex;
-  }
-
-  .belki-task-actions .belki-task-delete {
-    display: none;
-  }
+.belki-task-action-menu button.belki-task-action-menu-item:focus-visible {
+  background: var(--belki-hover, var(--background-modifier-hover));
+  outline: 1px solid var(--belki-faint, var(--text-faint));
+  outline-offset: 1px;
 }

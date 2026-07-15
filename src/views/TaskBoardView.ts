@@ -126,6 +126,7 @@ export class TaskBoardView extends ItemView {
   private labelMenuEl: HTMLElement | null = null;
   private taskActionMenuEl: HTMLElement | null = null;
   private projectMenuCleanup: (() => void) | null = null;
+  private taskActionMenuCleanup: (() => void) | null = null;
   private sidebarScrollLeft = 0;
   private pendingScrollSnapshot: { top: number; left: number } | null = null;
   private mobileComposerReturnScroll: { top: number; left: number } | null = null;
@@ -304,6 +305,8 @@ export class TaskBoardView extends ItemView {
   }
 
   private removeTaskActionMenu(): void {
+    this.taskActionMenuCleanup?.();
+    this.taskActionMenuCleanup = null;
     this.taskActionMenuEl?.remove();
     this.taskActionMenuEl = null;
     this.taskActionsOpenId = null;
@@ -2062,9 +2065,6 @@ export class TaskBoardView extends ItemView {
       task,
       onOpenMenu: (button) => {
         this.toggleTaskActionMenu(task, button);
-      },
-      onDelete: () => {
-        this.openDeleteTaskConfirmation(task);
       }
     });
   }
@@ -2194,8 +2194,11 @@ export class TaskBoardView extends ItemView {
     }
 
     this.taskActionsOpenId = task.id;
+    const ownerDocument = trigger.ownerDocument;
+    const ownerWindow = ownerDocument.defaultView || window;
     this.taskActionMenuEl = renderTaskActionMenu({
-      container: this.containerEl,
+      // Appended to body so Obsidian panel transforms don't trap the fixed menu.
+      container: ownerDocument.body,
       task,
       trigger,
       onMoveDue: (due) => {
@@ -2206,6 +2209,26 @@ export class TaskBoardView extends ItemView {
         this.openDeleteTaskConfirmation(task);
       }
     });
+
+    const menu = this.taskActionMenuEl;
+    const onDocumentClick = (event: MouseEvent): void => {
+      const target = event.target;
+      if (!(target instanceof ownerWindow.Node)) return;
+      if (trigger.contains(target) || menu.contains(target)) return;
+      this.removeTaskActionMenu();
+    };
+    const onDocumentKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== "Escape") return;
+      this.stopEscape(event);
+      this.removeTaskActionMenu();
+      trigger.focus();
+    };
+    ownerDocument.addEventListener("click", onDocumentClick, true);
+    ownerDocument.addEventListener("keydown", onDocumentKeyDown, true);
+    this.taskActionMenuCleanup = () => {
+      ownerDocument.removeEventListener("click", onDocumentClick, true);
+      ownerDocument.removeEventListener("keydown", onDocumentKeyDown, true);
+    };
   }
 
   private openDeleteTaskConfirmation(task: BelkiTask): void {

@@ -1,12 +1,12 @@
 import { addDaysIso, todayIso } from "../../dateUtils";
 import { createBelkiIcon } from "../../ui/components/BelkiIcon";
 import { BelkiTask } from "../../types";
+import { renderCustomDatePicker } from "../datePicker";
 
 interface RenderTaskActionsOptions {
   row: HTMLElement;
   task: BelkiTask;
   onOpenMenu: (button: HTMLElement) => void;
-  onDelete: () => void;
 }
 
 interface RenderTaskActionMenuOptions {
@@ -32,19 +32,6 @@ export function renderTaskActions(options: RenderTaskActionsOptions): void {
     event.stopPropagation();
     options.onOpenMenu(actionButton);
   });
-
-  const deleteButton = actions.createEl("button", {
-    cls: "belki-task-delete",
-    attr: {
-      type: "button",
-      "aria-label": "Delete task"
-    }
-  });
-  createBelkiIcon(deleteButton, "delete");
-  deleteButton.addEventListener("click", (event) => {
-    event.stopPropagation();
-    options.onDelete();
-  });
 }
 
 export function renderTaskActionMenu(options: RenderTaskActionMenuOptions): HTMLElement {
@@ -65,19 +52,20 @@ export function renderTaskActionMenu(options: RenderTaskActionMenuOptions): HTML
   }
 
   if (!options.task.completed) {
-    const pickDateItem = menu.createEl("label", { cls: "belki-task-action-menu-item" });
-    pickDateItem.createSpan({ text: "Pick date" });
-    const dateInput = pickDateItem.createEl("input", {
-      cls: "belki-task-action-date-input",
-      attr: {
-        type: "date",
-        value: options.task.due || todayIso(),
-        "aria-label": "Pick task date"
-      }
+    const datePickerWrap = menu.createDiv({ cls: "belki-task-action-date-picker" });
+    renderCustomDatePicker(datePickerWrap, options.task.due, (value) => {
+      options.onMoveDue(value);
+    }, {
+      triggerLabel: "Pick date",
+      triggerAriaLabel: "Pick task date",
+      alwaysShowTriggerLabel: true
     });
-    dateInput.addEventListener("click", (event) => event.stopPropagation());
-    dateInput.addEventListener("change", () => {
-      options.onMoveDue(dateInput.value || undefined);
+    datePickerWrap.querySelector<HTMLElement>(".belki-cal-trigger")?.addEventListener("click", () => {
+      const ownerWindow = menu.ownerDocument.defaultView || window;
+      ownerWindow.requestAnimationFrame(() => {
+        menu.toggleClass("is-calendar-open", datePickerWrap.hasClass("is-calendar-open"));
+        positionTaskActionMenu(menu, options.trigger);
+      });
     });
   }
 
@@ -100,18 +88,44 @@ function positionTaskActionMenu(menu: HTMLElement, trigger: HTMLElement): void {
   const rect = trigger.getBoundingClientRect();
   const margin = 12;
   const gap = 6;
+  menu.style.maxHeight = "";
+  menu.style.overflowY = "";
+
   const menuWidth = menu.offsetWidth || 170;
   const menuHeight = menu.offsetHeight || 180;
   const maxLeft = ownerWindow.innerWidth - menuWidth - margin;
-  const left = Math.min(Math.max(margin, rect.right - menuWidth), Math.max(margin, maxLeft));
-  let top = rect.bottom + gap;
+  const storedLeft = Number.parseFloat(menu.dataset.anchorLeft || "");
+  const left =
+    menu.hasClass("is-calendar-open") && Number.isFinite(storedLeft)
+      ? Math.min(Math.max(margin, storedLeft), Math.max(margin, maxLeft))
+      : Math.min(Math.max(margin, rect.right - menuWidth), Math.max(margin, maxLeft));
 
-  if (top + menuHeight > ownerWindow.innerHeight - margin) {
-    top = rect.top - menuHeight - gap;
+  const side =
+    menu.dataset.anchorSide === "above" || menu.dataset.anchorSide === "below"
+      ? menu.dataset.anchorSide
+      : rect.bottom + gap + menuHeight > ownerWindow.innerHeight - margin &&
+          rect.top - menuHeight - gap >= margin
+        ? "above"
+        : "below";
+  menu.dataset.anchorSide = side;
+  menu.dataset.anchorLeft = String(left);
+
+  let top = side === "above" ? rect.top - menuHeight - gap : rect.bottom + gap;
+  let maxHeight = side === "above" ? rect.top - gap - margin : ownerWindow.innerHeight - top - margin;
+
+  if (side === "above" && top < margin) {
+    top = margin;
+    maxHeight = Math.max(160, rect.top - gap - margin);
   }
 
-  if (top < margin) {
+  if (side === "below" && top < margin) {
     top = margin;
+    maxHeight = ownerWindow.innerHeight - top - margin;
+  }
+
+  if (menuHeight > maxHeight) {
+    menu.style.maxHeight = `${Math.max(160, maxHeight)}px`;
+    menu.style.overflowY = "auto";
   }
 
   menu.setCssStyles({

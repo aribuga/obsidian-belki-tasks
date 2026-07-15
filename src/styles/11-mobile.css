@@ -408,12 +408,6 @@
     grid-row: 1;
   }
 
-  .belki-task-delete {
-    align-self: center;
-    grid-column: 3;
-    grid-row: 1;
-  }
-
   .belki-task-drag-handle {
     display: none;
   }
@@ -969,8 +963,7 @@
   padding: 13px 0;
 }
 
-.belki-root.is-mobile .belki-task-actions,
-.belki-root.is-mobile .belki-task-delete {
+.belki-root.is-mobile .belki-task-actions {
   align-self: center;
   grid-column: 3;
   grid-row: 1;
