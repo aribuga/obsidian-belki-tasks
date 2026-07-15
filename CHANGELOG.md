@@ -4,6 +4,14 @@ All notable changes to belki are documented here.
 
 ---
 
+## Unreleased
+
+### Changed
+
+- Added a confirmation step before permanently deleting tasks.
+
+---
+
 ## 0.4.3 - 2026-07-13
 
 Patch release focused on a better desktop add-task flow, narrow-pane navigation, and Obsidian review cleanup.

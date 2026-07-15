@@ -66,7 +66,7 @@ Recurring tasks reset after completion instead of marking as done. See [Recurrin
 
 ## Deleting a task
 
-Open the task detail and click **Delete task** at the bottom.
+Use the task row delete control, the task action menu, or open the task detail and click **Delete task** at the bottom. belki asks for confirmation before permanently deleting a task.
 
 Deleting a parent task does not automatically delete its sub-tasks. Sub-tasks become orphaned. This will be improved in a future version.
 
