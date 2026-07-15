@@ -38,9 +38,9 @@ type RefreshReason = "automatic" | "manual";
 interface CalendarServiceOptions {
   settings: BelkiSettings;
   provider: IcalCalendarProvider;
-  saveSettings(): Promise<void>;
-  onChanged(): void;
-  now?(): number;
+  saveSettings(this: void): Promise<void>;
+  onChanged(this: void): void;
+  now?(this: void): number;
 }
 
 interface InFlightRefresh {
@@ -49,7 +49,7 @@ interface InFlightRefresh {
 }
 
 export class CalendarService {
-  private subscribers = new Set<() => void>();
+  private subscribers = new Set<(this: void) => void>();
   private eventsByFeed = new Map<string, CalendarEvent[]>();
   private loadedRangesByFeed = new Map<string, CalendarFetchRange>();
   private eventsByDate = new Map<string, CalendarEvent[]>();
@@ -63,14 +63,14 @@ export class CalendarService {
   private intervalId: number | null = null;
   private resumeRefreshTimer: number | null = null;
   private disposed = false;
-  private now: () => number;
+  private now: (this: void) => number;
 
   constructor(private options: CalendarServiceOptions) {
     this.now = options.now || (() => Date.now());
     this.startAutoRefresh();
   }
 
-  subscribe(callback: () => void): () => void {
+  subscribe(callback: (this: void) => void): () => void {
     this.subscribers.add(callback);
     return () => {
       this.subscribers.delete(callback);
@@ -88,11 +88,11 @@ export class CalendarService {
 
   getConnectionState(): CalendarConnectionState {
     const feeds = this.getFeeds();
-    const lastRefreshAt = feeds
+    const successfulRefreshes = feeds
       .map((feed) => feed.lastSuccessfulRefreshAt)
-      .filter(Boolean)
-      .sort()
-      .at(-1);
+      .filter((value): value is string => typeof value === "string" && value.length > 0)
+      .sort();
+    const lastRefreshAt = successfulRefreshes[successfulRefreshes.length - 1];
 
     return {
       enabled: feeds.some((feed) => feed.enabled),
@@ -469,9 +469,12 @@ export class CalendarService {
 
   private rebuildEventsByDate(): void {
     const enabledFeedIds = new Set(this.getFeeds().filter((feed) => feed.enabled).map((feed) => feed.id));
-    const events = [...this.eventsByFeed.entries()]
-      .filter(([feedId]) => enabledFeedIds.has(feedId))
-      .flatMap(([, feedEvents]) => feedEvents);
+    const events: CalendarEvent[] = [];
+    for (const [feedId, feedEvents] of this.eventsByFeed) {
+      if (enabledFeedIds.has(feedId)) {
+        events.push(...feedEvents);
+      }
+    }
     this.eventsByDate = groupVisibleCalendarEvents(events);
   }
 
@@ -621,12 +624,11 @@ export class CalendarService {
 }
 
 function normalizeServiceError(error: unknown, calendarName: string, calendarId: string): CalendarProviderError {
-  if (error && typeof error === "object" && "kind" in error && "message" in error) {
-    const providerError = error as CalendarProviderError;
+  if (isCalendarProviderError(error)) {
     return {
-      ...providerError,
-      message: sanitizeIcalErrorMessage(providerError.message, calendarName),
-      calendarId
+      kind: error.kind,
+      message: sanitizeIcalErrorMessage(error.message, calendarName),
+      calendarId: error.calendarId || calendarId
     };
   }
 
@@ -635,6 +637,31 @@ function normalizeServiceError(error: unknown, calendarName: string, calendarId:
     message: sanitizeIcalErrorMessage(error, calendarName),
     calendarId
   };
+}
+
+const CALENDAR_PROVIDER_ERROR_KINDS = new Set<CalendarProviderError["kind"]>([
+  "network",
+  "rate_limited",
+  "malformed_response",
+  "calendar_failed",
+  "unsafe_url",
+  "too_large",
+  "not_found",
+  "not_modified",
+  "unknown"
+]);
+
+function isCalendarProviderError(value: unknown): value is CalendarProviderError {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  return isCalendarProviderErrorKind(record.kind) && typeof record.message === "string";
+}
+
+function isCalendarProviderErrorKind(value: unknown): value is CalendarProviderError["kind"] {
+  return typeof value === "string" && CALENDAR_PROVIDER_ERROR_KINDS.has(value as CalendarProviderError["kind"]);
 }
 
 function backoffDelayForFailureCount(count: number): number {

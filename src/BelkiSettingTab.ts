@@ -384,7 +384,7 @@ export class BelkiSettingTab extends PluginSettingTab {
   }
 
   private calendarFeedDescription(feed: IcalCalendarFeed, loading: boolean): DocumentFragment {
-    const fragment = document.createDocumentFragment();
+    const fragment = activeDocument.createDocumentFragment();
     fragment.appendText(maskIcalFeedUrl(feed.url));
     fragment.appendText(` - ${calendarFeedStatusText(feed, loading)}`);
     return fragment;
@@ -697,7 +697,7 @@ class RemoveIcalCalendarFeedModal extends Modal {
 
     new Setting(contentEl)
       .addButton((button) => {
-        button.setButtonText("Remove").setWarning().onClick(() => {
+        button.setButtonText("Remove").setDestructive().onClick(() => {
           void (async () => {
             await this.onConfirm();
             new Notice("Calendar removed.");

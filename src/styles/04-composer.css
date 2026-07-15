@@ -992,9 +992,15 @@ button.belki-add-inline {
   min-height: 0;
   opacity: 0;
   outline: none;
-  padding: 0;
+  padding: 0 12px;
   position: absolute;
   width: 100%;
+}
+
+.belki-priority-select-wrap > .belki-priority-select option {
+  color: var(--text-normal);
+  padding: 6px 12px;
+  text-indent: 12px;
 }
 
 .belki-priority-select-wrap > .belki-priority-select:hover,
