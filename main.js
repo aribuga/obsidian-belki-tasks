@@ -32,7 +32,7 @@ __export(main_exports, {
   default: () => BelkiPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian20 = require("obsidian");
+var import_obsidian21 = require("obsidian");
 
 // src/dailyNotes.ts
 var import_obsidian = require("obsidian");
@@ -3390,7 +3390,7 @@ function cloneTask(task) {
 }
 
 // src/views/TaskBoardView.ts
-var import_obsidian16 = require("obsidian");
+var import_obsidian17 = require("obsidian");
 
 // src/activityData.ts
 function getActivityDataSignature(allTasks) {
@@ -5403,7 +5403,7 @@ function shouldUseDesktopFloatingTaskComposer(isMobile) {
 }
 
 // src/views/TaskDetailModal.ts
-var import_obsidian14 = require("obsidian");
+var import_obsidian15 = require("obsidian");
 
 // src/views/ImagePreviewModal.ts
 var import_obsidian13 = require("obsidian");
@@ -5877,6 +5877,56 @@ function stripListMarker(line) {
   return line.replace(/^\s*(?:[-*+]|\d+\.)\s+/, "");
 }
 
+// src/views/tasks/DeleteTaskConfirmationModal.ts
+var import_obsidian14 = require("obsidian");
+
+// src/views/tasks/deleteTaskConfirmationText.ts
+function getDirectSubTaskCount(task, tasks) {
+  return tasks.filter((candidate) => candidate.parentId === task.id).length;
+}
+function taskDeleteConfirmationDescription(subTaskCount) {
+  if (subTaskCount > 0) {
+    return `This task contains ${subTaskCount} sub-task${subTaskCount === 1 ? "" : "s"}. The task cannot be restored from Belki after deletion.`;
+  }
+  return "This task will be permanently deleted from Belki. This action cannot be undone within the plugin.";
+}
+
+// src/views/tasks/DeleteTaskConfirmationModal.ts
+var DeleteTaskConfirmationModal = class extends import_obsidian14.Modal {
+  constructor(app, options) {
+    super(app);
+    this.options = options;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("belki-task-delete-modal");
+    contentEl.createEl("h2", { text: "Delete task?" });
+    const subTaskCount = getDirectSubTaskCount(this.options.task, this.options.tasks);
+    contentEl.createEl("p", {
+      cls: "belki-modal-desc",
+      text: taskDeleteConfirmationDescription(subTaskCount)
+    });
+    const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
+    const cancelButton = actions.createEl("button", {
+      cls: "belki-button",
+      text: "Cancel",
+      attr: { type: "button" }
+    });
+    cancelButton.addEventListener("click", () => this.close());
+    const deleteButton = actions.createEl("button", {
+      cls: "belki-button belki-button-destructive",
+      text: "Delete task",
+      attr: { type: "button" }
+    });
+    deleteButton.addEventListener("click", () => {
+      deleteButton.disabled = true;
+      void this.options.onConfirm().then(() => this.close());
+    });
+    cancelButton.focus();
+  }
+};
+
 // src/views/task-detail/SubtaskSection.ts
 function renderSubtaskSection(parent, options) {
   const allTasks = options.store.getTasks();
@@ -6006,13 +6056,30 @@ function renderSubtaskSection(parent, options) {
         attr: { role: "button", tabindex: "0", "aria-label": "Delete sub-task" }
       });
       createBelkiIcon(deleteBtn, "delete");
-      deleteBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        void options.store.deleteTask(sub.id).then(() => {
-          renderList();
-          updateHeader();
-          options.onChange();
-        });
+      const confirmDeleteSubTask = () => {
+        new DeleteTaskConfirmationModal(options.app, {
+          task: sub,
+          tasks: options.store.getTasks(),
+          onConfirm: async () => {
+            await options.store.deleteTask(sub.id);
+            renderList();
+            updateHeader();
+            options.onChange();
+          }
+        }).open();
+      };
+      deleteBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        confirmDeleteSubTask();
+      });
+      deleteBtn.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        confirmDeleteSubTask();
       });
       const meta = info.createDiv({ cls: "belki-subtask-meta" });
       if (sub.due) {
@@ -6224,7 +6291,7 @@ var DESCRIPTION_FORMAT_ACTIONS = [
   { id: "numbered-list", label: "1.", title: "Numbered list" },
   { id: "link", label: "\u2197", title: "Link" }
 ];
-var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
+var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
   constructor(app, options) {
     super(app);
     this.options = options;
@@ -6278,7 +6345,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
     this.modalEl.addClass("belki-modal-detail");
     this.containerEl.addClass("belki-modal-detail-container");
     (_a = this.markdownRenderComponent) == null ? void 0 : _a.unload();
-    this.markdownRenderComponent = new import_obsidian14.Component();
+    this.markdownRenderComponent = new import_obsidian15.Component();
     this.markdownRenderComponent.load();
     applyBelkiFontSettings(contentEl, this.options.settings);
     this.modalEl.addEventListener("keydown", this.handleEscape, true);
@@ -6384,7 +6451,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
       }
       const renderTarget = descRendered.createDiv({ cls: "belki-detail-description-content" });
       try {
-        await import_obsidian14.MarkdownRenderer.render(
+        await import_obsidian15.MarkdownRenderer.render(
           this.app,
           markdown,
           renderTarget,
@@ -6478,6 +6545,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
       descRendered.removeClass("is-hidden");
     });
     renderSubtaskSection(main, {
+      app: this.app,
       store: this.options.store,
       parentTask: this.draft,
       onChange: this.options.onChange,
@@ -6500,11 +6568,15 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
       text: "Delete task",
       attr: { type: "button" }
     }).addEventListener("click", () => {
-      void (async () => {
-        await this.options.store.deleteTask(this.draft.id);
-        this.options.onChange();
-        this.close();
-      })();
+      new DeleteTaskConfirmationModal(this.app, {
+        task: this.draft,
+        tasks: this.options.store.getTasks(),
+        onConfirm: async () => {
+          await this.options.store.deleteTask(this.draft.id);
+          this.options.onChange();
+          this.close();
+        }
+      }).open();
     });
     if (this.draft.repeat && !this.draft.completed) {
       createBelkiButton(footer, {
@@ -6529,7 +6601,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
     createBelkiButton(footerActions, { text: "Save", variant: "primary" }).addEventListener("click", () => {
       void this.save();
     });
-    if (!import_obsidian14.Platform.isMobile) {
+    if (!import_obsidian15.Platform.isMobile) {
       titleInput.focus();
     }
   }
@@ -6637,7 +6709,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
     const toolbarWidth = toolbar.offsetWidth;
     const toolbarHeight = toolbar.offsetHeight;
     const textareaRect = textarea.getBoundingClientRect();
-    const anchor = import_obsidian14.Platform.isMobile ? {
+    const anchor = import_obsidian15.Platform.isMobile ? {
       left: textareaRect.left + 8,
       top: textareaRect.top,
       bottom: textareaRect.bottom
@@ -6703,7 +6775,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
         this.draft.due = due;
       },
       onClearDueAndRepeat: () => {
-        if (this.draft.repeat) new import_obsidian14.Notice("Date and repeat rule removed.");
+        if (this.draft.repeat) new import_obsidian15.Notice("Date and repeat rule removed.");
         this.draft.due = void 0;
         this.draft.repeat = void 0;
       },
@@ -6729,7 +6801,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
       list.empty();
       const imagePaths = this.draft.attachments.filter((path) => {
         const file = this.app.vault.getAbstractFileByPath(path);
-        return isImagePath(path) && file instanceof import_obsidian14.TFile;
+        return isImagePath(path) && file instanceof import_obsidian15.TFile;
       });
       if (this.draft.attachments.length === 0) {
         list.createDiv({
@@ -6748,7 +6820,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
         item.setAttr("tabindex", "0");
         const openAttachment = () => {
           const file = this.app.vault.getAbstractFileByPath(path);
-          if (isImagePath(path) && file instanceof import_obsidian14.TFile) {
+          if (isImagePath(path) && file instanceof import_obsidian15.TFile) {
             new ImagePreviewModal(this.app, file, attachmentName(path)).open();
             return;
           }
@@ -6837,7 +6909,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
     });
     for (const path of imagePaths) {
       const file = this.app.vault.getAbstractFileByPath(path);
-      if (!(file instanceof import_obsidian14.TFile)) {
+      if (!(file instanceof import_obsidian15.TFile)) {
         continue;
       }
       const preview = gallery.createDiv({ cls: "belki-image-attachment-card" });
@@ -6903,7 +6975,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
   }
   async downloadAttachment(path) {
     const file = this.app.vault.getAbstractFileByPath(path);
-    if (!(file instanceof import_obsidian14.TFile)) {
+    if (!(file instanceof import_obsidian15.TFile)) {
       await this.app.workspace.openLinkText(path, "", false);
       return;
     }
@@ -7196,7 +7268,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian14.Modal {
       const matches = labels.filter((label) => label.includes(query) && !this.draft.labels.includes(label)).slice(0, 8);
       const bindSuggestion = (button, value) => {
         button.addEventListener("pointerdown", (event) => {
-          if (!import_obsidian14.Platform.isMobile) {
+          if (!import_obsidian15.Platform.isMobile) {
             return;
           }
           event.preventDefault();
@@ -7524,8 +7596,8 @@ function compareOptionalDateDesc(a, b) {
 }
 
 // src/views/projects/ProjectModals.ts
-var import_obsidian15 = require("obsidian");
-var RenameProjectModal = class extends import_obsidian15.Modal {
+var import_obsidian16 = require("obsidian");
+var RenameProjectModal = class extends import_obsidian16.Modal {
   constructor(app, currentName, existingProjects, onSubmit) {
     super(app);
     this.currentName = currentName;
@@ -7583,7 +7655,7 @@ var RenameProjectModal = class extends import_obsidian15.Modal {
     input.focus();
   }
 };
-var DeleteProjectModal = class extends import_obsidian15.Modal {
+var DeleteProjectModal = class extends import_obsidian16.Modal {
   constructor(app, projectName, taskCount, onConfirm) {
     super(app);
     this.projectName = projectName;
@@ -7608,7 +7680,7 @@ var DeleteProjectModal = class extends import_obsidian15.Modal {
     });
   }
 };
-var CreateProjectModal = class extends import_obsidian15.Modal {
+var CreateProjectModal = class extends import_obsidian16.Modal {
   constructor(app, existingProjects, onSubmit) {
     super(app);
     this.existingProjects = existingProjects;
@@ -8380,7 +8452,7 @@ var SORT_OPTIONS = [
   { mode: "project", label: "Project" },
   { mode: "alphabetical", label: "Alphabetical" }
 ];
-var TaskBoardView = class extends import_obsidian16.ItemView {
+var TaskBoardView = class extends import_obsidian17.ItemView {
   constructor(leaf, store, settings, saveSettings, calendarService) {
     super(leaf);
     this.store = store;
@@ -8623,8 +8695,8 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     containerEl.empty();
     containerEl.addClass("belki-root");
     containerEl.addClass("belki-view");
-    containerEl.toggleClass("is-mobile", import_obsidian16.Platform.isMobile);
-    containerEl.toggleClass("is-sidebar-collapsed", this.settings.sidebarCollapsed && !import_obsidian16.Platform.isMobile);
+    containerEl.toggleClass("is-mobile", import_obsidian17.Platform.isMobile);
+    containerEl.toggleClass("is-sidebar-collapsed", this.settings.sidebarCollapsed && !import_obsidian17.Platform.isMobile);
     applyBelkiFontSettings(containerEl, this.settings);
     containerEl.addEventListener("keydown", this.handleRootKeyDown, true);
     containerEl.addEventListener("click", this.handleRootClick, true);
@@ -8906,7 +8978,7 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     }
     const addArea = main.createDiv({ cls: "belki-add-area" });
     const inlineAdd = addArea.createEl("button", { cls: "belki-add-inline" });
-    inlineAdd.toggleClass("is-active", this.composerOpen && !import_obsidian16.Platform.isMobile);
+    inlineAdd.toggleClass("is-active", this.composerOpen && !import_obsidian17.Platform.isMobile);
     createBelkiIcon(inlineAdd, "add", { className: "belki-add-plus", size: 18 });
     inlineAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
     inlineAdd.addEventListener("click", () => {
@@ -8928,7 +9000,7 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     this.searchOpen = false;
     this.searchQuery = "";
     this.composerContext = this.resolveComposerContext(contextOverride);
-    if (import_obsidian16.Platform.isMobile) {
+    if (import_obsidian17.Platform.isMobile) {
       this.mobileComposerReturnScroll = this.getMainScrollSnapshot();
       this.mobileComposerOpen = true;
       this.composerOpen = false;
@@ -8956,7 +9028,7 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     }
   }
   renderDesktopFloatingComposer(parent) {
-    if (!this.composerOpen || !shouldUseDesktopFloatingTaskComposer(import_obsidian16.Platform.isMobile)) {
+    if (!this.composerOpen || !shouldUseDesktopFloatingTaskComposer(import_obsidian17.Platform.isMobile)) {
       return;
     }
     const floatingCleanup = renderDesktopFloatingTaskComposer(parent, {
@@ -8976,7 +9048,7 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
       floatingCleanup();
     };
   }
-  renderAddTaskComposer(parent, onClose, presentation = import_obsidian16.Platform.isMobile ? "mobile-screen" : "default", context = this.getCurrentComposerContext()) {
+  renderAddTaskComposer(parent, onClose, presentation = import_obsidian17.Platform.isMobile ? "mobile-screen" : "default", context = this.getCurrentComposerContext()) {
     const composer = new AddTaskComposer();
     this.composerCleanup = composer.render(parent, {
       app: this.app,
@@ -8998,7 +9070,7 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     });
     const ownerWindow = parent.ownerDocument.defaultView || window;
     ownerWindow.requestAnimationFrame(() => {
-      if (import_obsidian16.Platform.isMobile) {
+      if (import_obsidian17.Platform.isMobile) {
         composer.focusTitleForMobileCapture();
       } else {
         composer.focus({ preventScroll: true });
@@ -9726,11 +9798,11 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     }
     try {
       await this.store.updateTaskDueDates(taskIds, due);
-      new import_obsidian16.Notice(`${taskIds.length} task${taskIds.length === 1 ? "" : "s"} rescheduled to ${label}.`);
+      new import_obsidian17.Notice(`${taskIds.length} task${taskIds.length === 1 ? "" : "s"} rescheduled to ${label}.`);
       this.renderPreservingMainScroll();
     } catch (error) {
       console.warn("[belki] Failed to bulk reschedule overdue tasks.", error);
-      new import_obsidian16.Notice("belki could not reschedule those tasks. Please try again.");
+      new import_obsidian17.Notice("belki could not reschedule those tasks. Please try again.");
     }
   }
   enableTodayDrop(section) {
@@ -10075,7 +10147,7 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
         this.toggleTaskActionMenu(task, button);
       },
       onDelete: () => {
-        void this.store.deleteTask(task.id);
+        this.openDeleteTaskConfirmation(task);
       }
     });
   }
@@ -10200,9 +10272,18 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
       },
       onDelete: () => {
         this.removeTaskActionMenu();
-        void this.store.deleteTask(task.id);
+        this.openDeleteTaskConfirmation(task);
       }
     });
+  }
+  openDeleteTaskConfirmation(task) {
+    new DeleteTaskConfirmationModal(this.app, {
+      task,
+      tasks: this.store.getTasks(),
+      onConfirm: async () => {
+        await this.store.deleteTask(task.id);
+      }
+    }).open();
   }
   moveTaskDue(task, due) {
     if (task.completed || task.due === due) {
@@ -10682,7 +10763,7 @@ var TaskBoardView = class extends import_obsidian16.ItemView {
     event.stopImmediatePropagation();
   }
 };
-var LabelPromptModal = class extends import_obsidian16.Modal {
+var LabelPromptModal = class extends import_obsidian17.Modal {
   constructor(app, onSubmit) {
     super(app);
     this.onSubmit = onSubmit;
@@ -10823,8 +10904,8 @@ function searchableText(task) {
 }
 
 // src/views/QuickAddModal.ts
-var import_obsidian17 = require("obsidian");
-var QuickAddModal = class extends import_obsidian17.Modal {
+var import_obsidian18 = require("obsidian");
+var QuickAddModal = class extends import_obsidian18.Modal {
   constructor(app, onSubmit) {
     super(app);
     this.onSubmit = onSubmit;
@@ -10891,10 +10972,10 @@ var QuickAddModal = class extends import_obsidian17.Modal {
 };
 
 // src/views/DailyNoteCompletedBlock.ts
-var import_obsidian18 = require("obsidian");
+var import_obsidian19 = require("obsidian");
 var DATE_OPTION_RE = /(?:^|\n)\s*date\s*:\s*(\d{4}-\d{2}-\d{2})\s*(?:\n|$)/i;
 var DATE_LINE_RE = /^\s*(\d{4}-\d{2}-\d{2})\s*$/m;
-var DailyNoteCompletedBlock = class extends import_obsidian18.MarkdownRenderChild {
+var DailyNoteCompletedBlock = class extends import_obsidian19.MarkdownRenderChild {
   constructor(options) {
     super(options.containerEl);
     this.source = options.source;
@@ -11557,7 +11638,7 @@ function backoffDelayForFailureCount(count) {
 }
 
 // src/calendar/IcalCalendarProvider.ts
-var import_obsidian19 = require("obsidian");
+var import_obsidian20 = require("obsidian");
 
 // node_modules/.pnpm/ical.js@2.2.1/node_modules/ical.js/dist/ical.js
 var ical_exports = {};
@@ -19220,7 +19301,7 @@ var IcalCalendarProvider = class {
     const headers = buildIcalRequestHeaders(feed);
     let response;
     try {
-      response = await (0, import_obsidian19.requestUrl)({
+      response = await (0, import_obsidian20.requestUrl)({
         url: feed.url,
         method: "GET",
         headers,
@@ -19310,7 +19391,7 @@ var IcalCalendarProviderError = class extends Error {
 // src/main.ts
 var BELKI_COMPLETED_CODE_BLOCK = "```belki-completed\n```";
 var BELKI_COMPLETED_CODE_BLOCK_RE = /```belki-completed\b[\s\S]*?```/i;
-var BelkiPlugin = class extends import_obsidian20.Plugin {
+var BelkiPlugin = class extends import_obsidian21.Plugin {
   constructor() {
     super(...arguments);
     this.reloadDebounceTimer = null;
@@ -19351,7 +19432,7 @@ var BelkiPlugin = class extends import_obsidian20.Plugin {
       callback: () => {
         new QuickAddModal(this.app, async (title) => {
           await this.store.createTask({ title });
-          new import_obsidian20.Notice("Task added to Inbox");
+          new import_obsidian21.Notice("Task added to Inbox");
         }).open();
       }
     });
@@ -19380,7 +19461,7 @@ var BelkiPlugin = class extends import_obsidian20.Plugin {
           ...Object.keys(this.settings.labelColors)
         ]);
         await this.saveSettings();
-        new import_obsidian20.Notice("belki labels normalized.");
+        new import_obsidian21.Notice("belki labels normalized.");
       }
     });
     this.addCommand({
@@ -19389,10 +19470,10 @@ var BelkiPlugin = class extends import_obsidian20.Plugin {
       callback: async () => {
         const migratedCount = await this.store.migrateOldTaskFile();
         if (migratedCount === 0) {
-          new import_obsidian20.Notice("belki found no old tasks to migrate.");
+          new import_obsidian21.Notice("belki found no old tasks to migrate.");
           return;
         }
-        new import_obsidian20.Notice(`belki migrated ${migratedCount} task${migratedCount === 1 ? "" : "s"}.`);
+        new import_obsidian21.Notice(`belki migrated ${migratedCount} task${migratedCount === 1 ? "" : "s"}.`);
       }
     });
     this.addSettingTab(new BelkiSettingTab(this.app, this));
@@ -19500,7 +19581,7 @@ var BelkiPlugin = class extends import_obsidian20.Plugin {
     try {
       await this.store.reloadFromDisk();
     } catch (error) {
-      new import_obsidian20.Notice("belki could not reload task data.");
+      new import_obsidian21.Notice("belki could not reload task data.");
       console.error(error);
     }
   }
@@ -19606,40 +19687,40 @@ var BelkiPlugin = class extends import_obsidian20.Plugin {
   }
   async openActiveDailyNoteCompletedTasks() {
     if (!this.settings.dailyNotesIntegrationEnabled) {
-      new import_obsidian20.Notice("belki Daily Notes integration is disabled in settings.");
+      new import_obsidian21.Notice("belki Daily Notes integration is disabled in settings.");
       return;
     }
     const file = this.app.workspace.getActiveFile();
     if (!file) {
-      new import_obsidian20.Notice("Open a daily note first.");
+      new import_obsidian21.Notice("Open a daily note first.");
       return;
     }
     const date = this.dateFromDailyNoteFile(file);
     if (!date) {
-      new import_obsidian20.Notice("belki could not detect a date from the active note.");
+      new import_obsidian21.Notice("belki could not detect a date from the active note.");
       return;
     }
     await this.activateDailyNoteView(date, file.path);
   }
   async insertActiveDailyNoteCompletedBlock() {
     if (!this.settings.dailyNotesIntegrationEnabled) {
-      new import_obsidian20.Notice("belki Daily Notes integration is disabled in settings.");
+      new import_obsidian21.Notice("belki Daily Notes integration is disabled in settings.");
       return;
     }
     const file = this.app.workspace.getActiveFile();
     if (!file) {
-      new import_obsidian20.Notice("Open a daily note first.");
+      new import_obsidian21.Notice("Open a daily note first.");
       return;
     }
     if (!this.dateFromDailyNoteFile(file)) {
-      new import_obsidian20.Notice("belki could not detect a date from the active note.");
+      new import_obsidian21.Notice("belki could not detect a date from the active note.");
       return;
     }
     const result = await this.ensureDailyNoteCompletedBlock(file);
     if (result === "inserted") {
-      new import_obsidian20.Notice("belki completed tasks block added.");
+      new import_obsidian21.Notice("belki completed tasks block added.");
     } else if (result === "exists") {
-      new import_obsidian20.Notice("This note already has a belki completed tasks block.");
+      new import_obsidian21.Notice("This note already has a belki completed tasks block.");
     }
   }
   async handleDailyNoteFileOpen(file) {
@@ -19716,7 +19797,7 @@ var BelkiPlugin = class extends import_obsidian20.Plugin {
       await this.store.load();
       void this.calendarService.refreshStartup();
     } catch (error) {
-      new import_obsidian20.Notice("belki could not initialize task storage. Open the developer console for details.");
+      new import_obsidian21.Notice("belki could not initialize task storage. Open the developer console for details.");
       console.error("[belki] Failed to initialize task storage.", error, {
         dataFolderPath: this.settings.dataFolderPath,
         tasksFilePath: this.settings.tasksFilePath

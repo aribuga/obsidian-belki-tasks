@@ -22,6 +22,7 @@ import { createBelkiActionRow, createBelkiButton } from "../ui";
 import { renderTaskDetailDateRepeatFields } from "./task-detail/dateRepeatFields";
 import { formatDescriptionMarkdown } from "./task-detail/descriptionFormatting";
 import { renderSubtaskSection } from "./task-detail/SubtaskSection";
+import { DeleteTaskConfirmationModal } from "./tasks/DeleteTaskConfirmationModal";
 import type { DescriptionFormatAction } from "./task-detail/descriptionFormatting";
 
 interface TaskDetailModalOptions {
@@ -342,6 +343,7 @@ export class TaskDetailModal extends Modal {
     });
 
     renderSubtaskSection(main, {
+      app: this.app,
       store: this.options.store,
       parentTask: this.draft,
       onChange: this.options.onChange,
@@ -367,11 +369,15 @@ export class TaskDetailModal extends Modal {
         attr: { type: "button" }
       })
       .addEventListener("click", () => {
-        void (async () => {
-          await this.options.store.deleteTask(this.draft.id);
-          this.options.onChange();
-          this.close();
-        })();
+        new DeleteTaskConfirmationModal(this.app, {
+          task: this.draft,
+          tasks: this.options.store.getTasks(),
+          onConfirm: async () => {
+            await this.options.store.deleteTask(this.draft.id);
+            this.options.onChange();
+            this.close();
+          }
+        }).open();
       });
 
     if (this.draft.repeat && !this.draft.completed) {

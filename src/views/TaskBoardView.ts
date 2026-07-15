@@ -58,6 +58,7 @@ import { renderProjectActionsMenu } from "./projects/projectActions";
 import { openLabelActionsMenu as openLabelActionsMenuElement } from "./labels/labelActions";
 import { renderFiltersAndLabelsView } from "./filters/FiltersAndLabelsView";
 import type { FilterDefinition } from "./filters/FiltersAndLabelsView";
+import { DeleteTaskConfirmationModal } from "./tasks/DeleteTaskConfirmationModal";
 import { renderTaskActionMenu, renderTaskActions } from "./tasks/taskActions";
 import { renderBulkReschedulePopover } from "./tasks/BulkReschedulePopover";
 import type { CalendarFetchRange } from "../calendar/calendarTypes";
@@ -2063,7 +2064,7 @@ export class TaskBoardView extends ItemView {
         this.toggleTaskActionMenu(task, button);
       },
       onDelete: () => {
-        void this.store.deleteTask(task.id);
+        this.openDeleteTaskConfirmation(task);
       }
     });
   }
@@ -2202,9 +2203,19 @@ export class TaskBoardView extends ItemView {
       },
       onDelete: () => {
         this.removeTaskActionMenu();
-        void this.store.deleteTask(task.id);
+        this.openDeleteTaskConfirmation(task);
       }
     });
+  }
+
+  private openDeleteTaskConfirmation(task: BelkiTask): void {
+    new DeleteTaskConfirmationModal(this.app, {
+      task,
+      tasks: this.store.getTasks(),
+      onConfirm: async () => {
+        await this.store.deleteTask(task.id);
+      }
+    }).open();
   }
 
   private moveTaskDue(task: BelkiTask, due: string | undefined): void {

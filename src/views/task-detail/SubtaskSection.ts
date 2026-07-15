@@ -1,3 +1,4 @@
+import type { App } from "obsidian";
 import { addDaysIso, formatDueDateChip, nextWeekdayIso, todayIso } from "../../dateUtils";
 import {
   getPriorityColor,
@@ -9,8 +10,10 @@ import type { TaskStore } from "../../taskStore";
 import { PRIORITIES } from "../../types";
 import type { BelkiTask, Priority } from "../../types";
 import { createBelkiIcon } from "../../ui/components/BelkiIcon";
+import { DeleteTaskConfirmationModal } from "../tasks/DeleteTaskConfirmationModal";
 
 export interface SubtaskSectionOptions {
+  app: App;
   store: TaskStore;
   parentTask: BelkiTask;
   onChange: () => void;
@@ -166,13 +169,31 @@ export function renderSubtaskSection(parent: HTMLElement, options: SubtaskSectio
         attr: { role: "button", tabindex: "0", "aria-label": "Delete sub-task" }
       });
       createBelkiIcon(deleteBtn, "delete");
-      deleteBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        void options.store.deleteTask(sub.id).then(() => {
-          renderList();
-          updateHeader();
-          options.onChange();
-        });
+      const confirmDeleteSubTask = () => {
+        new DeleteTaskConfirmationModal(options.app, {
+          task: sub,
+          tasks: options.store.getTasks(),
+          onConfirm: async () => {
+            await options.store.deleteTask(sub.id);
+            renderList();
+            updateHeader();
+            options.onChange();
+          }
+        }).open();
+      };
+      deleteBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        confirmDeleteSubTask();
+      });
+      deleteBtn.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        confirmDeleteSubTask();
       });
 
       const meta = info.createDiv({ cls: "belki-subtask-meta" });
