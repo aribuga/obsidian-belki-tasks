@@ -329,7 +329,25 @@
   }
 
   .belki-add-sidebar {
+    background: transparent;
+    border: 0;
+    border-radius: 6px;
+    box-shadow: none;
     font-weight: 650;
+    justify-content: flex-start;
+    margin: 0;
+  }
+
+  .belki-add-sidebar-main {
+    gap: 6px;
+  }
+
+  .belki-add-sidebar .belki-add-text {
+    text-transform: none;
+  }
+
+  .belki-add-shortcut {
+    display: none;
   }
 
   .belki-count {
@@ -922,8 +940,30 @@
   width: auto;
 }
 
-.belki-root.is-mobile .belki-add-sidebar {
+.belki-root.is-mobile .belki-add-sidebar,
+:where(.is-mobile, .mod-mobile) .belki-root .belki-add-sidebar {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  box-shadow: none;
   font-weight: 650;
+  justify-content: flex-start;
+  margin: 0;
+}
+
+.belki-root.is-mobile .belki-add-sidebar-main,
+:where(.is-mobile, .mod-mobile) .belki-root .belki-add-sidebar-main {
+  gap: 6px;
+}
+
+.belki-root.is-mobile .belki-add-sidebar .belki-add-text,
+:where(.is-mobile, .mod-mobile) .belki-root .belki-add-sidebar .belki-add-text {
+  text-transform: none;
+}
+
+.belki-root.is-mobile .belki-add-shortcut,
+:where(.is-mobile, .mod-mobile) .belki-root .belki-add-shortcut {
+  display: none;
 }
 
 .belki-root.is-mobile .belki-count {

@@ -8832,6 +8832,150 @@ function renderCalendarEventStrip(parent, options) {
   return strip;
 }
 
+// src/quickAddCommand.ts
+var QUICK_ADD_TASK_COMMAND_ID = "quick-add-task";
+var QUICK_ADD_TASK_COMMAND_FULL_ID = `belki:${QUICK_ADD_TASK_COMMAND_ID}`;
+var QUICK_ADD_TASK_COMMAND_NAME = "Quick Add Task";
+var QUICK_ADD_TASK_HOTKEYS = [
+  {
+    modifiers: ["Mod", "Shift"],
+    key: "A"
+  }
+];
+var QUICK_ADD_TASK_COMMAND_LOOKUP_IDS = [
+  QUICK_ADD_TASK_COMMAND_FULL_ID,
+  QUICK_ADD_TASK_COMMAND_ID
+];
+var MAC_MODIFIER_LABELS = {
+  Mod: "\u2318",
+  Ctrl: "\u2303",
+  Meta: "\u2318",
+  Shift: "\u21E7",
+  Alt: "\u2325"
+};
+var DESKTOP_MODIFIER_LABELS = {
+  Mod: "Ctrl",
+  Ctrl: "Ctrl",
+  Meta: "Meta",
+  Shift: "\u21E7",
+  Alt: "Alt"
+};
+function resolveQuickAddCommandTarget(options) {
+  if (!options.isMobile && options.activeView && options.isTaskBoardView(options.activeView)) {
+    return "contextual-composer";
+  }
+  return "quick-add-modal";
+}
+function getQuickAddTaskHotkeyHint(app, isMacOS) {
+  const [hotkey] = resolveQuickAddTaskHotkeys(app);
+  return hotkey ? formatHotkeyForPlatform(hotkey, isMacOS) : void 0;
+}
+function resolveQuickAddTaskHotkeys(app) {
+  const manager = getHotkeyManager(app);
+  if (!manager) {
+    return QUICK_ADD_TASK_HOTKEYS;
+  }
+  const assignedHotkeys = readHotkeysFromGetter(manager.getHotkeys);
+  if (assignedHotkeys !== null) {
+    return assignedHotkeys;
+  }
+  const customHotkeys = readHotkeysFromCustomKeys(manager.customKeys);
+  if (customHotkeys !== null) {
+    return customHotkeys;
+  }
+  const defaultHotkeys = readHotkeysFromGetter(manager.getDefaultHotkeys);
+  if (defaultHotkeys !== null) {
+    return defaultHotkeys;
+  }
+  return QUICK_ADD_TASK_HOTKEYS;
+}
+function formatHotkeyForPlatform(hotkey, isMacOS) {
+  var _a;
+  const modifierLabels = ((_a = hotkey.modifiers) != null ? _a : []).map((modifier) => formatModifier(modifier, isMacOS)).filter((label) => label.length > 0);
+  const keyLabel = formatHotkeyKey(hotkey.key);
+  const parts = [...modifierLabels, keyLabel].filter((label) => label.length > 0);
+  return isMacOS ? parts.join("") : parts.join(" ");
+}
+function readHotkeysFromGetter(getter) {
+  if (typeof getter !== "function") {
+    return null;
+  }
+  let sawHotkeyArray = false;
+  for (const commandId of QUICK_ADD_TASK_COMMAND_LOOKUP_IDS) {
+    try {
+      const hotkeys = getter(commandId);
+      if (Array.isArray(hotkeys)) {
+        sawHotkeyArray = true;
+        const normalizedHotkeys = normalizeHotkeys(hotkeys);
+        if (normalizedHotkeys.length > 0) {
+          return normalizedHotkeys;
+        }
+      }
+    } catch (e) {
+      continue;
+    }
+  }
+  return sawHotkeyArray ? [] : null;
+}
+function getHotkeyManager(source) {
+  if (!source || typeof source !== "object") {
+    return null;
+  }
+  const candidate = source.hotkeyManager;
+  if (!candidate || typeof candidate !== "object") {
+    return null;
+  }
+  return candidate;
+}
+function readHotkeysFromCustomKeys(customKeys) {
+  if (!customKeys) {
+    return null;
+  }
+  for (const commandId of QUICK_ADD_TASK_COMMAND_LOOKUP_IDS) {
+    if (Object.prototype.hasOwnProperty.call(customKeys, commandId)) {
+      return normalizeHotkeys(customKeys[commandId]);
+    }
+  }
+  return null;
+}
+function normalizeHotkeys(hotkeys) {
+  if (!Array.isArray(hotkeys)) {
+    return [];
+  }
+  return hotkeys.filter(
+    (hotkey) => Boolean(hotkey) && typeof hotkey.key === "string" && formatHotkeyKey(hotkey.key).length > 0
+  );
+}
+function formatModifier(modifier, isMacOS) {
+  return isMacOS ? MAC_MODIFIER_LABELS[modifier] : DESKTOP_MODIFIER_LABELS[modifier];
+}
+function formatHotkeyKey(key) {
+  if (key === " " || key.toLowerCase() === "space") {
+    return "Space";
+  }
+  const trimmed = key.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const lower = trimmed.toLowerCase();
+  if (lower === "arrowup") {
+    return "\u2191";
+  }
+  if (lower === "arrowdown") {
+    return "\u2193";
+  }
+  if (lower === "arrowleft") {
+    return "\u2190";
+  }
+  if (lower === "arrowright") {
+    return "\u2192";
+  }
+  if (trimmed.length === 1) {
+    return trimmed.toUpperCase();
+  }
+  return trimmed;
+}
+
 // src/views/TaskBoardView.ts
 var VIEW_TYPE_BELKI = "belki-task-board";
 function markdownPreviewText(text) {
@@ -8994,6 +9138,17 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
     this.unsubscribeCalendar = this.calendarService.subscribe(() => {
       this.renderPreservingMainScroll();
     });
+    const ownerWindow = this.containerEl.ownerDocument.defaultView || window;
+    this.registerDomEvent(ownerWindow, "focus", () => this.refreshSidebarAddTaskShortcut());
+    this.registerDomEvent(ownerWindow, "resize", () => this.refreshSidebarAddTaskShortcut());
+    this.registerDomEvent(this.containerEl, "focusin", () => this.refreshSidebarAddTaskShortcut());
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", (leaf) => {
+        if ((leaf == null ? void 0 : leaf.view) === this) {
+          this.refreshSidebarAddTaskShortcut();
+        }
+      })
+    );
     this.render();
   }
   async onClose() {
@@ -9166,17 +9321,27 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
     });
     this.renderSidebarHeader(sidebar);
     if (this.shouldShowContextualAddTask()) {
+      const shortcutHint = this.getQuickAddShortcutHint();
+      const accessibleLabel = this.getSidebarAddTaskAccessibleLabel(shortcutHint);
       const sidebarAdd = sidebar.createEl("button", {
         cls: "belki-add-sidebar",
         attr: {
           type: "button",
-          title: "Add task",
-          "aria-label": "Add task",
-          "data-sidebar-label": "Add task"
+          title: accessibleLabel,
+          "aria-label": accessibleLabel,
+          "data-sidebar-label": accessibleLabel
         }
       });
-      createBelkiIcon(sidebarAdd, "add", { className: "belki-add-plus", size: 18 });
-      sidebarAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
+      const sidebarAddMain = sidebarAdd.createSpan({ cls: "belki-add-sidebar-main" });
+      createBelkiIcon(sidebarAddMain, "add", { className: "belki-add-plus", size: 18 });
+      sidebarAddMain.createSpan({ cls: "belki-add-text", text: "Add task" });
+      if (shortcutHint) {
+        sidebarAdd.createSpan({
+          cls: "belki-add-shortcut",
+          text: shortcutHint,
+          attr: { "aria-hidden": "true" }
+        });
+      }
       sidebarAdd.addEventListener("click", () => {
         this.openContextualTaskComposer();
       });
@@ -9283,6 +9448,38 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
       this.getCompletedDisplayTasks(tasks).length,
       "completed"
     );
+  }
+  getQuickAddShortcutHint() {
+    return getQuickAddTaskHotkeyHint(this.app, import_obsidian18.Platform.isMacOS);
+  }
+  getSidebarAddTaskAccessibleLabel(shortcutHint) {
+    return shortcutHint ? `Add task (${shortcutHint})` : "Add task";
+  }
+  refreshSidebarAddTaskShortcut() {
+    const sidebarAdd = this.containerEl.querySelector(".belki-add-sidebar");
+    if (!sidebarAdd) {
+      return;
+    }
+    const shortcutHint = this.getQuickAddShortcutHint();
+    const accessibleLabel = this.getSidebarAddTaskAccessibleLabel(shortcutHint);
+    sidebarAdd.setAttr("title", accessibleLabel);
+    sidebarAdd.setAttr("aria-label", accessibleLabel);
+    sidebarAdd.setAttr("data-sidebar-label", accessibleLabel);
+    const existingShortcut = sidebarAdd.querySelector(".belki-add-shortcut");
+    if (!shortcutHint) {
+      existingShortcut == null ? void 0 : existingShortcut.remove();
+      return;
+    }
+    if (existingShortcut) {
+      existingShortcut.setText(shortcutHint);
+      existingShortcut.setAttr("aria-hidden", "true");
+      return;
+    }
+    sidebarAdd.createSpan({
+      cls: "belki-add-shortcut",
+      text: shortcutHint,
+      attr: { "aria-hidden": "true" }
+    });
   }
   renderSidebarHeader(parent) {
     const header = parent.createDiv({ cls: "belki-sidebar-top" });
@@ -19856,22 +20053,6 @@ var IcalCalendarProviderError = class extends Error {
     this.calendarId = feed.id;
   }
 };
-
-// src/quickAddCommand.ts
-var QUICK_ADD_TASK_COMMAND_ID = "quick-add-task";
-var QUICK_ADD_TASK_COMMAND_NAME = "Quick Add Task";
-var QUICK_ADD_TASK_HOTKEYS = [
-  {
-    modifiers: ["Mod", "Shift"],
-    key: "A"
-  }
-];
-function resolveQuickAddCommandTarget(options) {
-  if (!options.isMobile && options.activeView && options.isTaskBoardView(options.activeView)) {
-    return "contextual-composer";
-  }
-  return "quick-add-modal";
-}
 
 // src/main.ts
 var BELKI_COMPLETED_CODE_BLOCK = "```belki-completed\n```";

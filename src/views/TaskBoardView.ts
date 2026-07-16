@@ -68,6 +68,7 @@ import { CalendarService } from "../calendar/CalendarService";
 import { collectUpcomingSectionDates } from "../calendar/calendarGrouping";
 import { renderCalendarEventStrip } from "./calendar/CalendarEventStrip";
 import { getVisibleOverdueTasksForBulkReschedule } from "../taskBulkActions";
+import { getQuickAddTaskHotkeyHint } from "../quickAddCommand";
 
 export const VIEW_TYPE_BELKI = "belki-task-board";
 
@@ -276,6 +277,17 @@ export class TaskBoardView extends ItemView {
     this.unsubscribeCalendar = this.calendarService.subscribe(() => {
       this.renderPreservingMainScroll();
     });
+    const ownerWindow = this.containerEl.ownerDocument.defaultView || window;
+    this.registerDomEvent(ownerWindow, "focus", () => this.refreshSidebarAddTaskShortcut());
+    this.registerDomEvent(ownerWindow, "resize", () => this.refreshSidebarAddTaskShortcut());
+    this.registerDomEvent(this.containerEl, "focusin", () => this.refreshSidebarAddTaskShortcut());
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", (leaf) => {
+        if (leaf?.view === this) {
+          this.refreshSidebarAddTaskShortcut();
+        }
+      })
+    );
     this.render();
   }
 
@@ -469,17 +481,27 @@ export class TaskBoardView extends ItemView {
     this.renderSidebarHeader(sidebar);
 
     if (this.shouldShowContextualAddTask()) {
+      const shortcutHint = this.getQuickAddShortcutHint();
+      const accessibleLabel = this.getSidebarAddTaskAccessibleLabel(shortcutHint);
       const sidebarAdd = sidebar.createEl("button", {
         cls: "belki-add-sidebar",
         attr: {
           type: "button",
-          title: "Add task",
-          "aria-label": "Add task",
-          "data-sidebar-label": "Add task"
+          title: accessibleLabel,
+          "aria-label": accessibleLabel,
+          "data-sidebar-label": accessibleLabel
         }
       });
-      createBelkiIcon(sidebarAdd, "add", { className: "belki-add-plus", size: 18 });
-      sidebarAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
+      const sidebarAddMain = sidebarAdd.createSpan({ cls: "belki-add-sidebar-main" });
+      createBelkiIcon(sidebarAddMain, "add", { className: "belki-add-plus", size: 18 });
+      sidebarAddMain.createSpan({ cls: "belki-add-text", text: "Add task" });
+      if (shortcutHint) {
+        sidebarAdd.createSpan({
+          cls: "belki-add-shortcut",
+          text: shortcutHint,
+          attr: { "aria-hidden": "true" }
+        });
+      }
       sidebarAdd.addEventListener("click", () => {
         this.openContextualTaskComposer();
       });
@@ -594,6 +616,45 @@ export class TaskBoardView extends ItemView {
       this.getCompletedDisplayTasks(tasks).length,
       "completed"
     );
+  }
+
+  private getQuickAddShortcutHint(): string | undefined {
+    return getQuickAddTaskHotkeyHint(this.app, Platform.isMacOS);
+  }
+
+  private getSidebarAddTaskAccessibleLabel(shortcutHint: string | undefined): string {
+    return shortcutHint ? `Add task (${shortcutHint})` : "Add task";
+  }
+
+  private refreshSidebarAddTaskShortcut(): void {
+    const sidebarAdd = this.containerEl.querySelector<HTMLButtonElement>(".belki-add-sidebar");
+    if (!sidebarAdd) {
+      return;
+    }
+
+    const shortcutHint = this.getQuickAddShortcutHint();
+    const accessibleLabel = this.getSidebarAddTaskAccessibleLabel(shortcutHint);
+    sidebarAdd.setAttr("title", accessibleLabel);
+    sidebarAdd.setAttr("aria-label", accessibleLabel);
+    sidebarAdd.setAttr("data-sidebar-label", accessibleLabel);
+
+    const existingShortcut = sidebarAdd.querySelector<HTMLElement>(".belki-add-shortcut");
+    if (!shortcutHint) {
+      existingShortcut?.remove();
+      return;
+    }
+
+    if (existingShortcut) {
+      existingShortcut.setText(shortcutHint);
+      existingShortcut.setAttr("aria-hidden", "true");
+      return;
+    }
+
+    sidebarAdd.createSpan({
+      cls: "belki-add-shortcut",
+      text: shortcutHint,
+      attr: { "aria-hidden": "true" }
+    });
   }
 
   private renderSidebarHeader(parent: HTMLElement): void {
