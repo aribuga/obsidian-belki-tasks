@@ -40,11 +40,17 @@ belki aims to sit between lightweight checkbox-based task plugins and heavier ta
 
 <p align="center">
   <img src="assets/screenshots/project-view.png" alt="belki Project view" width="49%">
-  <img src="assets/screenshots/filters-labels.png" alt="belki Filters and Labels view" width="49%">
+  <img src="assets/screenshots/projects-overview.png" alt="belki Projects overview" width="49%">
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/activity.png" alt="belki Activity view with completion heatmap" width="72%">
+  <img src="assets/screenshots/filters-labels.png" alt="belki Filters and Labels view" width="49%">
+  <img src="assets/screenshots/activity.png" alt="belki Activity view with completion heatmap" width="49%">
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/completed.png" alt="belki Completed view" width="49%">
+  <img src="assets/screenshots/upcoming-compact.png" alt="belki compact sidebar Upcoming view" width="49%">
 </p>
 
 ---
