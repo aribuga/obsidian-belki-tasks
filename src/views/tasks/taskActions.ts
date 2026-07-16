@@ -93,8 +93,10 @@ function positionTaskActionMenu(menu: HTMLElement, trigger: HTMLElement): void {
   const rect = trigger.getBoundingClientRect();
   const margin = 12;
   const gap = 6;
-  menu.style.maxHeight = "";
-  menu.style.overflowY = "";
+  menu.setCssStyles({
+    maxHeight: "",
+    overflowY: ""
+  });
 
   const menuWidth = menu.offsetWidth || 170;
   const menuHeight = menu.offsetHeight || 180;
@@ -129,8 +131,10 @@ function positionTaskActionMenu(menu: HTMLElement, trigger: HTMLElement): void {
   }
 
   if (menuHeight > maxHeight) {
-    menu.style.maxHeight = `${Math.max(160, maxHeight)}px`;
-    menu.style.overflowY = "auto";
+    menu.setCssStyles({
+      maxHeight: `${Math.max(160, maxHeight)}px`,
+      overflowY: "auto"
+    });
   }
 
   menu.setCssStyles({

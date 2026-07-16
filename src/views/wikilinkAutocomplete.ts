@@ -48,8 +48,7 @@ export function attachWikilinkAutocomplete(textarea: HTMLTextAreaElement, app: A
     activeIndex = 0;
 
     const rect = textarea.getBoundingClientRect();
-    dropdown = activeDocument.createElement("div");
-    dropdown.className = "belki-wikilink-dropdown";
+    dropdown = activeDocument.body.createDiv({ cls: "belki-wikilink-dropdown" });
 
     // Position below textarea; flip above if not enough space
     const spaceBelow = window.innerHeight - rect.bottom;
@@ -67,36 +66,30 @@ export function attachWikilinkAutocomplete(textarea: HTMLTextAreaElement, app: A
 
     renderItems = () => {
       if (!dropdown) return;
-      dropdown.innerHTML = "";
+      const dropdownEl = dropdown;
+      dropdownEl.innerHTML = "";
       matches.forEach((name, i) => {
-        const item = activeDocument.createElement("div");
-        item.className = "belki-wikilink-item" + (i === activeIndex ? " is-active" : "");
+        const item = dropdownEl.createDiv({
+          cls: "belki-wikilink-item" + (i === activeIndex ? " is-active" : "")
+        });
         const basename = name.includes("/") ? name.split("/").pop()! : name;
         const folder = name.includes("/") ? name.slice(0, name.lastIndexOf("/")) : "";
 
-        const nameSpan = activeDocument.createElement("span");
-        nameSpan.className = "belki-wikilink-item-name";
-        nameSpan.textContent = basename;
-        item.appendChild(nameSpan);
+        item.createSpan({ cls: "belki-wikilink-item-name", text: basename });
 
         if (folder) {
-          const folderSpan = activeDocument.createElement("span");
-          folderSpan.className = "belki-wikilink-item-folder";
-          folderSpan.textContent = folder;
-          item.appendChild(folderSpan);
+          item.createSpan({ cls: "belki-wikilink-item-folder", text: folder });
         }
 
         item.addEventListener("mousedown", (e) => {
           e.preventDefault();
           insertWikilink(name);
         });
-        dropdown!.appendChild(item);
         if (i === activeIndex) item.scrollIntoView({ block: "nearest" });
       });
     };
 
     renderItems();
-    activeDocument.body.appendChild(dropdown);
 
     escapeHandler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
