@@ -9,7 +9,7 @@ This is a live subscription, not a one-time import. When the remote feed changes
 - Shows iCal events in Today and Upcoming date sections.
 - Keeps belki tasks and calendar events separate.
 - Supports multiple private or public iCal feeds.
-- Supports Google Calendar private iCal links and other HTTPS iCal feeds.
+- Supports Google Calendar private iCal links, Apple/iCloud Calendar iCal feeds, and other HTTPS or `webcal://` iCal feeds.
 - Opens an event externally only when the event contains a valid HTTP or HTTPS URL.
 - Keeps task counts task-only.
 
@@ -18,6 +18,8 @@ This is a live subscription, not a one-time import. When the remote feed changes
 - It does not create, edit, delete, or sync calendar events.
 - It does not convert events into tasks.
 - It does not write event data into belki task Markdown files.
+- It does not export belki tasks as ICS.
+- It does not provide CalDAV or two-way task/calendar synchronization.
 - It does not request Google API scopes.
 - It does not add a separate Calendar view.
 
@@ -37,6 +39,12 @@ Each Google calendar is added separately. Some managed work or school accounts m
 Google's "Public address in iCal format" works only when that calendar is publicly shared. For a normal private calendar, use "Secret address in iCal format" instead.
 
 Treat the private iCal link like a password. Anyone with the link can read that calendar feed. If a link leaks, reset it from Google Calendar settings.
+
+## Add An Apple/iCloud Calendar Feed
+
+Apple Calendar and iCloud shared calendars work when they expose a valid iCal subscription URL. Paste the HTTPS or `webcal://` subscription URL into belki's **Add iCal calendar** dialog.
+
+As with Google Secret addresses, treat private Apple/iCloud subscription URLs as sensitive. Anyone with the link may be able to read that calendar feed.
 
 ## Feed URLs
 

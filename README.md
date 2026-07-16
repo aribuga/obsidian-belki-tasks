@@ -31,21 +31,20 @@ belki aims to sit between lightweight checkbox-based task plugins and heavier ta
 
 <p align="center">
   <img src="assets/screenshots/today.png" alt="belki Today view" width="49%">
-  <img src="assets/screenshots/upcoming.png" alt="belki Upcoming view" width="49%">
+  <img src="assets/screenshots/upcoming.png" alt="belki Upcoming view with read-only calendar events" width="49%">
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/task-detail.png" alt="belki task detail" width="49%">
-  <img src="assets/screenshots/activity.png" alt="belki Activity view" width="49%">
+  <img src="assets/screenshots/task-detail.png" alt="belki task detail with project, date, priority, labels, sub-tasks, and attachments" width="72%">
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/inbox.png" alt="belki Inbox view" width="49%">
   <img src="assets/screenshots/project-view.png" alt="belki Project view" width="49%">
+  <img src="assets/screenshots/filters-labels.png" alt="belki Filters and Labels view" width="49%">
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/filters-labels.png" alt="belki Filters and Labels view" width="72%">
+  <img src="assets/screenshots/activity.png" alt="belki Activity view with completion heatmap" width="72%">
 </p>
 
 ---
@@ -55,8 +54,8 @@ belki aims to sit between lightweight checkbox-based task plugins and heavier ta
 ### Views
 
 - **Inbox** — tasks without a project.
-- **Today** — today's tasks plus an Overdue section.
-- **Upcoming** — future tasks grouped by date.
+- **Today** — today's tasks, overdue tasks, and optional read-only calendar events.
+- **Upcoming** — future tasks grouped by date, plus optional calendar-only dates.
 - **Projects** — all projects or one focused project.
 - **Filters & Labels** — browse by priority, date, label, or saved smart filters.
 - **Activity** — completed-task stats and a 26-week activity heatmap.
@@ -66,9 +65,13 @@ belki aims to sit between lightweight checkbox-based task plugins and heavier ta
 
 ### Task Management
 
-- Add tasks from the board, mobile composer, or command palette with `belki: Add task`.
+- Add tasks from the board, the desktop floating composer, the mobile full-screen composer, or the command palette with `belki: Quick Add Task`.
+- Use the default `Cmd/Ctrl + Shift + A` shortcut for Quick Add. In an active desktop belki view it opens the contextual composer; outside belki and on mobile it opens the global Quick Add modal.
+- The desktop sidebar Add Task button shows the current Obsidian shortcut assignment when one exists.
 - Edit title, description, project, priority, due date, deadline, labels, repeat rule, and attachments.
-- Complete, uncomplete, reschedule, move, and delete tasks.
+- Complete, uncomplete, reschedule, move, duplicate, and delete tasks.
+- Reschedule visible overdue tasks in bulk from the Overdue section.
+- Deletion asks for confirmation, including a parent-task warning when direct sub-tasks are involved.
 - Use `#label` and `//project` in the title field while adding a task.
 - Use wikilinks such as `[[Project brief]]` in task titles and descriptions.
 - Sort by Smart, Due date, Priority, Deadline, Created date, Project, or Alphabetical.
@@ -105,6 +108,7 @@ belki aims to sit between lightweight checkbox-based task plugins and heavier ta
 - Image attachments show inline previews and a lightbox.
 - Other files show as compact file rows.
 - Attachments are stored inside your vault.
+- Duplicating a task copies attachments into the duplicate task's own attachment folder instead of sharing the original files.
 
 ### Mobile
 
@@ -112,14 +116,16 @@ belki aims to sit between lightweight checkbox-based task plugins and heavier ta
 - Full-screen mobile task composer.
 - Mobile task detail screen with back navigation.
 - Mobile-friendly date picker and repeat controls.
-- Task action menu includes Move to Today, Move to Tomorrow, Pick date, and Clear date.
+- Task action menu includes Move to Today, Move to Tomorrow, Pick date, Clear date, Duplicate task, and Delete task.
+- Mobile keeps the global Quick Add flow rather than using the desktop floating composer.
 
 ### Optional Integrations
 
-- iCal calendar subscription events can appear read-only inline inside Today and Upcoming.
-- Google Calendar is supported through its private "Secret address in iCal format" link.
+- Multiple iCal calendar subscription events can appear read-only inline inside Today and Upcoming.
+- Google Calendar, Apple/iCloud Calendar, and other HTTPS or `webcal://` iCal feeds are supported when they expose a valid iCal feed URL.
 - No Calendar page or sidebar item is added.
 - Calendar events are not stored as belki tasks and are not written to task Markdown files.
+- Calendar subscriptions are read-only. belki does not create, edit, delete, import, export, or two-way sync calendar events.
 - See [Calendar Subscriptions](docs/calendar-subscriptions.md) for setup and security details.
 
 ---
@@ -195,7 +201,7 @@ Community listing: [community.obsidian.md/plugins/belki](https://community.obsid
 
 1. Install and enable belki.
 2. Run `belki: Open` from the command palette.
-3. Click **+ Add task** or run `belki: Add task`.
+3. Click **+ Add task** or run `belki: Quick Add Task`.
 4. Add a title, date, project, label, priority, or repeat rule.
 5. Tasks with no project land in **Inbox**.
 
@@ -227,14 +233,14 @@ See [Getting started](docs/getting-started.md) for a walkthrough.
 ## Development
 
 ```bash
-npm install
-npm run build
+pnpm install
+pnpm run build
 ```
 
 During development:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 Build output is written to:
@@ -248,7 +254,8 @@ Build output is written to:
 ## Release Checklist
 
 - Update `manifest.json`, `package.json`, and `versions.json`.
-- Run `npm run build`.
+- Run `pnpm install --frozen-lockfile`.
+- Run `pnpm run typecheck`, `pnpm test`, and `pnpm run build`.
 - Confirm `manifest.json`, `main.js`, and `styles.css` are present.
 - Create a GitHub release whose tag exactly matches the manifest version.
 - Upload `manifest.json`, `main.js`, and `styles.css` as release assets.
@@ -259,7 +266,9 @@ See [RELEASE.md](RELEASE.md) for the full process.
 
 ## Privacy and Network Usage
 
-belki does not add telemetry, does not call external APIs, and does not require an account. It reads and writes task data only inside its configured vault data folder.
+belki does not add telemetry and does not require an account. It reads and writes task data only inside its configured vault data folder.
+
+If you enable optional calendar subscriptions, belki fetches only the iCal feed URLs you configure. Those feed URLs are stored locally in plugin settings, masked in the settings UI, and should be treated as private secrets when they contain calendar access tokens.
 
 ---
 

@@ -67,7 +67,7 @@ The Calendar settings group controls optional read-only iCal subscriptions.
 - **Edit** changes the name, color, enabled state, or replaces the saved URL.
 - **Remove** clears the saved URL and cached events for that feed.
 
-Calendar events are not written to belki task Markdown files and are not counted as tasks. See [Calendar Subscriptions](calendar-subscriptions.md) for setup and troubleshooting.
+Google Calendar Secret iCal links, Apple/iCloud Calendar iCal feeds, and other HTTPS or `webcal://` iCal feeds can be used when the provider exposes a valid feed URL. Calendar events are not written to belki task Markdown files and are not counted as tasks. See [Calendar Subscriptions](calendar-subscriptions.md) for setup, refresh behavior, and troubleshooting.
 
 ---
 

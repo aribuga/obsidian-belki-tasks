@@ -79,6 +79,16 @@ The overdue range can be set in the header of the overdue section:
 
 The Upcoming view groups tasks by due date into labeled date sections (e.g., "Mon 30 Jun", "Tue 1 Jul"). Sorting applies within each date group.
 
+When read-only calendar subscriptions are enabled, Upcoming can also show calendar-only date sections for days that have events but no belki tasks.
+
+---
+
+## Overdue bulk rescheduling
+
+The Today view's Overdue section can reschedule visible eligible overdue tasks in bulk. Use it to move the currently visible overdue set to Today, Tomorrow, Next Week, or a custom date.
+
+The selected overdue range still matters: tasks outside the visible range are not changed. Completed tasks, hidden tasks, sub-tasks, and calendar events are not affected.
+
 ---
 
 ## Completed view grouping

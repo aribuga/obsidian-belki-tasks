@@ -42,6 +42,14 @@ In the task detail view, click the remove button on an attachment row. This remo
 
 ---
 
+## Duplicating tasks with attachments
+
+When you duplicate a task, belki copies that task's attachments into the duplicated task's own attachment folder. The original and duplicate do not share the same physical attachment files.
+
+If you choose to include direct sub-tasks during duplication, each duplicated sub-task receives independent copies of its own attachments. Parent attachments are not attached to duplicated sub-tasks, and sub-task attachments are not attached to the duplicated parent.
+
+---
+
 ## Obsidian search
 
 Because attachments are real vault files, images and documents may appear in Obsidian search results. If you do not want attachment files to appear in search, add the attachments path to Obsidian's excluded files list.
