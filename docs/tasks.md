@@ -2,7 +2,7 @@
 
 ## Creating a task
 
-Click **+ Add task** or run `belki: Add task` from the command palette.
+Click **+ Add task** or run `belki: Quick Add Task` from the command palette. The default shortcut is `Cmd/Ctrl + Shift + A`; inside an active Belki desktop view it opens the contextual composer, and outside Belki it opens the global Quick Add modal for Inbox capture.
 
 The quick-add composer lets you set:
 

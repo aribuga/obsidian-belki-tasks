@@ -31,7 +31,7 @@ Run `belki: Open` from the command palette, or click the belki icon in the sideb
 3. Optionally set a project, due date, priority, or labels from the composer.
 4. Press Enter or click **Add task**.
 
-You can also run `belki: Add task` from the command palette to capture a task without opening the full board first.
+You can also run `belki: Quick Add Task` from the command palette or press `Cmd/Ctrl + Shift + A`. When Belki is the active desktop view, the shortcut opens the contextual `+ Add task` composer with the current view defaults. Everywhere else, it opens the global Quick Add modal and adds the task to Inbox. Custom Obsidian hotkeys override this default shortcut.
 
 **Quick-add shortcuts in the title field:**
 

@@ -9175,7 +9175,7 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
       createBelkiIcon(sidebarAdd, "add", { className: "belki-add-plus", size: 18 });
       sidebarAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
       sidebarAdd.addEventListener("click", () => {
-        this.openAddComposer();
+        this.openContextualTaskComposer();
       });
     }
     const tasks = this.store.getTasks();
@@ -9378,7 +9378,7 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
     createBelkiIcon(inlineAdd, "add", { className: "belki-add-plus", size: 18 });
     inlineAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
     inlineAdd.addEventListener("click", () => {
-      this.openAddComposer();
+      this.openContextualTaskComposer();
     });
     if (tasks.length === 0) {
       main.createDiv({
@@ -9386,6 +9386,14 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
         text: `No tasks yet. Add one and belki will write it to ${this.store.dataDir}/YYYY-MM.md.`
       });
     }
+  }
+  openContextualTaskComposer(contextOverride = {}) {
+    const activeComposerOpen = import_obsidian18.Platform.isMobile ? this.mobileComposerOpen : this.composerOpen;
+    if (activeComposerOpen) {
+      this.focusOpenComposerTitle();
+      return;
+    }
+    this.openAddComposer(contextOverride);
   }
   openAddComposer(contextOverride = {}) {
     if (!this.shouldShowContextualAddTask()) {
@@ -9407,6 +9415,16 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
       this.mobileComposerReturnScroll = null;
       this.renderPreservingMainScroll();
     }
+  }
+  focusOpenComposerTitle() {
+    const input = this.containerEl.querySelector(".belki-composer-title");
+    if (!input) {
+      return;
+    }
+    const ownerWindow = input.ownerDocument.defaultView || window;
+    ownerWindow.requestAnimationFrame(() => {
+      input.focus({ preventScroll: !import_obsidian18.Platform.isMobile });
+    });
   }
   closeDesktopComposer() {
     this.composerOpen = false;
@@ -9511,7 +9529,7 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
       attr: { type: "button", "aria-label": "Add task" }
     });
     createBelkiIcon(button, "add");
-    button.addEventListener("click", () => this.openAddComposer());
+    button.addEventListener("click", () => this.openContextualTaskComposer());
   }
   shouldShowContextualAddTask() {
     if (this.mode === "projects") {
@@ -19836,6 +19854,22 @@ var IcalCalendarProviderError = class extends Error {
   }
 };
 
+// src/quickAddCommand.ts
+var QUICK_ADD_TASK_COMMAND_ID = "quick-add-task";
+var QUICK_ADD_TASK_COMMAND_NAME = "Quick Add Task";
+var QUICK_ADD_TASK_HOTKEYS = [
+  {
+    modifiers: ["Mod", "Shift"],
+    key: "A"
+  }
+];
+function resolveQuickAddCommandTarget(options) {
+  if (!options.isMobile && options.activeView && options.isTaskBoardView(options.activeView)) {
+    return "contextual-composer";
+  }
+  return "quick-add-modal";
+}
+
 // src/main.ts
 var BELKI_COMPLETED_CODE_BLOCK = "```belki-completed\n```";
 var BELKI_COMPLETED_CODE_BLOCK_RE = /```belki-completed\b[\s\S]*?```/i;
@@ -19875,13 +19909,11 @@ var BelkiPlugin = class extends import_obsidian22.Plugin {
       }
     });
     this.addCommand({
-      id: "quick-add-task",
-      name: "Quick Add Task",
+      id: QUICK_ADD_TASK_COMMAND_ID,
+      name: QUICK_ADD_TASK_COMMAND_NAME,
+      hotkeys: QUICK_ADD_TASK_HOTKEYS,
       callback: () => {
-        new QuickAddModal(this.app, async (title) => {
-          await this.store.createTask({ title });
-          new import_obsidian22.Notice("Task added to Inbox");
-        }).open();
+        this.handleQuickAddTaskCommand();
       }
     });
     this.addCommand({
@@ -20149,6 +20181,25 @@ var BelkiPlugin = class extends import_obsidian22.Plugin {
       return;
     }
     await this.activateDailyNoteView(date, file.path);
+  }
+  handleQuickAddTaskCommand() {
+    const activeLeaf = this.app.workspace.getMostRecentLeaf();
+    const target = resolveQuickAddCommandTarget({
+      activeView: activeLeaf == null ? void 0 : activeLeaf.view,
+      isMobile: import_obsidian22.Platform.isMobile,
+      isTaskBoardView: (view) => view instanceof TaskBoardView
+    });
+    if (target === "contextual-composer" && (activeLeaf == null ? void 0 : activeLeaf.view) instanceof TaskBoardView) {
+      activeLeaf.view.openContextualTaskComposer();
+      return;
+    }
+    this.openQuickAddModal();
+  }
+  openQuickAddModal() {
+    new QuickAddModal(this.app, async (title) => {
+      await this.store.createTask({ title });
+      new import_obsidian22.Notice("Task added to Inbox");
+    }).open();
   }
   async insertActiveDailyNoteCompletedBlock() {
     if (!this.settings.dailyNotesIntegrationEnabled) {

@@ -1,4 +1,4 @@
-import { Notice, Plugin, TAbstractFile, TFile, WorkspaceLeaf } from "obsidian";
+import { Notice, Platform, Plugin, TAbstractFile, TFile, WorkspaceLeaf } from "obsidian";
 import type { MarkdownPostProcessorContext } from "obsidian";
 import { dailyNoteDateFromPath, normalizeDailyNoteDateFormat } from "./dailyNotes";
 import { BelkiSettingTab } from "./BelkiSettingTab";
@@ -23,6 +23,12 @@ import { QuickAddModal } from "./views/QuickAddModal";
 import { DailyNoteCompletedBlock } from "./views/DailyNoteCompletedBlock";
 import { CalendarService } from "./calendar/CalendarService";
 import { IcalCalendarProvider } from "./calendar/IcalCalendarProvider";
+import {
+  QUICK_ADD_TASK_HOTKEYS,
+  QUICK_ADD_TASK_COMMAND_ID,
+  QUICK_ADD_TASK_COMMAND_NAME,
+  resolveQuickAddCommandTarget
+} from "./quickAddCommand";
 
 const BELKI_COMPLETED_CODE_BLOCK = "```belki-completed\n```";
 const BELKI_COMPLETED_CODE_BLOCK_RE = /```belki-completed\b[\s\S]*?```/i;
@@ -69,13 +75,11 @@ export default class BelkiPlugin extends Plugin {
     });
 
     this.addCommand({
-      id: "quick-add-task",
-      name: "Quick Add Task",
+      id: QUICK_ADD_TASK_COMMAND_ID,
+      name: QUICK_ADD_TASK_COMMAND_NAME,
+      hotkeys: QUICK_ADD_TASK_HOTKEYS,
       callback: () => {
-        new QuickAddModal(this.app, async (title) => {
-          await this.store.createTask({ title });
-          new Notice("Task added to Inbox");
-        }).open();
+        this.handleQuickAddTaskCommand();
       }
     });
 
@@ -389,6 +393,29 @@ export default class BelkiPlugin extends Plugin {
     }
 
     await this.activateDailyNoteView(date, file.path);
+  }
+
+  private handleQuickAddTaskCommand(): void {
+    const activeLeaf = this.app.workspace.getMostRecentLeaf();
+    const target = resolveQuickAddCommandTarget({
+      activeView: activeLeaf?.view,
+      isMobile: Platform.isMobile,
+      isTaskBoardView: (view) => view instanceof TaskBoardView
+    });
+
+    if (target === "contextual-composer" && activeLeaf?.view instanceof TaskBoardView) {
+      activeLeaf.view.openContextualTaskComposer();
+      return;
+    }
+
+    this.openQuickAddModal();
+  }
+
+  private openQuickAddModal(): void {
+    new QuickAddModal(this.app, async (title) => {
+      await this.store.createTask({ title });
+      new Notice("Task added to Inbox");
+    }).open();
   }
 
   private async insertActiveDailyNoteCompletedBlock(): Promise<void> {

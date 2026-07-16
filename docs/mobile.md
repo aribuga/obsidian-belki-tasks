@@ -16,7 +16,7 @@ The task detail view has a back button (←) in the header to return to the task
 
 The **+ Add task** button is available at the top of every view. On mobile, belki opens a full-screen composer so the title, description, metadata chips, project selector, and action buttons remain reachable around the keyboard.
 
-You can also use `belki: Add task` from the command palette.
+You can also use `belki: Quick Add Task` from the command palette. Mobile keeps the existing global Quick Add behavior and does not open the desktop floating composer.
 
 ---
 

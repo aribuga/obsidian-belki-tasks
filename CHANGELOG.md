@@ -11,6 +11,7 @@ All notable changes to belki are documented here.
 - Added a confirmation step before permanently deleting tasks.
 - Parent task deletion now asks whether to keep direct sub-tasks as top-level tasks or delete them with the parent.
 - Added a lightweight **Duplicate task** action to the task action menu. Tasks with sub-tasks now ask whether to include direct sub-tasks; attachments are copied into independent duplicate task folders, while completion history and repeat rules are not copied.
+- Restored the default `Cmd/Ctrl + Shift + A` Quick Add shortcut. It is now context-aware: active Belki desktop views open the contextual `+ Add task` composer, while other Obsidian views and mobile keep the global Quick Add modal.
 
 ---
 
@@ -33,7 +34,7 @@ Patch release focused on a better desktop add-task flow, narrow-pane navigation,
 
 ### Fixed
 
-- Fixed Obsidian review warnings by removing the default Quick Add hotkey, using cross-window-safe HTMLElement checks, and avoiding direct self-calls to deprecated settings tab rendering.
+- Fixed Obsidian review warnings by using cross-window-safe HTMLElement checks and avoiding direct self-calls to deprecated settings tab rendering.
 
 ### Internal
 

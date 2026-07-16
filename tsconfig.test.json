@@ -13,6 +13,7 @@
   },
   "include": [
     "src/types.ts",
+    "src/quickAddCommand.ts",
     "src/views/composer/composerContext.ts",
     "tests/**/*.ts"
   ]

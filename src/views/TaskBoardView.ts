@@ -481,7 +481,7 @@ export class TaskBoardView extends ItemView {
       createBelkiIcon(sidebarAdd, "add", { className: "belki-add-plus", size: 18 });
       sidebarAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
       sidebarAdd.addEventListener("click", () => {
-        this.openAddComposer();
+        this.openContextualTaskComposer();
       });
     }
 
@@ -717,7 +717,7 @@ export class TaskBoardView extends ItemView {
     createBelkiIcon(inlineAdd, "add", { className: "belki-add-plus", size: 18 });
     inlineAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
     inlineAdd.addEventListener("click", () => {
-      this.openAddComposer();
+      this.openContextualTaskComposer();
     });
 
     if (tasks.length === 0) {
@@ -726,6 +726,18 @@ export class TaskBoardView extends ItemView {
         text: `No tasks yet. Add one and belki will write it to ${this.store.dataDir}/YYYY-MM.md.`
       });
     }
+  }
+
+  openContextualTaskComposer(contextOverride: AddTaskComposerContextOverride = {}): void {
+    const activeComposerOpen = Platform.isMobile
+      ? this.mobileComposerOpen
+      : this.composerOpen;
+    if (activeComposerOpen) {
+      this.focusOpenComposerTitle();
+      return;
+    }
+
+    this.openAddComposer(contextOverride);
   }
 
   private openAddComposer(contextOverride: AddTaskComposerContextOverride = {}): void {
@@ -750,6 +762,18 @@ export class TaskBoardView extends ItemView {
       this.mobileComposerReturnScroll = null;
       this.renderPreservingMainScroll();
     }
+  }
+
+  private focusOpenComposerTitle(): void {
+    const input = this.containerEl.querySelector<HTMLTextAreaElement>(".belki-composer-title");
+    if (!input) {
+      return;
+    }
+
+    const ownerWindow = input.ownerDocument.defaultView || window;
+    ownerWindow.requestAnimationFrame(() => {
+      input.focus({ preventScroll: !Platform.isMobile });
+    });
   }
 
   private closeDesktopComposer(): void {
@@ -870,7 +894,7 @@ export class TaskBoardView extends ItemView {
       attr: { type: "button", "aria-label": "Add task" }
     });
     createBelkiIcon(button, "add");
-    button.addEventListener("click", () => this.openAddComposer());
+    button.addEventListener("click", () => this.openContextualTaskComposer());
   }
 
   private shouldShowContextualAddTask(): boolean {
