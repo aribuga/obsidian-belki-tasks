@@ -52,7 +52,7 @@ No. The Activity view is calculated locally from completed tasks in your configu
 
 ## What happens to sub-tasks if I delete a parent task?
 
-Currently, sub-tasks are not automatically deleted when the parent task is deleted. They become orphaned tasks without a parent. This behavior will be improved in a future version.
+belki asks what to do. You can delete only the parent task, which turns its direct sub-tasks into normal top-level tasks, or delete the parent together with its direct sub-tasks.
 
 ---
 

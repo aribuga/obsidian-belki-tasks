@@ -9,7 +9,8 @@ import {
 interface DeleteTaskConfirmationModalOptions {
   task: BelkiTask;
   tasks: BelkiTask[];
-  onConfirm: () => Promise<void>;
+  onDeleteTaskOnly: () => Promise<void>;
+  onDeleteWithSubtasks?: () => Promise<void>;
 }
 
 export class DeleteTaskConfirmationModal extends Modal {
@@ -40,16 +41,44 @@ export class DeleteTaskConfirmationModal extends Modal {
     });
     cancelButton.addEventListener("click", () => this.close());
 
-    const deleteButton = actions.createEl("button", {
-      cls: "belki-button belki-button-destructive",
-      text: "Delete task",
-      attr: { type: "button" }
-    });
-    deleteButton.addEventListener("click", () => {
-      deleteButton.disabled = true;
-      void this.options.onConfirm().then(() => this.close());
-    });
+    if (subTaskCount > 0 && this.options.onDeleteWithSubtasks) {
+      const deleteTaskOnlyButton = actions.createEl("button", {
+        cls: "belki-button belki-button-destructive",
+        text: "Delete task only",
+        attr: { type: "button" }
+      });
+      deleteTaskOnlyButton.addEventListener("click", () => {
+        this.disableButtons(actions);
+        void this.options.onDeleteTaskOnly().then(() => this.close());
+      });
+
+      const deleteWithSubtasksButton = actions.createEl("button", {
+        cls: "belki-button belki-button-destructive",
+        text: "Delete task and sub-tasks",
+        attr: { type: "button" }
+      });
+      deleteWithSubtasksButton.addEventListener("click", () => {
+        this.disableButtons(actions);
+        void this.options.onDeleteWithSubtasks?.().then(() => this.close());
+      });
+    } else {
+      const deleteButton = actions.createEl("button", {
+        cls: "belki-button belki-button-destructive",
+        text: "Delete task",
+        attr: { type: "button" }
+      });
+      deleteButton.addEventListener("click", () => {
+        this.disableButtons(actions);
+        void this.options.onDeleteTaskOnly().then(() => this.close());
+      });
+    }
 
     cancelButton.focus();
+  }
+
+  private disableButtons(actions: HTMLElement): void {
+    for (const button of Array.from(actions.querySelectorAll("button"))) {
+      button.disabled = true;
+    }
   }
 }

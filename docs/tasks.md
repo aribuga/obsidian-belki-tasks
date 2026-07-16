@@ -68,7 +68,15 @@ Recurring tasks reset after completion instead of marking as done. See [Recurrin
 
 Use the task row delete control, the task action menu, or open the task detail and click **Delete task** at the bottom. belki asks for confirmation before permanently deleting a task.
 
-Deleting a parent task does not automatically delete its sub-tasks. Sub-tasks become orphaned. This will be improved in a future version.
+If the task has direct sub-tasks, belki asks whether to delete only the parent task or delete the parent together with its sub-tasks. Deleting only the parent turns its direct sub-tasks into normal top-level tasks.
+
+---
+
+## Duplicating a task
+
+Use **Duplicate task** from the task action menu to create an independent copy of a task. belki copies editable fields such as title, description, project, priority, due date, deadline, labels, and attachments.
+
+Attachments are copied into the duplicated task's own attachment folder, so the original and duplicate do not share the same physical files. If the task has direct sub-tasks, belki asks whether to duplicate only the task or include its sub-tasks. Completion history and repeat rules are not copied.
 
 ---
 
@@ -76,4 +84,4 @@ Deleting a parent task does not automatically delete its sub-tasks. Sub-tasks be
 
 On desktop, you can drag a task onto a project or date group to update its project or due date. For example, dragging a task onto an Upcoming date group changes its due date to that date.
 
-On mobile, use the task action menu for move actions such as **Move to Today**, **Move to Tomorrow**, **Pick date**, and **Clear date**.
+On mobile, use the task action menu for actions such as **Move to Today**, **Move to Tomorrow**, **Pick date**, **Clear date**, and **Duplicate task**.

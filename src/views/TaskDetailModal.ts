@@ -372,8 +372,13 @@ export class TaskDetailModal extends Modal {
         new DeleteTaskConfirmationModal(this.app, {
           task: this.draft,
           tasks: this.options.store.getTasks(),
-          onConfirm: async () => {
+          onDeleteTaskOnly: async () => {
             await this.options.store.deleteTask(this.draft.id);
+            this.options.onChange();
+            this.close();
+          },
+          onDeleteWithSubtasks: async () => {
+            await this.options.store.deleteTask(this.draft.id, { includeSubtasks: true });
             this.options.onChange();
             this.close();
           }

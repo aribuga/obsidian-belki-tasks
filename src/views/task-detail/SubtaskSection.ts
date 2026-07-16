@@ -173,8 +173,14 @@ export function renderSubtaskSection(parent: HTMLElement, options: SubtaskSectio
         new DeleteTaskConfirmationModal(options.app, {
           task: sub,
           tasks: options.store.getTasks(),
-          onConfirm: async () => {
+          onDeleteTaskOnly: async () => {
             await options.store.deleteTask(sub.id);
+            renderList();
+            updateHeader();
+            options.onChange();
+          },
+          onDeleteWithSubtasks: async () => {
+            await options.store.deleteTask(sub.id, { includeSubtasks: true });
             renderList();
             updateHeader();
             options.onChange();
