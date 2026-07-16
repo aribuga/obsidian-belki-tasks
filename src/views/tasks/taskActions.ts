@@ -14,6 +14,7 @@ interface RenderTaskActionMenuOptions {
   task: BelkiTask;
   trigger: HTMLElement;
   onMoveDue: (due: string | undefined) => void;
+  onDuplicate: () => void;
   onDelete: () => void;
 }
 
@@ -74,6 +75,10 @@ export function renderTaskActionMenu(options: RenderTaskActionMenuOptions): HTML
       options.onMoveDue(undefined);
     });
   }
+
+  createTaskActionMenuButton(menu, "Duplicate task", () => {
+    options.onDuplicate();
+  });
 
   createTaskActionMenuButton(menu, "Delete task", () => {
     options.onDelete();

@@ -9,6 +9,8 @@ All notable changes to belki are documented here.
 ### Changed
 
 - Added a confirmation step before permanently deleting tasks.
+- Parent task deletion now asks whether to keep direct sub-tasks as top-level tasks or delete them with the parent.
+- Added a lightweight **Duplicate task** action to the task action menu. Tasks with sub-tasks now ask whether to include direct sub-tasks; attachments are copied into independent duplicate task folders, while completion history and repeat rules are not copied.
 
 ---
 

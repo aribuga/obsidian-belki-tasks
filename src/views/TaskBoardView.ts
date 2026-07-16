@@ -59,6 +59,8 @@ import { openLabelActionsMenu as openLabelActionsMenuElement } from "./labels/la
 import { renderFiltersAndLabelsView } from "./filters/FiltersAndLabelsView";
 import type { FilterDefinition } from "./filters/FiltersAndLabelsView";
 import { DeleteTaskConfirmationModal } from "./tasks/DeleteTaskConfirmationModal";
+import { DuplicateTaskModal } from "./tasks/DuplicateTaskModal";
+import { getDirectSubTaskCount } from "./tasks/duplicateTaskText";
 import { renderTaskActionMenu, renderTaskActions } from "./tasks/taskActions";
 import { renderBulkReschedulePopover } from "./tasks/BulkReschedulePopover";
 import type { CalendarFetchRange } from "../calendar/calendarTypes";
@@ -2204,6 +2206,10 @@ export class TaskBoardView extends ItemView {
       onMoveDue: (due) => {
         this.moveTaskDue(task, due);
       },
+      onDuplicate: () => {
+        this.removeTaskActionMenu();
+        this.openDuplicateTaskFlow(task);
+      },
       onDelete: () => {
         this.removeTaskActionMenu();
         this.openDeleteTaskConfirmation(task);
@@ -2231,13 +2237,46 @@ export class TaskBoardView extends ItemView {
     };
   }
 
+  private openDuplicateTaskFlow(task: BelkiTask): void {
+    const tasks = this.store.getTasks();
+    const subTaskCount = getDirectSubTaskCount(task, tasks);
+    if (subTaskCount === 0) {
+      void this.duplicateTask(task, false);
+      return;
+    }
+
+    new DuplicateTaskModal(this.app, {
+      task,
+      tasks,
+      onDuplicateTaskOnly: () => this.duplicateTask(task, false),
+      onDuplicateWithSubtasks: () => this.duplicateTask(task, true)
+    }).open();
+  }
+
+  private async duplicateTask(task: BelkiTask, includeSubtasks: boolean): Promise<void> {
+    try {
+      const duplicated = await this.store.duplicateTask(task.id, { includeSubtasks });
+      if (!duplicated) {
+        new Notice("Could not duplicate task");
+        return;
+      }
+
+      new Notice(includeSubtasks ? "Task and sub-tasks duplicated" : "Task duplicated");
+    } catch (error) {
+      console.error("[belki] Failed to duplicate task.", error, {
+        taskId: task.id,
+        includeSubtasks
+      });
+      new Notice("Could not duplicate task");
+    }
+  }
+
   private openDeleteTaskConfirmation(task: BelkiTask): void {
     new DeleteTaskConfirmationModal(this.app, {
       task,
       tasks: this.store.getTasks(),
-      onConfirm: async () => {
-        await this.store.deleteTask(task.id);
-      }
+      onDeleteTaskOnly: () => this.store.deleteTask(task.id),
+      onDeleteWithSubtasks: () => this.store.deleteTask(task.id, { includeSubtasks: true })
     }).open();
   }
 

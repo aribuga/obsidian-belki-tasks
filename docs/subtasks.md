@@ -52,4 +52,4 @@ The right panel also shows a **Parent** field linking back to the parent task.
 ## Limitations
 
 - One level of sub-tasks is supported. Sub-tasks cannot have their own sub-tasks.
-- Deleting a parent task does not automatically delete its sub-tasks. This will be addressed in a future version.
+- Deleting a parent task asks whether to keep direct sub-tasks as normal top-level tasks or delete them together with the parent.

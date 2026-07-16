@@ -8,6 +8,11 @@ import { BelkiTask, CreateTaskInput, ParsedTaskDocument, TaskPatch } from "./typ
 import { dedupeLabels, normalizeLabelName } from "./labels";
 import { DEMO_MAIN_CONTENT, buildDemoSeedData } from "./demoData";
 import { normalizeTaskProject } from "./projects";
+import { createDuplicateTaskPlan } from "./taskDuplication";
+import {
+  cleanupCopiedDuplicateAttachments,
+  copyDuplicateTaskAttachments
+} from "./taskAttachmentDuplication";
 import {
   attachmentPathCandidate,
   numberedAttachmentPathCandidate,
@@ -25,6 +30,7 @@ import {
   taskAttachmentFolderPath
 } from "./storage/storagePaths";
 import { createTaskDueDateUpdatePlan } from "./taskBulkActions";
+import { createDeleteTaskPlan } from "./taskDeletion";
 
 type Listener = () => void;
 
@@ -305,18 +311,78 @@ export class TaskStore {
     });
   }
 
-  async deleteTask(id: string): Promise<void> {
-    const task = this.tasks.find((candidate) => candidate.id === id);
-    if (!task) {
+  async deleteTask(id: string, options: { includeSubtasks?: boolean } = {}): Promise<void> {
+    const previousTasks = this.tasks;
+    const previousDocuments = new Map(this.documents);
+    const plan = createDeleteTaskPlan(this.tasks, id, {
+      ...options,
+      sourcePathForTask: (task) =>
+        task.sourcePath || this.monthlyPathForDate(task.created || todayIso())
+    });
+    if (!plan) {
       return;
     }
 
-    const sourcePath = task.sourcePath || this.monthlyPathForDate(task.created || todayIso());
-    this.tasks = this.tasks
-      .filter((candidate) => candidate.id !== id)
-      .map((candidate, index) => ({ ...candidate, order: index }));
+    this.tasks = plan.tasks;
+    try {
+      await this.saveBulkSources(plan.changedSourcePaths, previousTasks, previousDocuments);
+    } catch (error) {
+      this.tasks = previousTasks;
+      this.documents = previousDocuments;
+      throw error;
+    }
+  }
 
-    await this.saveSources([sourcePath]);
+  async duplicateTask(
+    taskId: string,
+    options: { includeSubtasks?: boolean } = {}
+  ): Promise<BelkiTask | undefined> {
+    const previousTasks = this.tasks;
+    const previousDocuments = new Map(this.documents);
+    const today = todayIso();
+    const plan = createDuplicateTaskPlan(this.tasks, taskId, {
+      includeSubtasks: options.includeSubtasks,
+      today,
+      createId,
+      sourcePathForDate: (date) => this.monthlyPathForDate(date)
+    });
+    if (!plan) {
+      return undefined;
+    }
+
+    const sourcePath = plan.duplicatedParent.sourcePath || this.monthlyPathForDate(today);
+    const sourceReady = await this.ensureSourceDocument(sourcePath);
+    if (!sourceReady) {
+      throw new Error(`belki cannot create duplicate task source: ${sourcePath}`);
+    }
+
+    let copiedAttachmentPaths: string[] = [];
+
+    try {
+      const attachmentsResult = await copyDuplicateTaskAttachments({
+        tasks: plan.tasks,
+        attachmentCopyPlans: plan.attachmentCopyPlans,
+        copyAttachment: (duplicateTaskId, attachmentPath) =>
+          this.copyExistingAttachmentFile(duplicateTaskId, attachmentPath),
+        cleanupAttachment: (attachmentPath) =>
+          this.deleteCopiedDuplicateAttachment(attachmentPath)
+      });
+      copiedAttachmentPaths = attachmentsResult.copiedAttachmentPaths;
+
+      this.tasks = attachmentsResult.tasks;
+      this.insertDuplicateTaskBlocks(sourcePath, taskId, plan.duplicatedTasks.map((task) => task.id));
+      await this.saveBulkSources(plan.changedSourcePaths, previousTasks, previousDocuments);
+      const duplicatedParent = this.tasks.find((task) => task.id === plan.duplicatedParent.id);
+      return duplicatedParent ? cloneTask(duplicatedParent) : cloneTask(plan.duplicatedParent);
+    } catch (error) {
+      this.tasks = previousTasks;
+      this.documents = previousDocuments;
+      await cleanupCopiedDuplicateAttachments(
+        copiedAttachmentPaths,
+        (attachmentPath) => this.deleteCopiedDuplicateAttachment(attachmentPath)
+      );
+      throw error;
+    }
   }
 
   async reorderSubTask(
@@ -497,6 +563,40 @@ export class TaskStore {
     return this.createUniqueBinaryFile(folderPath, file.name, data);
   }
 
+  private async copyExistingAttachmentFile(
+    taskId: string,
+    attachmentPath: string
+  ): Promise<string> {
+    const normalizedPath = normalizePath(attachmentPath);
+    const sourceFile = this.app.vault.getAbstractFileByPath(normalizedPath);
+    if (!(sourceFile instanceof TFile)) {
+      throw new Error(`belki cannot duplicate missing attachment: ${normalizedPath}`);
+    }
+
+    const folderPath = taskAttachmentFolderPath(this.attachmentsDir, taskId);
+    const folderReady = await this.ensureFolder(folderPath);
+    if (!folderReady) {
+      throw new Error(`belki cannot use attachment folder: ${folderPath}`);
+    }
+
+    const filename = normalizedPath.split("/").pop() || sourceFile.name || "attachment";
+    const data = await this.app.vault.readBinary(sourceFile);
+    return this.createUniqueBinaryFile(folderPath, filename, data);
+  }
+
+  private async deleteCopiedDuplicateAttachment(attachmentPath: string): Promise<void> {
+    const normalizedPath = normalizePath(attachmentPath);
+    const file = this.app.vault.getAbstractFileByPath(normalizedPath);
+    if (!file) {
+      return;
+    }
+    if (!(file instanceof TFile)) {
+      throw new Error(`belki expected copied duplicate attachment to be a file: ${normalizedPath}`);
+    }
+
+    await this.app.vault.delete(file, true);
+  }
+
   async migrateOldTaskFile(): Promise<number> {
     const legacyFile = this.getLegacyTaskFile();
     if (!legacyFile) {
@@ -665,6 +765,50 @@ export class TaskStore {
         cursor += 1;
         return taskId ? { type: "task", taskId } : block;
       })
+    });
+  }
+
+  private insertDuplicateTaskBlocks(
+    sourcePath: string,
+    anchorTaskId: string,
+    insertedTaskIds: string[]
+  ): void {
+    if (insertedTaskIds.length === 0) {
+      return;
+    }
+
+    const document = this.documents.get(sourcePath);
+    if (!document) {
+      return;
+    }
+
+    const existingBlockIds = new Set(
+      document.blocks
+        .filter((block) => block.type === "task")
+        .map((block) => block.taskId)
+    );
+    const missingTaskIds = insertedTaskIds.filter((id) => !existingBlockIds.has(id));
+    if (missingTaskIds.length === 0) {
+      return;
+    }
+
+    let inserted = false;
+    const blocks: ParsedTaskDocument["blocks"] = [];
+    for (const block of document.blocks) {
+      blocks.push(block);
+      if (!inserted && block.type === "task" && block.taskId === anchorTaskId) {
+        blocks.push(...missingTaskIds.map((taskId) => ({ type: "task" as const, taskId })));
+        inserted = true;
+      }
+    }
+
+    if (!inserted) {
+      blocks.push(...missingTaskIds.map((taskId) => ({ type: "task" as const, taskId })));
+    }
+
+    this.documents.set(sourcePath, {
+      ...document,
+      blocks
     });
   }
 
