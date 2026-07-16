@@ -50,6 +50,18 @@ No. The Activity view is calculated locally from completed tasks in your configu
 
 ---
 
+## Does belki sync tasks with Google Calendar or Apple Calendar?
+
+No. Calendar subscriptions are read-only. belki can display events from iCal feeds inside Today and Upcoming, but it does not create calendar events, edit events, export tasks as ICS, use CalDAV, or perform two-way synchronization.
+
+---
+
+## Are private calendar URLs stored in my task files?
+
+No. Calendar feed URLs are stored locally in plugin settings and masked in the settings UI. Calendar events are not written into belki task Markdown files.
+
+---
+
 ## What happens to sub-tasks if I delete a parent task?
 
 belki asks what to do. You can delete only the parent task, which turns its direct sub-tasks into normal top-level tasks, or delete the parent together with its direct sub-tasks.

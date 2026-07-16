@@ -26,12 +26,14 @@ Run `belki: Open` from the command palette, or click the belki icon in the sideb
 
 ## Create your first task
 
-1. Click **+ Add task** at the top of any view.
+1. Click **+ Add task** in a view where task creation is available.
 2. Type a task title.
 3. Optionally set a project, due date, priority, or labels from the composer.
 4. Press Enter or click **Add task**.
 
 You can also run `belki: Quick Add Task` from the command palette or press `Cmd/Ctrl + Shift + A`. When Belki is the active desktop view, the shortcut opens the contextual `+ Add task` composer with the current view defaults. Everywhere else, it opens the global Quick Add modal and adds the task to Inbox. Custom Obsidian hotkeys override this default shortcut.
+
+On desktop, the sidebar **Add Task** button shows the currently assigned shortcut when one exists. If you remove the hotkey in Obsidian settings, the hint is hidden.
 
 **Quick-add shortcuts in the title field:**
 
@@ -49,8 +51,8 @@ Example: `Write report #work //Client Work` — creates a task titled "Write rep
 | View | Shows |
 |---|---|
 | **Inbox** | Tasks with no project |
-| **Today** | Tasks due today + overdue tasks |
-| **Upcoming** | Future tasks grouped by date |
+| **Today** | Tasks due today, overdue tasks, and optional read-only calendar events |
+| **Upcoming** | Future tasks and optional calendar-only dates grouped by date |
 | **Projects** | All projects or a single project |
 | **Filters & Labels** | Browse by priority, date, or label |
 | **Activity** | Completed task stats and history |

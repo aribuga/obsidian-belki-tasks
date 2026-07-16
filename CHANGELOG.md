@@ -4,14 +4,77 @@ All notable changes to belki are documented here.
 
 ---
 
-## Unreleased
+## 0.5.0 — 2026-07-16
 
-### Changed
+belki 0.5.0 is a cumulative release since 0.4.0. It adds read-only calendar visibility, Daily Notes integration, faster desktop capture, safer task actions, bulk overdue management, and a quieter responsive navigation experience while keeping task data in local Markdown files.
 
-- Added a confirmation step before permanently deleting tasks.
+### Highlights
+
+- Read-only iCal calendar subscriptions can show external events inline inside Today and Upcoming without converting them into tasks.
+- Daily Notes can show completed belki tasks for the active daily note date through a panel or `belki-completed` code block.
+- Desktop capture is faster with a contextual floating composer and a context-aware `Cmd/Ctrl + Shift + A` Quick Add command.
+- Task actions are safer and more complete with confirmation before deletion, duplicate task support, and bulk overdue rescheduling.
+- The desktop sidebar can collapse into an icon-only rail for narrow Obsidian panes and now shows the current Quick Add shortcut beside Add Task.
+
+### New Features
+
+- Added optional read-only iCal subscriptions for multiple private or public feeds, including Google Calendar Secret iCal links, Apple/iCloud Calendar feeds, and other HTTPS or `webcal://` iCal feeds.
+- Calendar events appear inside Today and Upcoming date sections, including calendar-only Upcoming dates when a feed has events on days without belki tasks.
+- Calendar event strips collapse and expand, use calendar colors, can open safe event URLs, and use a Google Calendar day-view fallback when a Google feed does not provide an event URL.
+- Calendar refresh now supports manual refresh, automatic 15-minute refresh, stale-view refresh, focus/visibility refresh, ETag and Last-Modified conditional requests, HTTP 304 cache preservation, duplicate URL detection, masked feed URLs, and feed-specific failure backoff.
+- Added Daily Notes integration for completed tasks, including `belki: Show Completed Tasks for Active Daily Note`, `belki: Insert Completed Tasks Block in Active Daily Note`, configurable date formats, optional auto-insert, and recurring-task completion occurrences.
+- Added a desktop floating task composer that opens above the current list, preserves scroll position, and keeps contextual defaults for Today, Upcoming, Inbox, and focused project views.
+- Restored the default `Cmd/Ctrl + Shift + A` Quick Add shortcut. Inside an active desktop belki view it opens the contextual composer; outside belki and on mobile it opens the global Quick Add modal. User-customized Obsidian hotkeys are respected.
+- Added a collapsible desktop sidebar with a remembered icon-only state for narrow panes.
+- Added a desktop task action menu with move/reschedule actions, Pick date, Clear date, Duplicate task, and Delete task.
+- Added bulk overdue rescheduling from the Today view with Today, Tomorrow, Next Week, and custom-date options for visible eligible overdue tasks.
+- Added Duplicate task support. Duplicates copy editable metadata and independently copy attachments into the duplicated task's own attachment folder. Direct sub-tasks can optionally be duplicated with their own independent attachments.
+
+### Improvements
+
+- The sidebar Add Task button now uses a full-width desktop button design and displays the current Obsidian hotkey assignment when one exists.
+- Add Task controls are hidden in views where a newly created task would immediately disappear.
+- Sidebar and view counters now align with the tasks currently visible in each view.
+- Project, label, date, deadline, priority, repeat, and task-detail menus were adjusted for better containment, keyboard behavior, outside-click behavior, and narrow-pane layouts.
+- Project and label action menus close more reliably on outside click and Escape.
+- Label suggestions in the composer support keyboard navigation and selection.
+- Projects can be managed with quieter action buttons, transparent header add buttons, and improved project picker spacing.
+- Calendar feed errors are sanitized so private URLs, query parameters, and long secret path tokens are not exposed in normal UI.
+- Attachments continue to be stored in the vault, and duplicate tasks now receive independent attachment copies rather than sharing original attachment paths.
+- The release build and documentation now prefer the repository's pnpm workflow while retaining generated `main.js` and root `styles.css` for Obsidian releases.
+
+### Mobile & Responsive
+
+- Mobile keeps the existing full-screen task composer while desktop uses the floating contextual composer.
+- Mobile task action menus continue to provide no-drag alternatives such as Move to Today, Move to Tomorrow, Pick date, Clear date, and Duplicate task.
+- Fixed iPadOS/mobile task completion circles so they remain round in wider mobile panes.
+- Improved mobile label creation, date/repeat controls, sub-task preview updates, and narrow-pane sidebar behavior.
+- The desktop sidebar now works better in right sidebars and narrow Obsidian panes through the collapsed icon rail.
+
+### Fixes
+
+- Added confirmation before permanently deleting tasks.
 - Parent task deletion now asks whether to keep direct sub-tasks as top-level tasks or delete them with the parent.
-- Added a lightweight **Duplicate task** action to the task action menu. Tasks with sub-tasks now ask whether to include direct sub-tasks; attachments are copied into independent duplicate task folders, while completion history and repeat rules are not copied.
-- Restored the default `Cmd/Ctrl + Shift + A` Quick Add shortcut. It is now context-aware: active Belki desktop views open the contextual `+ Add task` composer, while other Obsidian views and mobile keep the global Quick Add modal.
+- Fixed Projects overview Add Task behavior that could create a task which immediately disappeared from the current view.
+- Fixed task counters counting hidden sub-tasks or archived-project tasks differently from visible task lists.
+- Fixed mobile label creation requiring a second tap.
+- Fixed project and label menus that could stay open behind dialogs or fail to close on outside interaction.
+- Fixed several Obsidian review warnings around cross-window-safe element checks, unsupported APIs, direct static style assignment, unsafe typings, and deprecated settings APIs.
+- Fixed task detail project and priority popover spacing/color behavior.
+- Fixed desktop task action Pick date behavior and row-menu positioning.
+
+### Internal
+
+- Continued the Issue #65 modularization work by extracting project modals, project actions, label actions, task actions, Filters & Labels rendering, Task Detail helpers, sub-task rendering, composer attachments, labels, projects, and date/repeat controls.
+- Split the large root stylesheet into ordered partial CSS files while preserving generated root `styles.css` for Obsidian releases.
+- Extracted low-risk storage/path helpers and task duplication helpers without changing the task storage format.
+- Added calendar parsing, normalization, network, caching, service, grouping, and destination helpers with regression coverage.
+- Added unit tests for calendar feeds, iCal parsing, calendar service behavior, composer context, bulk rescheduling, delete confirmation, task duplication, attachment duplication, and Quick Add hotkey formatting.
+- Updated manual regression and test-vault workflows around calendar subscriptions, task actions, duplication, and Quick Add.
+
+### Breaking Changes
+
+- None expected. The task Markdown storage format remains compatible with 0.4.x.
 
 ---
 

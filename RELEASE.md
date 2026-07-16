@@ -7,13 +7,15 @@ Use this checklist when preparing a GitHub release and an Obsidian Community Plu
 Install dependencies:
 
 ```bash
-npm install
+pnpm install --frozen-lockfile
 ```
 
 Build the plugin:
 
 ```bash
-npm run build
+pnpm run typecheck
+pnpm test
+pnpm run build
 ```
 
 Confirm these files exist at the repository root:

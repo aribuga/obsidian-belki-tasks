@@ -2,7 +2,7 @@
 
 ## Creating a task
 
-Click **+ Add task** or run `belki: Quick Add Task` from the command palette. The default shortcut is `Cmd/Ctrl + Shift + A`; inside an active Belki desktop view it opens the contextual composer, and outside Belki it opens the global Quick Add modal for Inbox capture.
+Click **+ Add task** or run `belki: Quick Add Task` from the command palette. The default shortcut is `Cmd/Ctrl + Shift + A`; inside an active Belki desktop view it opens the contextual floating composer, and outside Belki it opens the global Quick Add modal for Inbox capture. On desktop, the sidebar Add Task button shows the current shortcut assignment when one exists.
 
 The quick-add composer lets you set:
 
@@ -66,7 +66,7 @@ Recurring tasks reset after completion instead of marking as done. See [Recurrin
 
 ## Deleting a task
 
-Use the task row delete control, the task action menu, or open the task detail and click **Delete task** at the bottom. belki asks for confirmation before permanently deleting a task.
+Use **Delete task** from the task action menu, or open the task detail and click **Delete task** at the bottom. belki asks for confirmation before permanently deleting a task.
 
 If the task has direct sub-tasks, belki asks whether to delete only the parent task or delete the parent together with its sub-tasks. Deleting only the parent turns its direct sub-tasks into normal top-level tasks.
 
@@ -80,8 +80,31 @@ Attachments are copied into the duplicated task's own attachment folder, so the 
 
 ---
 
+## Task action menu
+
+Use the `...` task action menu for quick row actions:
+
+- Move to Today
+- Move to Tomorrow
+- Pick date
+- Clear date
+- Duplicate task
+- Delete task
+
+Recurring tasks may also expose **Complete permanently** where applicable.
+
+---
+
+## Bulk overdue rescheduling
+
+In the Today view, the Overdue section can reschedule visible eligible overdue tasks in bulk. Options include Today, Tomorrow, Next Week, and a custom date.
+
+Bulk rescheduling only changes due dates for visible eligible overdue tasks. It does not change completed tasks, hidden-range tasks, sub-tasks, calendar events, or unrelated metadata.
+
+---
+
 ## Drag and drop
 
 On desktop, you can drag a task onto a project or date group to update its project or due date. For example, dragging a task onto an Upcoming date group changes its due date to that date.
 
-On mobile, use the task action menu for actions such as **Move to Today**, **Move to Tomorrow**, **Pick date**, **Clear date**, and **Duplicate task**.
+On mobile, use the task action menu for actions such as **Move to Today**, **Move to Tomorrow**, **Pick date**, **Clear date**, **Duplicate task**, and **Delete task**.
