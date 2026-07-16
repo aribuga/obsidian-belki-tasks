@@ -3252,7 +3252,7 @@ var TaskStore = class {
     if (!(file instanceof import_obsidian8.TFile)) {
       throw new Error(`belki expected copied duplicate attachment to be a file: ${normalizedPath}`);
     }
-    await this.app.vault.delete(file, true);
+    await this.app.fileManager.trashFile(file);
   }
   async migrateOldTaskFile() {
     const legacyFile = this.getLegacyTaskFile();
@@ -3906,8 +3906,7 @@ function attachWikilinkAutocomplete(textarea, app) {
     currentMatches = matches;
     activeIndex = 0;
     const rect = textarea.getBoundingClientRect();
-    dropdown = activeDocument.createElement("div");
-    dropdown.className = "belki-wikilink-dropdown";
+    dropdown = activeDocument.body.createDiv({ cls: "belki-wikilink-dropdown" });
     const spaceBelow = window.innerHeight - rect.bottom;
     const dropdownMaxHeight = 220;
     const dropdownStyles = {
@@ -3922,32 +3921,26 @@ function attachWikilinkAutocomplete(textarea, app) {
     dropdown.setCssStyles(dropdownStyles);
     renderItems = () => {
       if (!dropdown) return;
-      dropdown.innerHTML = "";
+      const dropdownEl = dropdown;
+      dropdownEl.innerHTML = "";
       matches.forEach((name, i) => {
-        const item = activeDocument.createElement("div");
-        item.className = "belki-wikilink-item" + (i === activeIndex ? " is-active" : "");
+        const item = dropdownEl.createDiv({
+          cls: "belki-wikilink-item" + (i === activeIndex ? " is-active" : "")
+        });
         const basename = name.includes("/") ? name.split("/").pop() : name;
         const folder = name.includes("/") ? name.slice(0, name.lastIndexOf("/")) : "";
-        const nameSpan = activeDocument.createElement("span");
-        nameSpan.className = "belki-wikilink-item-name";
-        nameSpan.textContent = basename;
-        item.appendChild(nameSpan);
+        item.createSpan({ cls: "belki-wikilink-item-name", text: basename });
         if (folder) {
-          const folderSpan = activeDocument.createElement("span");
-          folderSpan.className = "belki-wikilink-item-folder";
-          folderSpan.textContent = folder;
-          item.appendChild(folderSpan);
+          item.createSpan({ cls: "belki-wikilink-item-folder", text: folder });
         }
         item.addEventListener("mousedown", (e) => {
           e.preventDefault();
           insertWikilink(name);
         });
-        dropdown.appendChild(item);
         if (i === activeIndex) item.scrollIntoView({ block: "nearest" });
       });
     };
     renderItems();
-    activeDocument.body.appendChild(dropdown);
     escapeHandler = (e) => {
       if (e.key === "Escape") {
         e.preventDefault();
@@ -4081,8 +4074,7 @@ function attachQuickAddAutocomplete(input, getLabels, getProjects) {
     currentMatches = matches;
     activeIndex = 0;
     const rect = input.getBoundingClientRect();
-    dropdown = activeDocument.createElement("div");
-    dropdown.className = "belki-wikilink-dropdown";
+    dropdown = activeDocument.body.createDiv({ cls: "belki-wikilink-dropdown" });
     dropdown.setCssStyles({
       left: `${rect.left}px`,
       top: `${rect.bottom + 2}px`,
@@ -4090,22 +4082,22 @@ function attachQuickAddAutocomplete(input, getLabels, getProjects) {
     });
     renderItems = () => {
       if (!dropdown) return;
-      dropdown.innerHTML = "";
+      const dropdownEl = dropdown;
+      dropdownEl.innerHTML = "";
       matches.forEach((m, i) => {
-        const item = activeDocument.createElement("div");
-        item.className = "belki-wikilink-item" + (i === activeIndex ? " is-active" : "");
+        const item = dropdownEl.createDiv({
+          cls: "belki-wikilink-item" + (i === activeIndex ? " is-active" : "")
+        });
         const prefix = token.type === "label" ? "#" : "//";
         item.textContent = prefix + m;
         item.addEventListener("mousedown", (e) => {
           e.preventDefault();
           insertMatch(m);
         });
-        dropdown.appendChild(item);
         if (i === activeIndex) item.scrollIntoView({ block: "nearest" });
       });
     };
     renderItems();
-    activeDocument.body.appendChild(dropdown);
     escapeHandler = (e) => {
       if (e.key === "Escape") {
         e.preventDefault();
@@ -7304,10 +7296,12 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
       const data = await this.app.vault.readBinary(file);
       const blob = new Blob([data]);
       const url = URL.createObjectURL(blob);
-      const link = activeDocument.createElement("a");
-      link.href = url;
-      link.download = file.name;
-      activeDocument.body.appendChild(link);
+      const link = activeDocument.body.createEl("a", {
+        attr: {
+          href: url,
+          download: file.name
+        }
+      });
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 0);
@@ -8534,8 +8528,10 @@ function positionTaskActionMenu(menu, trigger) {
   const rect = trigger.getBoundingClientRect();
   const margin = 12;
   const gap = 6;
-  menu.style.maxHeight = "";
-  menu.style.overflowY = "";
+  menu.setCssStyles({
+    maxHeight: "",
+    overflowY: ""
+  });
   const menuWidth = menu.offsetWidth || 170;
   const menuHeight = menu.offsetHeight || 180;
   const maxLeft = ownerWindow.innerWidth - menuWidth - margin;
@@ -8555,8 +8551,10 @@ function positionTaskActionMenu(menu, trigger) {
     maxHeight = ownerWindow.innerHeight - top - margin;
   }
   if (menuHeight > maxHeight) {
-    menu.style.maxHeight = `${Math.max(160, maxHeight)}px`;
-    menu.style.overflowY = "auto";
+    menu.setCssStyles({
+      maxHeight: `${Math.max(160, maxHeight)}px`,
+      overflowY: "auto"
+    });
   }
   menu.setCssStyles({
     left: `${left}px`,

@@ -594,7 +594,7 @@ export class TaskStore {
       throw new Error(`belki expected copied duplicate attachment to be a file: ${normalizedPath}`);
     }
 
-    await this.app.vault.delete(file, true);
+    await this.app.fileManager.trashFile(file);
   }
 
   async migrateOldTaskFile(): Promise<number> {

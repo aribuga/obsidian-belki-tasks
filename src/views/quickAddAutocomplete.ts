@@ -112,8 +112,7 @@ export function attachQuickAddAutocomplete(
     activeIndex = 0;
 
     const rect = input.getBoundingClientRect();
-    dropdown = activeDocument.createElement("div");
-    dropdown.className = "belki-wikilink-dropdown";
+    dropdown = activeDocument.body.createDiv({ cls: "belki-wikilink-dropdown" });
     dropdown.setCssStyles({
       left: `${rect.left}px`,
       top: `${rect.bottom + 2}px`,
@@ -122,22 +121,22 @@ export function attachQuickAddAutocomplete(
 
     renderItems = () => {
       if (!dropdown) return;
-      dropdown.innerHTML = "";
+      const dropdownEl = dropdown;
+      dropdownEl.innerHTML = "";
       matches.forEach((m, i) => {
-        const item = activeDocument.createElement("div");
-        item.className = "belki-wikilink-item" + (i === activeIndex ? " is-active" : "");
+        const item = dropdownEl.createDiv({
+          cls: "belki-wikilink-item" + (i === activeIndex ? " is-active" : "")
+        });
         const prefix = token.type === "label" ? "#" : "//";
         item.textContent = prefix + m;
         item.addEventListener("mousedown", (e) => {
           e.preventDefault();
           insertMatch(m);
         });
-        dropdown!.appendChild(item);
         if (i === activeIndex) item.scrollIntoView({ block: "nearest" });
       });
     };
     renderItems();
-    activeDocument.body.appendChild(dropdown);
 
     escapeHandler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {

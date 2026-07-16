@@ -856,10 +856,12 @@ export class TaskDetailModal extends Modal {
       const data = await this.app.vault.readBinary(file);
       const blob = new Blob([data]);
       const url = URL.createObjectURL(blob);
-      const link = activeDocument.createElement("a");
-      link.href = url;
-      link.download = file.name;
-      activeDocument.body.appendChild(link);
+      const link = activeDocument.body.createEl("a", {
+        attr: {
+          href: url,
+          download: file.name
+        }
+      });
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 0);
