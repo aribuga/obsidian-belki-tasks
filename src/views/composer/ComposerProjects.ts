@@ -43,7 +43,7 @@ export function renderComposerProjects(
   });
   const projectDot = projectPicker.createSpan({ cls: "belki-project-dot belki-composer-project-dot" });
   const projectLabel = projectPicker.createSpan({ cls: "belki-project-trigger-label" });
-  const projectMenu = createEl("div", {
+  const projectMenu = createFragment().createDiv({
     cls: "belki-project-menu",
     attr: {
       role: "listbox"

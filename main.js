@@ -1009,6 +1009,9 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
     super(app, plugin);
     this.plugin = plugin;
   }
+  getSettingDefinitions() {
+    return [];
+  }
   display() {
     this.renderSettings();
   }
@@ -1253,10 +1256,10 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
     }
   }
   calendarFeedDescription(feed, loading) {
-    const fragment = activeDocument.createDocumentFragment();
-    fragment.appendText(maskIcalFeedUrl(feed.url));
-    fragment.appendText(` - ${calendarFeedStatusText(feed, loading)}`);
-    return fragment;
+    return createFragment((fragment) => {
+      fragment.appendText(maskIcalFeedUrl(feed.url));
+      fragment.appendText(` - ${calendarFeedStatusText(feed, loading)}`);
+    });
   }
   renderCalendarStatus(message, kind) {
     this.containerEl.createDiv({
@@ -5076,7 +5079,7 @@ function renderComposerProjects(options) {
   });
   const projectDot = projectPicker.createSpan({ cls: "belki-project-dot belki-composer-project-dot" });
   const projectLabel = projectPicker.createSpan({ cls: "belki-project-trigger-label" });
-  const projectMenu = createEl("div", {
+  const projectMenu = createFragment().createDiv({
     cls: "belki-project-menu",
     attr: {
       role: "listbox"
@@ -7709,9 +7712,9 @@ function getTextareaSelectionAnchor(textarea) {
   });
   const position = Math.min(textarea.selectionStart, textarea.selectionEnd);
   mirror.textContent = textarea.value.slice(0, position);
-  const marker = doc.createElement("span");
-  marker.textContent = textarea.value.slice(position, position + 1) || "\u200B";
-  mirror.appendChild(marker);
+  const marker = mirror.createSpan({
+    text: textarea.value.slice(position, position + 1) || "\u200B"
+  });
   const markerRect = marker.getBoundingClientRect();
   const mirrorRect = mirror.getBoundingClientRect();
   const textareaRect = textarea.getBoundingClientRect();

@@ -1324,9 +1324,9 @@ function getTextareaSelectionAnchor(textarea: HTMLTextAreaElement): {
 
   const position = Math.min(textarea.selectionStart, textarea.selectionEnd);
   mirror.textContent = textarea.value.slice(0, position);
-  const marker = doc.createElement("span");
-  marker.textContent = textarea.value.slice(position, position + 1) || "\u200b";
-  mirror.appendChild(marker);
+  const marker = mirror.createSpan({
+    text: textarea.value.slice(position, position + 1) || "\u200b"
+  });
 
   const markerRect = marker.getBoundingClientRect();
   const mirrorRect = mirror.getBoundingClientRect();

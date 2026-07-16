@@ -1,4 +1,5 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
+import type { SettingDefinitionItem } from "obsidian";
 import { colorForName } from "./colors";
 import {
   DEFAULT_DAILY_NOTE_DATE_FORMAT,
@@ -43,6 +44,10 @@ interface BelkiSettingsPlugin extends Plugin {
 export class BelkiSettingTab extends PluginSettingTab {
   constructor(app: App, private plugin: BelkiSettingsPlugin) {
     super(app, plugin);
+  }
+
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    return [];
   }
 
   display(): void {
@@ -384,10 +389,10 @@ export class BelkiSettingTab extends PluginSettingTab {
   }
 
   private calendarFeedDescription(feed: IcalCalendarFeed, loading: boolean): DocumentFragment {
-    const fragment = activeDocument.createDocumentFragment();
-    fragment.appendText(maskIcalFeedUrl(feed.url));
-    fragment.appendText(` - ${calendarFeedStatusText(feed, loading)}`);
-    return fragment;
+    return createFragment((fragment) => {
+      fragment.appendText(maskIcalFeedUrl(feed.url));
+      fragment.appendText(` - ${calendarFeedStatusText(feed, loading)}`);
+    });
   }
 
   private renderCalendarStatus(message: string, kind: "loading" | "warning" | "error"): void {
