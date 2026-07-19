@@ -885,7 +885,7 @@ export class TaskDetailModal extends Modal {
       cls: "belki-project-dot belki-detail-project-dot"
     });
     const projectLabel = projectPicker.createSpan({ cls: "belki-project-trigger-label" });
-    const projectMenu = field.createEl("div", {
+    const projectMenu = field.createDiv({
       cls: "belki-project-menu belki-detail-project-menu is-hidden",
       attr: { role: "listbox" }
     });

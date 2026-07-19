@@ -2751,7 +2751,7 @@ async function ensureIndexedPath(options) {
 }
 function defaultWait(ms) {
   return new Promise((resolve) => {
-    globalThis.setTimeout(resolve, ms);
+    window.setTimeout(resolve, ms);
   });
 }
 
@@ -5018,7 +5018,7 @@ function renderComposerLabels(options) {
       });
       chip.setCssStyles({ backgroundColor: color.light, borderColor: color.light });
       chip.addEventListener("click", removeLabel);
-      const externalChip = labelChipsRow.createEl("span", {
+      const externalChip = labelChipsRow.createSpan({
         cls: "belki-label-chip",
         attr: { "aria-label": `Remove label ${displayLabel(label)}` }
       });
@@ -7392,7 +7392,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
       cls: "belki-project-dot belki-detail-project-dot"
     });
     const projectLabel = projectPicker.createSpan({ cls: "belki-project-trigger-label" });
-    const projectMenu = field.createEl("div", {
+    const projectMenu = field.createDiv({
       cls: "belki-project-menu belki-detail-project-menu is-hidden",
       attr: { role: "listbox" }
     });
@@ -9468,8 +9468,8 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
         "--belki-project-color": color.regular
       });
       button.createSpan({ cls: "belki-project-dot" }).setCssStyles({ backgroundColor: color.regular });
-      button.createEl("span", { cls: "belki-nav-label", text: cleanProject });
-      button.createEl("span", { cls: "belki-count", text: String(count) });
+      button.createSpan({ cls: "belki-nav-label", text: cleanProject });
+      button.createSpan({ cls: "belki-count", text: String(count) });
       this.enableProjectDrop(button, cleanProject);
       button.addEventListener("click", () => {
         this.mode = "projects";
@@ -9494,8 +9494,8 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
       });
       archiveButton.toggleClass("is-active", this.mode === "archived");
       createBelkiIcon(archiveButton, "archive", { className: "belki-nav-icon", size: 18 });
-      archiveButton.createEl("span", { cls: "belki-nav-label", text: "Archived" });
-      archiveButton.createEl("span", { cls: "belki-count", text: String(this.settings.archivedProjects.length) });
+      archiveButton.createSpan({ cls: "belki-nav-label", text: "Archived" });
+      archiveButton.createSpan({ cls: "belki-count", text: String(this.settings.archivedProjects.length) });
       archiveButton.addEventListener("click", () => {
         this.mode = "archived";
         this.selectedProject = null;
@@ -9582,13 +9582,13 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
     });
     const active = label === "Search" ? false : label === "Projects" ? this.mode === "projects" && this.selectedProject === null : this.mode === mode;
     button.toggleClass("is-active", active);
-    const iconEl = button.createEl("span", { cls: "belki-nav-icon" });
+    const iconEl = button.createSpan({ cls: "belki-nav-icon" });
     if (iconKey) {
       createBelkiIcon(iconEl, iconKey, { size: 18 });
     }
-    button.createEl("span", { cls: "belki-nav-label", text: label });
+    button.createSpan({ cls: "belki-nav-label", text: label });
     if (count !== void 0) {
-      button.createEl("span", { cls: "belki-count", text: String(count) });
+      button.createSpan({ cls: "belki-count", text: String(count) });
     }
     button.addEventListener("click", () => {
       if (label === "Search") {

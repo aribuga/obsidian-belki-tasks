@@ -574,8 +574,8 @@ export class TaskBoardView extends ItemView {
       button
         .createSpan({ cls: "belki-project-dot" })
         .setCssStyles({ backgroundColor: color.regular });
-      button.createEl("span", { cls: "belki-nav-label", text: cleanProject });
-      button.createEl("span", { cls: "belki-count", text: String(count) });
+      button.createSpan({ cls: "belki-nav-label", text: cleanProject });
+      button.createSpan({ cls: "belki-count", text: String(count) });
       this.enableProjectDrop(button, cleanProject);
       button.addEventListener("click", () => {
         this.mode = "projects";
@@ -601,8 +601,8 @@ export class TaskBoardView extends ItemView {
       });
       archiveButton.toggleClass("is-active", this.mode === "archived");
       createBelkiIcon(archiveButton, "archive", { className: "belki-nav-icon", size: 18 });
-      archiveButton.createEl("span", { cls: "belki-nav-label", text: "Archived" });
-      archiveButton.createEl("span", { cls: "belki-count", text: String(this.settings.archivedProjects.length) });
+      archiveButton.createSpan({ cls: "belki-nav-label", text: "Archived" });
+      archiveButton.createSpan({ cls: "belki-count", text: String(this.settings.archivedProjects.length) });
       archiveButton.addEventListener("click", () => {
         this.mode = "archived";
         this.selectedProject = null;
@@ -710,14 +710,14 @@ export class TaskBoardView extends ItemView {
           ? this.mode === "projects" && this.selectedProject === null
           : this.mode === mode;
     button.toggleClass("is-active", active);
-    const iconEl = button.createEl("span", { cls: "belki-nav-icon" });
+    const iconEl = button.createSpan({ cls: "belki-nav-icon" });
     if (iconKey) {
       createBelkiIcon(iconEl, iconKey, { size: 18 });
     }
-    button.createEl("span", { cls: "belki-nav-label", text: label });
+    button.createSpan({ cls: "belki-nav-label", text: label });
 
     if (count !== undefined) {
-      button.createEl("span", { cls: "belki-count", text: String(count) });
+      button.createSpan({ cls: "belki-count", text: String(count) });
     }
 
     button.addEventListener("click", () => {

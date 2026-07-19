@@ -66,6 +66,6 @@ export async function ensureIndexedPath<T>(
 
 function defaultWait(ms: number): Promise<void> {
   return new Promise((resolve) => {
-    globalThis.setTimeout(resolve, ms);
+    window.setTimeout(resolve, ms);
   });
 }

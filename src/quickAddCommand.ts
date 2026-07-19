@@ -140,7 +140,7 @@ function getHotkeyManager(source: unknown): HotkeyManagerLike | null {
     return null;
   }
 
-  return candidate as HotkeyManagerLike;
+  return candidate;
 }
 
 function readHotkeysFromCustomKeys(

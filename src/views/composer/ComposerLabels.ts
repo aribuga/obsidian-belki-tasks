@@ -113,7 +113,7 @@ export function renderComposerLabels(options: ComposerLabelsOptions): ComposerLa
       chip.setCssStyles({ backgroundColor: color.light, borderColor: color.light });
       chip.addEventListener("click", removeLabel);
 
-      const externalChip = labelChipsRow.createEl("span", {
+      const externalChip = labelChipsRow.createSpan({
         cls: "belki-label-chip",
         attr: { "aria-label": `Remove label ${displayLabel(label)}` }
       });
