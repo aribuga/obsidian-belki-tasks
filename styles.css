@@ -6259,7 +6259,12 @@ button.belki-search-result.is-selected {
   order: 1;
 }
 
-.is-hidden {
+.belki-root .is-hidden,
+.modal.belki-modal-detail .is-hidden,
+.belki-custom-repeat-modal .is-hidden,
+.belki-quick-add-modal .is-hidden,
+.belki-image-lightbox-modal .is-hidden,
+.belki-image-preview-modal .is-hidden {
   display: none;
 }
 
