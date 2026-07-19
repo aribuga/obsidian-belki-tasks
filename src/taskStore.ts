@@ -29,6 +29,11 @@ import {
   monthlyDataFilePath,
   taskAttachmentFolderPath
 } from "./storage/storagePaths";
+import {
+  ensureIndexedPath,
+  IndexedPathLookupResult,
+  VAULT_INDEX_RETRY_DELAYS_MS
+} from "./storage/vaultIndexRetry";
 import { createTaskDueDateUpdatePlan } from "./taskBulkActions";
 import { createDeleteTaskPlan } from "./taskDeletion";
 
@@ -813,9 +818,13 @@ export class TaskStore {
   }
 
   private async ensureTaskStructure(): Promise<void> {
-    await this.ensureFolder(this.dataDir);
-    await this.ensureFolder(this.attachmentsDir);
-    await this.ensureFile(
+    if (!(await this.ensureFolder(this.dataDir))) {
+      throw new Error(`belki task data folder is unavailable: ${this.dataDir}`);
+    }
+    if (!(await this.ensureFolder(this.attachmentsDir))) {
+      throw new Error(`belki attachment folder is unavailable: ${this.attachmentsDir}`);
+    }
+    const mainFile = await this.ensureFile(
       this.mainFilePath,
       [
         "# belki",
@@ -824,6 +833,9 @@ export class TaskStore {
         `Attachments are stored in \`${this.attachmentsDir}/<task-id>/\`.`
       ].join("\n")
     );
+    if (!mainFile) {
+      throw new Error(`belki main task data file is unavailable: ${this.mainFilePath}`);
+    }
   }
 
   private async clearDemoWritableData(): Promise<void> {
@@ -877,12 +889,11 @@ export class TaskStore {
 
   private async ensureFile(path: string, content: string): Promise<TFile | null> {
     const normalizedPath = normalizePath(path);
-    const existing = this.app.vault.getAbstractFileByPath(normalizedPath);
-    if (existing instanceof TFile) {
-      return existing;
+    const existing = this.lookupIndexedFile(normalizedPath);
+    if (existing.status === "ready") {
+      return existing.item;
     }
-    if (existing) {
-      this.warnWrongType(normalizedPath, "file", existing);
+    if (existing.status === "wrong-type") {
       return null;
     }
 
@@ -891,27 +902,20 @@ export class TaskStore {
       return null;
     }
 
-    try {
-      return await this.app.vault.create(normalizedPath, content);
-    } catch (error) {
-      if (!isAlreadyExistsError(error)) {
-        throw error;
+    return ensureIndexedPath({
+      path: normalizedPath,
+      expectedKind: "file",
+      lookup: () => this.lookupIndexedFile(normalizedPath),
+      create: () => this.app.vault.create(normalizedPath, content),
+      isAlreadyExistsError,
+      onRetryExhausted: (error) => {
+        console.warn("[belki] File remained unavailable after waiting for the vault index.", {
+          path: normalizedPath,
+          retryDelaysMs: VAULT_INDEX_RETRY_DELAYS_MS,
+          error
+        });
       }
-
-      const created = this.app.vault.getAbstractFileByPath(normalizedPath);
-      if (created instanceof TFile) {
-        return created;
-      }
-      if (created) {
-        this.warnWrongType(normalizedPath, "file", created);
-        return null;
-      }
-
-      console.warn("[belki] File already exists but is not available in the vault index yet.", error, {
-        path: normalizedPath
-      });
-      return null;
-    }
+    });
   }
 
   private async replaceFile(path: string, content: string): Promise<TFile> {
@@ -941,12 +945,11 @@ export class TaskStore {
 
   private async ensureFolder(path: string): Promise<boolean> {
     const normalizedPath = normalizePath(path);
-    const existing = this.app.vault.getAbstractFileByPath(normalizedPath);
-    if (existing instanceof TFolder) {
+    const existing = this.lookupIndexedFolder(normalizedPath);
+    if (existing.status === "ready") {
       return true;
     }
-    if (existing) {
-      this.warnWrongType(normalizedPath, "folder", existing);
+    if (existing.status === "wrong-type") {
       return false;
     }
 
@@ -955,28 +958,47 @@ export class TaskStore {
       return false;
     }
 
-    try {
-      await this.app.vault.createFolder(normalizedPath);
-      return true;
-    } catch (error) {
-      if (!isAlreadyExistsError(error)) {
-        throw error;
+    const folder = await ensureIndexedPath({
+      path: normalizedPath,
+      expectedKind: "folder",
+      lookup: () => this.lookupIndexedFolder(normalizedPath),
+      create: () => this.app.vault.createFolder(normalizedPath),
+      isAlreadyExistsError,
+      onRetryExhausted: (error) => {
+        console.warn("[belki] Folder remained unavailable after waiting for the vault index.", {
+          path: normalizedPath,
+          retryDelaysMs: VAULT_INDEX_RETRY_DELAYS_MS,
+          error
+        });
       }
+    });
+    return folder !== null;
+  }
 
-      const created = this.app.vault.getAbstractFileByPath(normalizedPath);
-      if (created instanceof TFolder) {
-        return true;
-      }
-      if (created) {
-        this.warnWrongType(normalizedPath, "folder", created);
-        return false;
-      }
-
-      console.warn("[belki] Folder already exists but is not available in the vault index yet.", error, {
-        path: normalizedPath
-      });
-      return true;
+  private lookupIndexedFile(path: string): IndexedPathLookupResult<TFile> {
+    const existing = this.app.vault.getAbstractFileByPath(path);
+    if (existing instanceof TFile) {
+      return { status: "ready", item: existing };
     }
+    if (existing) {
+      this.warnWrongType(path, "file", existing);
+      return { status: "wrong-type" };
+    }
+
+    return { status: "missing" };
+  }
+
+  private lookupIndexedFolder(path: string): IndexedPathLookupResult<TFolder> {
+    const existing = this.app.vault.getAbstractFileByPath(path);
+    if (existing instanceof TFolder) {
+      return { status: "ready", item: existing };
+    }
+    if (existing) {
+      this.warnWrongType(path, "folder", existing);
+      return { status: "wrong-type" };
+    }
+
+    return { status: "missing" };
   }
 
   private async createUniqueBinaryFile(

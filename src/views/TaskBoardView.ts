@@ -72,6 +72,11 @@ import { getQuickAddTaskHotkeyHint } from "../quickAddCommand";
 
 export const VIEW_TYPE_BELKI = "belki-task-board";
 
+interface StorageInitializationControls {
+  getError(): string | null;
+  retry(): void;
+}
+
 function markdownPreviewText(text: string): string {
   return text
     .replace(/```[a-zA-Z0-9_-]*\n?([\s\S]*?)```/g, "$1")
@@ -249,7 +254,8 @@ export class TaskBoardView extends ItemView {
     private store: TaskStore,
     private settings: BelkiSettings,
     private saveSettings: () => Promise<void>,
-    private calendarService: CalendarService
+    private calendarService: CalendarService,
+    private storageInitialization?: StorageInitializationControls
   ) {
     super(leaf);
   }
@@ -764,6 +770,12 @@ export class TaskBoardView extends ItemView {
       this.renderSortingControl(header);
     }
 
+    const storageError = this.storageInitialization?.getError();
+    if (storageError) {
+      this.renderStorageInitializationError(main, storageError);
+      return;
+    }
+
     const sections = main.createDiv({ cls: "belki-sections" });
 
     this.renderTaskSections(sections, tasks);
@@ -787,6 +799,23 @@ export class TaskBoardView extends ItemView {
         text: `No tasks yet. Add one and belki will write it to ${this.store.dataDir}/YYYY-MM.md.`
       });
     }
+  }
+
+  private renderStorageInitializationError(parent: HTMLElement, message: string): void {
+    const error = parent.createDiv({ cls: "belki-empty belki-storage-error" });
+    error.createDiv({
+      cls: "belki-storage-error-title",
+      text: "Task storage could not be initialized."
+    });
+    error.createDiv({ cls: "belki-storage-error-message", text: message });
+    const retry = error.createEl("button", {
+      cls: "belki-storage-error-retry",
+      text: "Retry",
+      attr: { type: "button" }
+    });
+    retry.addEventListener("click", () => {
+      this.storageInitialization?.retry();
+    });
   }
 
   openContextualTaskComposer(contextOverride: AddTaskComposerContextOverride = {}): void {

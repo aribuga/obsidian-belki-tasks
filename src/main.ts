@@ -23,6 +23,7 @@ import { QuickAddModal } from "./views/QuickAddModal";
 import { DailyNoteCompletedBlock } from "./views/DailyNoteCompletedBlock";
 import { CalendarService } from "./calendar/CalendarService";
 import { IcalCalendarProvider } from "./calendar/IcalCalendarProvider";
+import { InitializationGate } from "./startup/initializationGate";
 import {
   QUICK_ADD_TASK_HOTKEYS,
   QUICK_ADD_TASK_COMMAND_ID,
@@ -38,6 +39,11 @@ export default class BelkiPlugin extends Plugin {
   store: TaskStore;
   calendarService: CalendarService;
   private reloadDebounceTimer: number | null = null;
+  private storeInitializationGate = new InitializationGate();
+  private storeInitializationError: string | null = null;
+  private layoutReady = false;
+  private storeInitialized = false;
+  private unloaded = false;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -58,7 +64,13 @@ export default class BelkiPlugin extends Plugin {
           this.store,
           this.settings,
           () => this.saveSettings(),
-          this.calendarService
+          this.calendarService,
+          {
+            getError: () => this.storeInitializationError,
+            retry: () => {
+              void this.initializeStore().catch(() => {});
+            }
+          }
         )
     );
 
@@ -187,10 +199,22 @@ export default class BelkiPlugin extends Plugin {
       this.renderCompletedTasksCodeBlock(source, el, ctx);
     });
 
-    void this.initializeStore();
+    this.register(() => {
+      this.unloaded = true;
+    });
+
+    this.app.workspace.onLayoutReady(() => {
+      if (this.unloaded) {
+        return;
+      }
+
+      this.layoutReady = true;
+      void this.initializeStore().catch(() => {});
+    });
   }
 
   onunload(): void {
+    this.unloaded = true;
     if (this.reloadDebounceTimer !== null) {
       window.clearTimeout(this.reloadDebounceTimer);
     }
@@ -249,6 +273,14 @@ export default class BelkiPlugin extends Plugin {
 
   async reloadTasks(): Promise<void> {
     try {
+      if (!this.layoutReady) {
+        return;
+      }
+      if (!this.storeInitialized) {
+        await this.initializeStore();
+        return;
+      }
+
       await this.store.reloadFromDisk();
     } catch (error) {
       new Notice("belki could not reload task data.");
@@ -532,16 +564,25 @@ export default class BelkiPlugin extends Plugin {
   }
 
   private async initializeStore(): Promise<void> {
-    try {
-      await this.store.load();
-      void this.calendarService.refreshStartup();
-    } catch (error) {
-      new Notice("belki could not initialize task storage. Open the developer console for details.");
-      console.error("[belki] Failed to initialize task storage.", error, {
-        dataFolderPath: this.settings.dataFolderPath,
-        tasksFilePath: this.settings.tasksFilePath
-      });
-    }
+    return this.storeInitializationGate.run(async () => {
+      this.storeInitializationError = null;
+      this.refreshBelkiViews();
+
+      try {
+        await this.store.load();
+        this.storeInitialized = true;
+        void this.calendarService.refreshStartup();
+      } catch (error) {
+        this.storeInitializationError = "belki could not initialize task storage.";
+        new Notice("belki could not initialize task storage. Open the developer console for details.");
+        console.error("[belki] Failed to initialize task storage.", error, {
+          dataFolderPath: this.settings.dataFolderPath,
+          tasksFilePath: this.settings.tasksFilePath
+        });
+        this.refreshBelkiViews();
+        throw error;
+      }
+    });
   }
 
   private async savePluginData(): Promise<void> {

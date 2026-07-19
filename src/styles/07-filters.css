@@ -9,6 +9,20 @@
   padding: 12px 0;
 }
 
+.belki-storage-error {
+  display: grid;
+  gap: 8px;
+}
+
+.belki-storage-error-title {
+  color: var(--belki-text);
+  font-weight: 700;
+}
+
+.belki-storage-error-retry {
+  justify-self: start;
+}
+
 .belki-filter-section {
   margin-bottom: 30px;
 }
