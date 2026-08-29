@@ -4,6 +4,14 @@ All notable changes to belki are documented here.
 
 ---
 
+## 0.5.2 — 2026-08-29
+
+### Fixes
+
+- Task description checkboxes are now interactive: clicking a `- [ ]` / `- [x]` item in a rendered task description toggles it in place instead of opening the description editor, and the change is written back to the task's Markdown. (#99)
+
+---
+
 ## 0.5.0 — 2026-07-16
 
 belki 0.5.0 is a cumulative release since 0.4.0. It adds read-only calendar visibility, Daily Notes integration, faster desktop capture, safer task actions, bulk overdue management, and a quieter responsive navigation experience while keeping task data in local Markdown files.

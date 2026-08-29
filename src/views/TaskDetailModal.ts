@@ -61,6 +61,7 @@ export class TaskDetailModal extends Modal {
   private hideDescriptionToolbar: (() => void) | null = null;
   private descriptionToolbarVisible = false;
   private markdownRenderComponent: Component | null = null;
+  private descCheckboxObserver: MutationObserver | null = null;
   private handleEscape = (event: KeyboardEvent): void => {
     if (event.key !== "Escape") {
       return;
@@ -256,6 +257,8 @@ export class TaskDetailModal extends Modal {
         renderTarget.remove();
         return;
       }
+
+      this.enableRenderedCheckboxes(renderTarget);
     };
     void refreshRendered();
 
@@ -309,8 +312,37 @@ export class TaskDetailModal extends Modal {
         openRenderedInternalLink(e, internalLink, false);
       }
     });
+    // Capture phase so this runs before the bubble-phase editor-open handler.
+    descRendered.addEventListener(
+      "click",
+      (e) => {
+        const target = e.target as HTMLElement;
+        if (
+          target.tagName !== "INPUT" ||
+          (target as HTMLInputElement).type !== "checkbox" ||
+          !target.closest("li.task-list-item")
+        ) {
+          return;
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+        const item = target.closest<HTMLElement>("li.task-list-item");
+        const items = Array.from(descRendered.querySelectorAll("li.task-list-item"));
+        const index = item ? items.indexOf(item) : -1;
+        if (index >= 0) {
+          this.toggleDescriptionCheckbox(index, descriptionInput, refreshRendered);
+        }
+      },
+      true
+    );
     descRendered.addEventListener("click", (e) => {
       const target = e.target as HTMLElement;
+
+      if (target.tagName === "INPUT" && (target as HTMLInputElement).type === "checkbox") {
+        return;
+      }
+
       const internalLink = target.closest<HTMLAnchorElement>("a.internal-link");
       if (internalLink) {
         openRenderedInternalLink(e, internalLink, e.metaKey || e.ctrlKey);
@@ -428,9 +460,66 @@ export class TaskDetailModal extends Modal {
     this.closeProjectMenu = null;
     this.hideDescriptionToolbar = null;
     this.descriptionToolbarVisible = false;
+    this.descCheckboxObserver?.disconnect();
+    this.descCheckboxObserver = null;
     this.markdownRenderComponent?.unload();
     this.markdownRenderComponent = null;
     this.modalEl.removeEventListener("keydown", this.handleEscape, true);
+  }
+
+  private enableRenderedCheckboxes(renderTarget: HTMLElement): void {
+    const strip = (): void => {
+      renderTarget
+        .querySelectorAll<HTMLInputElement>("li.task-list-item input[type=checkbox][disabled]")
+        .forEach((input) => input.removeAttribute("disabled"));
+    };
+    strip();
+
+    // Obsidian's markdown post-processing may re-apply `disabled` (or replace the
+    // checkbox nodes) after render, which would route clicks to the <li> and
+    // swallow the toggle. Keep them enabled for as long as the modal lives.
+    this.descCheckboxObserver?.disconnect();
+    const observer = new MutationObserver(strip);
+    observer.observe(renderTarget, {
+      attributes: true,
+      attributeFilter: ["disabled"],
+      childList: true,
+      subtree: true
+    });
+    this.descCheckboxObserver = observer;
+  }
+
+  // Toggles the Nth task-list checkbox in the description source. `index` is the
+  // position among rendered `li.task-list-item` elements, which we map to the
+  // Nth `- [ ]` / `- [x]` marker in the raw markdown.
+  private toggleDescriptionCheckbox(
+    index: number,
+    descriptionInput: HTMLTextAreaElement,
+    refreshRendered: () => Promise<void>
+  ): void {
+    if (!Number.isInteger(index) || index < 0) {
+      return;
+    }
+
+    const description = this.draft.description || "";
+    const marker = /^([ \t]*(?:[-*+]|\d+[.)])[ \t]+\[)([ xX])(\])/gm;
+    let occurrence = 0;
+    let toggled = false;
+    const next = description.replace(marker, (full, prefix, state, suffix) => {
+      if (occurrence++ !== index) {
+        return full;
+      }
+      toggled = true;
+      return `${prefix}${state === " " ? "x" : " "}${suffix}`;
+    });
+
+    if (!toggled) {
+      return;
+    }
+
+    this.draft.description = next;
+    descriptionInput.value = next;
+    void refreshRendered();
   }
 
   private attachDescriptionFormattingToolbar(textarea: HTMLTextAreaElement): () => void {

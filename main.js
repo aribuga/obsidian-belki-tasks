@@ -6679,6 +6679,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
     this.hideDescriptionToolbar = null;
     this.descriptionToolbarVisible = false;
     this.markdownRenderComponent = null;
+    this.descCheckboxObserver = null;
     this.handleEscape = (event) => {
       var _a;
       if (event.key !== "Escape") {
@@ -6850,6 +6851,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
         renderTarget.remove();
         return;
       }
+      this.enableRenderedCheckboxes(renderTarget);
     };
     void refreshRendered();
     const descriptionInput = main.createEl("textarea", {
@@ -6892,8 +6894,29 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
         openRenderedInternalLink(e, internalLink, false);
       }
     });
+    descRendered.addEventListener(
+      "click",
+      (e) => {
+        const target = e.target;
+        if (target.tagName !== "INPUT" || target.type !== "checkbox" || !target.closest("li.task-list-item")) {
+          return;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        const item = target.closest("li.task-list-item");
+        const items = Array.from(descRendered.querySelectorAll("li.task-list-item"));
+        const index = item ? items.indexOf(item) : -1;
+        if (index >= 0) {
+          this.toggleDescriptionCheckbox(index, descriptionInput, refreshRendered);
+        }
+      },
+      true
+    );
     descRendered.addEventListener("click", (e) => {
       const target = e.target;
+      if (target.tagName === "INPUT" && target.type === "checkbox") {
+        return;
+      }
       const internalLink = target.closest("a.internal-link");
       if (internalLink) {
         openRenderedInternalLink(e, internalLink, e.metaKey || e.ctrlKey);
@@ -6987,7 +7010,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
     }
   }
   onClose() {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c, _d, _e, _f;
     (_a = this.closeQuickAddDropdown) == null ? void 0 : _a.call(this);
     (_b = this.closeWikilinkDropdown) == null ? void 0 : _b.call(this);
     (_c = this.closeDescriptionToolbar) == null ? void 0 : _c.call(this);
@@ -6996,9 +7019,52 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
     this.closeProjectMenu = null;
     this.hideDescriptionToolbar = null;
     this.descriptionToolbarVisible = false;
-    (_e = this.markdownRenderComponent) == null ? void 0 : _e.unload();
+    (_e = this.descCheckboxObserver) == null ? void 0 : _e.disconnect();
+    this.descCheckboxObserver = null;
+    (_f = this.markdownRenderComponent) == null ? void 0 : _f.unload();
     this.markdownRenderComponent = null;
     this.modalEl.removeEventListener("keydown", this.handleEscape, true);
+  }
+  enableRenderedCheckboxes(renderTarget) {
+    var _a;
+    const strip = () => {
+      renderTarget.querySelectorAll("li.task-list-item input[type=checkbox][disabled]").forEach((input) => input.removeAttribute("disabled"));
+    };
+    strip();
+    (_a = this.descCheckboxObserver) == null ? void 0 : _a.disconnect();
+    const observer = new MutationObserver(strip);
+    observer.observe(renderTarget, {
+      attributes: true,
+      attributeFilter: ["disabled"],
+      childList: true,
+      subtree: true
+    });
+    this.descCheckboxObserver = observer;
+  }
+  // Toggles the Nth task-list checkbox in the description source. `index` is the
+  // position among rendered `li.task-list-item` elements, which we map to the
+  // Nth `- [ ]` / `- [x]` marker in the raw markdown.
+  toggleDescriptionCheckbox(index, descriptionInput, refreshRendered) {
+    if (!Number.isInteger(index) || index < 0) {
+      return;
+    }
+    const description = this.draft.description || "";
+    const marker = /^([ \t]*(?:[-*+]|\d+[.)])[ \t]+\[)([ xX])(\])/gm;
+    let occurrence = 0;
+    let toggled = false;
+    const next = description.replace(marker, (full, prefix, state, suffix) => {
+      if (occurrence++ !== index) {
+        return full;
+      }
+      toggled = true;
+      return `${prefix}${state === " " ? "x" : " "}${suffix}`;
+    });
+    if (!toggled) {
+      return;
+    }
+    this.draft.description = next;
+    descriptionInput.value = next;
+    void refreshRendered();
   }
   attachDescriptionFormattingToolbar(textarea) {
     const doc = textarea.ownerDocument;
@@ -12395,7 +12461,7 @@ function backoffDelayForFailureCount(count) {
 // src/calendar/IcalCalendarProvider.ts
 var import_obsidian21 = require("obsidian");
 
-// node_modules/.pnpm/ical.js@2.2.1/node_modules/ical.js/dist/ical.js
+// node_modules/ical.js/dist/ical.js
 var ical_exports = {};
 __export(ical_exports, {
   default: () => ICALmodule
