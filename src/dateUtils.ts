@@ -1,3 +1,5 @@
+import { t } from "./i18n";
+
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export function todayIso(): string {
@@ -69,9 +71,9 @@ export function nextWeekdayIso(targetDay: number): string {
 }
 
 export function formatDueDateChip(value: string | undefined): string {
-  if (!isIsoDate(value)) return "Date";
-  if (value === todayIso()) return "Today";
-  if (value === addDaysIso(1)) return "Tomorrow";
+  if (!isIsoDate(value)) return t("date.date");
+  if (value === todayIso()) return t("date.today");
+  if (value === addDaysIso(1)) return t("date.tomorrow");
   const [year, month, day] = value.split("-").map(Number);
   const date = new Date(year, month - 1, day);
   const thisYear = new Date().getFullYear();

@@ -2,6 +2,7 @@ import type { App } from "obsidian";
 import { Modal } from "obsidian";
 import type { BelkiTask } from "../../types";
 import { getDirectSubTaskCount, duplicateTaskModalDescription } from "./duplicateTaskText";
+import { t } from "../../i18n";
 
 interface DuplicateTaskModalOptions {
   task: BelkiTask;
@@ -22,7 +23,7 @@ export class DuplicateTaskModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("belki-task-duplicate-modal");
-    contentEl.createEl("h2", { text: "Duplicate task?" });
+    contentEl.createEl("h2", { text: t("modal.duplicateTask") });
 
     const subTaskCount = getDirectSubTaskCount(this.options.task, this.options.tasks);
     contentEl.createEl("p", {
@@ -33,17 +34,17 @@ export class DuplicateTaskModal extends Modal {
     const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
     const cancelButton = actions.createEl("button", {
       cls: "belki-button",
-      text: "Cancel",
+      text: t("common.cancel"),
       attr: { type: "button" }
     });
     const taskOnlyButton = actions.createEl("button", {
       cls: "belki-button",
-      text: "Task only",
+      text: t("task.taskOnly"),
       attr: { type: "button" }
     });
     const includeSubtasksButton = actions.createEl("button", {
       cls: "belki-button belki-button-primary",
-      text: "Include sub-tasks",
+      text: t("task.includeSubtasks"),
       attr: { type: "button" }
     });
     const buttons = [cancelButton, taskOnlyButton, includeSubtasksButton];

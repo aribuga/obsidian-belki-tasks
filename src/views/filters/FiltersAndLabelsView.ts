@@ -3,6 +3,7 @@ import { displayLabel } from "../../labels";
 import { BelkiTask } from "../../types";
 import { createBelkiIcon } from "../../ui/components/BelkiIcon";
 import { renderLabelActionsMenu } from "../labels/labelActions";
+import { t } from "../../i18n";
 
 export interface FilterDefinition {
   id: string;
@@ -63,7 +64,7 @@ export function renderFiltersAndLabelsView(options: RenderFiltersAndLabelsViewOp
   }
 
   const filtersSection = options.parent.createDiv({ cls: "belki-filter-section" });
-  filtersSection.createEl("h2", { text: "My Filters" });
+  filtersSection.createEl("h2", { text: t("section.myFilters") });
   const filterList = filtersSection.createDiv({ cls: "belki-filter-list" });
   for (const filter of options.filterDefinitions) {
     renderFilterRow(filterList, filter.name, filter.count, filter.icon, () => {
@@ -73,10 +74,10 @@ export function renderFiltersAndLabelsView(options: RenderFiltersAndLabelsViewOp
 
   const labelsSection = options.parent.createDiv({ cls: "belki-filter-section" });
   const labelsHeader = labelsSection.createDiv({ cls: "belki-labels-header" });
-  labelsHeader.createEl("h2", { text: "Labels" });
+  labelsHeader.createEl("h2", { text: t("section.labels") });
   const labelAddButton = labelsHeader.createEl("button", {
     cls: "belki-label-add",
-    attr: { type: "button", "aria-label": "Create label" }
+    attr: { type: "button", "aria-label": t("filters.createLabel") }
   });
   createBelkiIcon(labelAddButton, "add");
   labelAddButton.addEventListener("click", () => {
@@ -85,7 +86,7 @@ export function renderFiltersAndLabelsView(options: RenderFiltersAndLabelsViewOp
 
   const labelList = labelsSection.createDiv({ cls: "belki-filter-list" });
   if (options.labels.length === 0) {
-    labelList.createDiv({ cls: "belki-empty belki-empty-small", text: "No labels yet." });
+    labelList.createDiv({ cls: "belki-empty belki-empty-small", text: t("settings.noLabelsYet") });
     return;
   }
 
@@ -97,7 +98,7 @@ export function renderFiltersAndLabelsView(options: RenderFiltersAndLabelsViewOp
 
 function renderBackToFilters(parent: HTMLElement, onClick: () => void): void {
   parent
-    .createEl("button", { cls: "belki-back-button", text: "Back to Filters & Labels" })
+    .createEl("button", { cls: "belki-back-button", text: t("filters.backToFilters") })
     .addEventListener("click", onClick);
 }
 

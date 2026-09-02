@@ -1,4 +1,5 @@
 import { App, Modal } from "obsidian";
+import { t } from "../i18n";
 
 export class QuickAddModal extends Modal {
   private isSubmitting = false;
@@ -15,17 +16,17 @@ export class QuickAddModal extends Modal {
     contentEl.empty();
     contentEl.addClass("belki-quick-add-modal");
 
-    contentEl.createEl("h2", { text: "Quick add task" });
+    contentEl.createEl("h2", { text: t("modal.quickAddTask") });
     contentEl.createEl("p", {
       cls: "belki-quick-add-desc",
-      text: "Capture a task now. It will appear in Inbox."
+      text: t("modal.quickAddTaskDesc")
     });
 
     const input = contentEl.createEl("input", {
       cls: "belki-quick-add-input",
       attr: {
         type: "text",
-        placeholder: "Task title"
+        placeholder: t("task.title")
       }
     });
 
@@ -33,14 +34,14 @@ export class QuickAddModal extends Modal {
     actions
       .createEl("button", {
         cls: "belki-button",
-        text: "Cancel",
+        text: t("common.cancel"),
         attr: { type: "button" }
       })
       .addEventListener("click", () => this.close());
 
     const addButton = actions.createEl("button", {
       cls: "belki-button belki-button-primary",
-      text: "Add task",
+      text: t("common.addTask"),
       attr: { type: "button" }
     });
 

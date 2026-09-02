@@ -14,6 +14,7 @@ import {
   OverdueRange,
   SORT_MODES
 } from "./types";
+import { t } from "./i18n";
 
 export const DEFAULT_DATA_FOLDER_PATH = "_belki_files";
 
@@ -86,14 +87,14 @@ export const DEFAULT_SETTINGS: BelkiSettings = {
 };
 
 const OVERDUE_RANGE_LABELS: Record<OverdueRange, string> = {
-  yesterday: "Yesterday",
-  last7: "Last 7 days",
-  last30: "Last 30 days",
-  older: "Older"
+  yesterday: t("date.yesterday"),
+  last7: t("date.last7Days"),
+  last30: t("date.last30Days"),
+  older: t("date.older")
 };
 
 const FONT_OPTION_LABELS: Record<BelkiFontOption, string> = {
-  system: "System Font",
+  system: t("font.systemFont"),
   ibmPlexSans: "IBM Plex Sans",
   ibmPlexMono: "IBM Plex Mono",
   spaceGrotesk: "Space Grotesk",

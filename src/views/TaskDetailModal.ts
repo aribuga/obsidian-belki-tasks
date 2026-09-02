@@ -24,6 +24,7 @@ import { formatDescriptionMarkdown } from "./task-detail/descriptionFormatting";
 import { renderSubtaskSection } from "./task-detail/SubtaskSection";
 import { DeleteTaskConfirmationModal } from "./tasks/DeleteTaskConfirmationModal";
 import type { DescriptionFormatAction } from "./task-detail/descriptionFormatting";
+import { t } from "../i18n";
 
 interface TaskDetailModalOptions {
   task: BelkiTask;
@@ -40,15 +41,15 @@ const DESCRIPTION_FORMAT_ACTIONS: Array<{
   label: string;
   title: string;
 }> = [
-  { id: "bold", label: "B", title: "Bold" },
-  { id: "italic", label: "I", title: "Italic" },
-  { id: "strike", label: "S", title: "Strikethrough" },
-  { id: "quote", label: "“", title: "Quote" },
-  { id: "inline-code", label: "`", title: "Inline code" },
-  { id: "code-block", label: "{ }", title: "Code block" },
-  { id: "bullet-list", label: "•", title: "Bullet list" },
-  { id: "numbered-list", label: "1.", title: "Numbered list" },
-  { id: "link", label: "↗", title: "Link" }
+  { id: "bold", label: "B", title: t("description.bold") },
+  { id: "italic", label: "I", title: t("description.italic") },
+  { id: "strike", label: "S", title: t("description.strikethrough") },
+  { id: "quote", label: "\u201C", title: t("description.quote") },
+  { id: "inline-code", label: "`", title: t("description.inlineCode") },
+  { id: "code-block", label: "{ }", title: t("description.codeBlock") },
+  { id: "bullet-list", label: "\u2022", title: t("description.bulletList") },
+  { id: "numbered-list", label: "1.", title: t("description.numberedList") },
+  { id: "link", label: "\u2197", title: t("description.link") }
 ];
 
 export class TaskDetailModal extends Modal {
@@ -126,13 +127,13 @@ export class TaskDetailModal extends Modal {
     const mobileHeader = contentEl.createDiv({ cls: "belki-detail-mobile-header" });
     const mobileBackButton = mobileHeader.createEl("button", {
       cls: "belki-detail-mobile-back",
-      attr: { type: "button", "aria-label": "Back to task list" }
+      attr: { type: "button", "aria-label": t("common.back") }
     });
     createBelkiIcon(mobileBackButton, "back");
     mobileBackButton.addEventListener("click", () => this.close());
     mobileHeader.createDiv({
       cls: "belki-detail-mobile-title",
-      text: isSubTask ? "Sub-task" : "Task details"
+      text: isSubTask ? t("task.subtaskDetails") : t("task.taskDetails")
     });
 
     const shell = contentEl.createDiv({ cls: "belki-detail-shell" });
@@ -142,7 +143,7 @@ export class TaskDetailModal extends Modal {
 
     const closeButton = shell.createEl("button", {
       cls: "belki-detail-close",
-      attr: { type: "button", "aria-label": "Close task details" }
+      attr: { type: "button", "aria-label": t("common.close") }
     });
     createBelkiIcon(closeButton, "close");
     closeButton.addEventListener("click", () => this.close());
@@ -150,7 +151,7 @@ export class TaskDetailModal extends Modal {
     if (isSubTask && parentTask) {
       const contextBar = main.createDiv({ cls: "belki-subtask-context-bar" });
       createBelkiIcon(contextBar, "collapse", { className: "belki-subtask-context-arrow" });
-      contextBar.createSpan({ cls: "belki-subtask-context-label", text: "Sub-task of " });
+      contextBar.createSpan({ cls: "belki-subtask-context-label", text: t("task.subtaskOf") });
       const parentLink = contextBar.createEl("button", {
         cls: "belki-subtask-context-parent",
         text: `"${parentTask.title}"`,
@@ -264,7 +265,7 @@ export class TaskDetailModal extends Modal {
 
     const descriptionInput = main.createEl("textarea", {
       cls: "belki-detail-description",
-      attr: { placeholder: "Description" }
+      attr: { placeholder: t("task.description") }
     });
     descriptionInput.value = this.draft.description || "";
     descriptionInput.addClass("is-hidden");
@@ -397,7 +398,7 @@ export class TaskDetailModal extends Modal {
     footer
       .createEl("button", {
         cls: "belki-detail-delete",
-        text: "Delete task",
+        text: t("task.deleteTask"),
         attr: { type: "button" }
       })
       .addEventListener("click", () => {
@@ -419,7 +420,7 @@ export class TaskDetailModal extends Modal {
 
     if (this.draft.repeat && !this.draft.completed) {
       createBelkiButton(footer, {
-          text: "Complete permanently",
+          text: t("task.completePermanently"),
           variant: "danger",
           className: "belki-detail-complete-perm"
         })
@@ -439,9 +440,9 @@ export class TaskDetailModal extends Modal {
 
     const footerActions = createBelkiActionRow(footer, { className: "belki-detail-actions" });
 
-    createBelkiButton(footerActions, { text: "Cancel" })
+    createBelkiButton(footerActions, { text: t("common.cancel") })
       .addEventListener("click", () => this.close());
-    createBelkiButton(footerActions, { text: "Save", variant: "primary" })
+    createBelkiButton(footerActions, { text: t("common.save"), variant: "primary" })
       .addEventListener("click", () => {
         void this.save();
       });
@@ -531,7 +532,7 @@ export class TaskDetailModal extends Modal {
 
     const toolbar = doc.body.createDiv({
       cls: "belki-description-toolbar is-hidden",
-      attr: { role: "toolbar", "aria-label": "Description formatting" }
+      attr: { role: "toolbar", "aria-label": t("description.formatting") }
     });
 
     const hide = (): void => {
@@ -675,10 +676,10 @@ export class TaskDetailModal extends Modal {
       ? this.options.store.getTasks().find((t) => t.id === this.draft.parentId)
       : undefined;
 
-    parent.createEl("h3", { text: isSubTask ? "Sub-task details" : "Task details" });
+    parent.createEl("h3", { text: isSubTask ? t("task.subtaskDetails") : t("task.taskDetails") });
 
     if (isSubTask && parentTask) {
-      const field = this.createField(parent, "Parent");
+      const field = this.createField(parent, t("task.parent"));
       const parentBtn = field.createEl("button", {
         cls: "belki-subtask-parent-field",
         text: parentTask.title,
@@ -708,7 +709,7 @@ export class TaskDetailModal extends Modal {
         this.draft.due = due;
       },
       onClearDueAndRepeat: () => {
-        if (this.draft.repeat) new Notice("Date and repeat rule removed.");
+        if (this.draft.repeat) new Notice(t("notice.dateAndRepeatRuleRemoved"));
         this.draft.due = undefined;
         this.draft.repeat = undefined;
       },
@@ -729,7 +730,7 @@ export class TaskDetailModal extends Modal {
   private renderAttachments(parent: HTMLElement): void {
     const section = parent.createDiv({ cls: "belki-attachments-section" });
     const header = section.createDiv({ cls: "belki-attachments-header" });
-    header.createEl("h3", { text: "Attachments" });
+    header.createEl("h3", { text: t("task.attachments") });
 
     const list = section.createDiv({ cls: "belki-attachments-list" });
     const renderList = () => {
@@ -742,7 +743,7 @@ export class TaskDetailModal extends Modal {
       if (this.draft.attachments.length === 0) {
         list.createDiv({
           cls: "belki-attachments-empty",
-          text: "No attachments yet."
+          text: t("task.attachments") + " - " + t("common.addTask")
         });
       }
 
@@ -844,7 +845,7 @@ export class TaskDetailModal extends Modal {
       attr: { type: "button" }
     });
     createBelkiIcon(addAttachmentButton, "add");
-    addAttachmentButton.createSpan({ text: "Add attachment" });
+    addAttachmentButton.createSpan({ text: t("task.attachments") });
     addAttachmentButton.addEventListener("click", () => {
       fileInput.click();
     });
@@ -960,7 +961,7 @@ export class TaskDetailModal extends Modal {
   }
 
   private renderProject(parent: HTMLElement): void {
-    const field = this.createField(parent, "Project");
+    const field = this.createField(parent, t("task.project"));
     field.addClass("belki-detail-project-field");
     const projectPicker = field.createEl("button", {
       cls: "belki-project-picker belki-detail-project-picker",
@@ -983,17 +984,17 @@ export class TaskDetailModal extends Modal {
       cls: "belki-detail-project-create-input",
       attr: {
         type: "text",
-        placeholder: "Project name"
+        placeholder: t("settings.projectName")
       }
     });
     const createButton = createRow.createEl("button", {
       cls: "belki-detail-project-create-button",
-      text: "Create",
+      text: t("common.create"),
       attr: { type: "button" }
     });
     const cancelCreateButton = createRow.createEl("button", {
       cls: "belki-detail-project-cancel-button",
-      text: "Cancel",
+      text: t("common.cancel"),
       attr: { type: "button" }
     });
     const createValue = "__belki_create_project__";
@@ -1010,9 +1011,9 @@ export class TaskDetailModal extends Modal {
       const currentProject = normalizeTaskProject(this.draft.project) || "";
       const projects = getProjects();
       projectMenu.empty();
-      renderProjectOption("No project", "", undefined, currentProject === "");
+      renderProjectOption(t("task.noProject"), "", undefined, currentProject === "");
       if (projects.length > 0) {
-        projectMenu.createDiv({ cls: "belki-project-section-label", text: "Projects" });
+        projectMenu.createDiv({ cls: "belki-project-section-label", text: t("composer.projects") });
       }
       for (const project of projects) {
         renderProjectOption(
@@ -1023,7 +1024,7 @@ export class TaskDetailModal extends Modal {
         );
       }
 
-      renderProjectOption("Create project...", createValue, undefined, false);
+      renderProjectOption(t("composer.createProject"), createValue, undefined, false);
     };
 
     const handleOutsidePointer = (event: PointerEvent) => {
@@ -1103,7 +1104,7 @@ export class TaskDetailModal extends Modal {
 
     const updateProjectStyle = () => {
       const project = normalizeTaskProject(this.draft.project);
-      projectLabel.setText(project || "No project");
+      projectLabel.setText(project || t("task.noProject"));
       if (!project) {
         projectDot.setCssStyles({ backgroundColor: "var(--belki-faint)" });
         projectPicker.setCssStyles({
@@ -1169,13 +1170,13 @@ export class TaskDetailModal extends Modal {
   }
 
   private renderPriority(parent: HTMLElement): void {
-    const field = this.createField(parent, "Priority");
+    const field = this.createField(parent, t("task.priority"));
     const priorityWrap = field.createDiv({ cls: "belki-priority-select-wrap belki-detail-priority-wrap" });
     const indicator = priorityWrap.createSpan({ cls: "belki-priority-indicator" });
     const display = priorityWrap.createSpan({ cls: "belki-priority-display" });
     const select = priorityWrap.createEl("select", {
       cls: "belki-detail-input belki-priority-select",
-      attr: { "aria-label": "Priority" }
+      attr: { "aria-label": t("task.priority") }
     });
     for (const priority of PRIORITIES.filter((priority) => priority !== "none")) {
       select.createEl("option", { text: getPriorityDropdownLabel(priority), value: priority });
@@ -1200,7 +1201,7 @@ export class TaskDetailModal extends Modal {
   }
 
   private renderLabels(parent: HTMLElement): void {
-    const field = this.createField(parent, "Labels");
+    const field = this.createField(parent, t("task.labels"));
     const chips = field.createDiv({ cls: "belki-detail-labels" });
     const input = field.createEl("input", {
       cls: "belki-detail-input",
@@ -1261,7 +1262,7 @@ export class TaskDetailModal extends Modal {
       suggestions.empty();
       const query = normalizeLabelName(input.value);
       if (!query) {
-        suggestions.createDiv({ cls: "belki-label-empty", text: "Type a label name" });
+        suggestions.createDiv({ cls: "belki-label-empty", text: t("filters.typeLabelName") });
         return;
       }
 
@@ -1293,7 +1294,7 @@ export class TaskDetailModal extends Modal {
       if (!labels.includes(query) && !this.draft.labels.includes(query)) {
         const create = suggestions.createEl("button", {
           cls: "belki-label-suggestion",
-          text: `Create label: ${displayLabel(query)}`,
+          text: t("filters.createLabelAction", { label: displayLabel(query) }),
           attr: { type: "button" }
         });
         bindSuggestion(create, query);

@@ -1,5 +1,6 @@
 import { RepeatEndsType, RepeatFrequency, RepeatMode, RepeatRule } from "./types";
 import { isIsoDate, toIsoDate } from "./dateUtils";
+import { t } from "./i18n";
 
 const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const WEEKDAY_SHORT_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -137,29 +138,29 @@ export function getRepeatLabel(rule: RepeatRule): string {
   const i = normalized.interval ?? 1;
   switch (normalized.frequency) {
     case "daily":
-      return i === 1 ? "Every day" : `Every ${i} days`;
+      return i === 1 ? t("repeat.everyDay") : t("repeat.everyWeeks", { interval: i });
     case "weekdays":
-      return "Every weekday";
+      return t("repeat.everyWeekday");
     case "weekly": {
       const weekdays = getRepeatWeekdays(normalized);
       if (weekdays.length === 1) {
         const day = WEEKDAY_NAMES[weekdays[0]];
-        return i === 1 ? `Every week on ${day}` : `Every ${i} weeks on ${day}`;
+        return i === 1 ? `${t("repeat.everyWeek")} ${day}` : `${t("repeat.everyWeeks", { interval: i })} ${day}`;
       }
       if (weekdays.length > 1) {
         const days = weekdays.map((weekday) => WEEKDAY_SHORT_NAMES[weekday]).join(", ");
-        return i === 1 ? `Every week on ${days}` : `Every ${i} weeks on ${days}`;
+        return i === 1 ? `${t("repeat.everyWeek")} ${days}` : `${t("repeat.everyWeeks", { interval: i })} ${days}`;
       }
-      return i === 1 ? "Every week" : `Every ${i} weeks`;
+      return i === 1 ? t("repeat.everyWeek") : t("repeat.everyWeeks", { interval: i });
     }
     case "monthly": {
       const ord = ordinal(normalized.dayOfMonth ?? 1);
-      return i === 1 ? `Monthly on the ${ord}` : `Every ${i} months on the ${ord}`;
+      return i === 1 ? `${t("repeat.monthlyOnThe")} ${ord}` : `${t("repeat.everyMonthsOn", { interval: i })} ${ord}`;
     }
     case "yearly": {
       const mo = MONTH_NAMES[normalized.month ?? 1];
       const d = normalized.dayOfMonth ?? 1;
-      return i === 1 ? `Yearly on ${mo} ${d}` : `Every ${i} years on ${mo} ${d}`;
+      return i === 1 ? `${t("repeat.yearlyOn")} ${mo} ${d}` : `${t("repeat.everyYearsOn", { interval: i })} ${mo} ${d}`;
     }
   }
 }
@@ -170,33 +171,33 @@ export function getRepeatChipLabel(rule: RepeatRule): string {
 
   switch (normalized.frequency) {
     case "daily":
-      return i === 1 ? "Daily" : `${i}d`;
+      return i === 1 ? t("repeat.daily") : `${i}d`;
     case "weekdays":
-      return "Weekdays";
+      return t("repeat.weekdays");
     case "weekly": {
       const weekdays = getRepeatWeekdays(normalized);
       if (weekdays.length === 1) {
         const day = WEEKDAY_SHORT_NAMES[weekdays[0]];
-        return i === 1 ? `Weekly ${day}` : `${i}w · ${day}`;
+        return i === 1 ? `${t("repeat.weekly")} ${day}` : `${i}w · ${day}`;
       }
       if (weekdays.length > 1) {
         if (weekdays.length > 3) {
-          return i === 1 ? `Weekly · ${weekdays.length} days` : `${i}w · ${weekdays.length} days`;
+          return i === 1 ? `${t("repeat.weekly")} · ${weekdays.length} days` : `${i}w · ${weekdays.length} days`;
         }
         const days = weekdays.map((weekday) => WEEKDAY_SHORT_NAMES[weekday]).join(", ");
-        return i === 1 ? `Weekly · ${days}` : `${i}w · ${days}`;
+        return i === 1 ? `${t("repeat.weekly")} · ${days}` : `${i}w · ${days}`;
       }
-      return i === 1 ? "Weekly" : `${i}w`;
+      return i === 1 ? t("repeat.weekly") : `${i}w`;
     }
     case "monthly": {
       const ord = ordinal(normalized.dayOfMonth ?? 1);
-      return i === 1 ? `Monthly · ${ord}` : `${i}mo · ${ord}`;
+      return i === 1 ? `${t("repeat.monthly")} · ${ord}` : `${i}mo · ${ord}`;
     }
     case "yearly": {
       const month = MONTH_NAMES[normalized.month ?? 1];
       const shortMonth = month.slice(0, 3);
       const day = normalized.dayOfMonth ?? 1;
-      return i === 1 ? `Yearly · ${shortMonth} ${day}` : `${i}y · ${shortMonth} ${day}`;
+      return i === 1 ? `${t("repeat.yearly")} · ${shortMonth} ${day}` : `${i}y · ${shortMonth} ${day}`;
     }
   }
 }
@@ -214,11 +215,11 @@ export function getRepeatPresets(due: string): RepeatPreset[] {
   const date = new Date(parseInt(due.slice(0, 4)), month - 1, day);
   const weekday = date.getDay();
   return [
-    { label: "Every day", rule: { frequency: "daily", ...PRESET_DEFAULTS } },
-    { label: `Every ${WEEKDAY_NAMES[weekday]}`, rule: { frequency: "weekly", ...PRESET_DEFAULTS, weekday, weekdays: [weekday] } },
-    { label: "Every weekday (Mon – Fri)", rule: { frequency: "weekdays", ...PRESET_DEFAULTS } },
-    { label: `Monthly on the ${ordinal(day)}`, rule: { frequency: "monthly", ...PRESET_DEFAULTS, dayOfMonth: day } },
-    { label: `Yearly on ${MONTH_NAMES[month]} ${day}`, rule: { frequency: "yearly", ...PRESET_DEFAULTS, month, dayOfMonth: day } },
+    { label: t("repeat.everyDay"), rule: { frequency: "daily", ...PRESET_DEFAULTS } },
+    { label: `${t("repeat.everyWeek")} ${WEEKDAY_NAMES[weekday]}`, rule: { frequency: "weekly", ...PRESET_DEFAULTS, weekday, weekdays: [weekday] } },
+    { label: t("repeat.everyWeekday"), rule: { frequency: "weekdays", ...PRESET_DEFAULTS } },
+    { label: `${t("repeat.monthlyOnThe")} ${ordinal(day)}`, rule: { frequency: "monthly", ...PRESET_DEFAULTS, dayOfMonth: day } },
+    { label: `${t("repeat.yearlyOn")} ${MONTH_NAMES[month]} ${day}`, rule: { frequency: "yearly", ...PRESET_DEFAULTS, month, dayOfMonth: day } },
   ];
 }
 

@@ -3,13 +3,14 @@ import { RepeatFrequency, RepeatRule } from "../types";
 import { getRepeatLabel, getRepeatWeekdays, normalizeRepeatRule } from "../repeatUtils";
 import { createBelkiActionRow, createBelkiButton } from "../ui";
 import { createBelkiIcon } from "../ui/components/BelkiIcon";
+import { t } from "../i18n";
 
 const FREQ_LABELS: Record<RepeatFrequency, string> = {
-  daily: "Day",
-  weekly: "Week",
-  weekdays: "Weekday",
-  monthly: "Month",
-  yearly: "Year"
+  daily: t("repeat.day"),
+  weekly: t("repeat.week"),
+  weekdays: t("repeat.weekday"),
+  monthly: t("repeat.month"),
+  yearly: t("repeat.year")
 };
 
 const DISPLAY_DAYS = [
@@ -35,7 +36,7 @@ export class CustomRepeatModal extends Modal {
   }
 
   onOpen(): void {
-    this.titleEl.setText("Custom repeat");
+    this.titleEl.setText(t("repeat.customRepeat"));
     this.modalEl.addClass("belki-custom-repeat-modal");
     this.render();
   }
@@ -49,20 +50,20 @@ export class CustomRepeatModal extends Modal {
     contentEl.empty();
 
     // Based on
-    this.renderSection(contentEl, "Based on");
+    this.renderSection(contentEl, t("repeat.basedOn"));
     const modeWrap = contentEl.createDiv({ cls: "belki-repeat-radio-group" });
-    this.renderRadio(modeWrap, "Scheduled date", this.draft.mode === "scheduledDate", () => {
+    this.renderRadio(modeWrap, t("repeat.scheduledDate"), this.draft.mode === "scheduledDate", () => {
       this.draft.mode = "scheduledDate";
       this.render();
     });
-    this.renderRadio(modeWrap, "Completed date", this.draft.mode === "completedDate", () => {
+    this.renderRadio(modeWrap, t("repeat.completedDate"), this.draft.mode === "completedDate", () => {
       this.draft.mode = "completedDate";
       this.clearWeekdays();
       this.render();
     });
 
     // Every
-    this.renderSection(contentEl, "Every");
+    this.renderSection(contentEl, t("repeat.every"));
     const everyRow = contentEl.createDiv({ cls: "belki-repeat-every-row" });
     const intervalInput = everyRow.createEl("input", {
       cls: "belki-repeat-interval-input",
@@ -96,7 +97,7 @@ export class CustomRepeatModal extends Modal {
 
     // On (weekday selector) — only for weekly + scheduledDate
     if (this.draft.frequency === "weekly" && this.draft.mode === "scheduledDate") {
-      this.renderSection(contentEl, "On");
+      this.renderSection(contentEl, t("repeat.on"));
       const dayRow = contentEl.createDiv({ cls: "belki-repeat-day-row" });
       const selectedWeekdays = getRepeatWeekdays(this.draft);
       for (const { label, value } of DISPLAY_DAYS) {
@@ -118,10 +119,10 @@ export class CustomRepeatModal extends Modal {
     }
 
     // Ends
-    this.renderSection(contentEl, "Ends");
+    this.renderSection(contentEl, t("repeat.ends"));
     const endsWrap = contentEl.createDiv({ cls: "belki-repeat-radio-group" });
 
-    this.renderRadio(endsWrap, "Never", this.draft.ends === "never", () => {
+    this.renderRadio(endsWrap, t("repeat.never"), this.draft.ends === "never", () => {
       this.draft.ends = "never";
       this.draft.endsDate = undefined;
       this.draft.endsCount = undefined;
@@ -129,7 +130,7 @@ export class CustomRepeatModal extends Modal {
     });
 
     const onDateRow = endsWrap.createDiv({ cls: "belki-repeat-ends-row" });
-    this.renderRadio(onDateRow, "On date", this.draft.ends === "onDate", () => {
+    this.renderRadio(onDateRow, t("repeat.onDate"), this.draft.ends === "onDate", () => {
       this.draft.ends = "onDate";
       this.draft.endsCount = undefined;
       this.render();
@@ -145,7 +146,7 @@ export class CustomRepeatModal extends Modal {
     }
 
     const afterRow = endsWrap.createDiv({ cls: "belki-repeat-ends-row" });
-    this.renderRadio(afterRow, "After", this.draft.ends === "afterOccurrences", () => {
+    this.renderRadio(afterRow, t("repeat.after"), this.draft.ends === "afterOccurrences", () => {
       this.draft.ends = "afterOccurrences";
       this.draft.endsDate = undefined;
       this.render();
@@ -159,7 +160,7 @@ export class CustomRepeatModal extends Modal {
         const v = parseInt(countInput.value);
         if (v >= 1) this.draft.endsCount = v;
       });
-      afterRow.createSpan({ cls: "belki-repeat-ends-label", text: "occurrences" });
+      afterRow.createSpan({ cls: "belki-repeat-ends-label", text: t("repeat.occurrences") });
     }
 
     // Preview
@@ -169,15 +170,15 @@ export class CustomRepeatModal extends Modal {
 
     // Actions
     const actions = createBelkiActionRow(contentEl, { className: "belki-repeat-modal-actions" });
-    const cancelBtn = createBelkiButton(actions, { text: "Cancel" });
-    const saveBtn = createBelkiButton(actions, { text: "Save", variant: "primary" });
+    const cancelBtn = createBelkiButton(actions, { text: t("common.cancel") });
+    const saveBtn = createBelkiButton(actions, { text: t("common.save"), variant: "primary" });
     const requiresWeekdays = this.requiresWeekdays();
     saveBtn.toggleAttribute("disabled", requiresWeekdays && getRepeatWeekdays(this.draft).length === 0);
 
     cancelBtn.addEventListener("click", () => this.close());
     saveBtn.addEventListener("click", () => {
       if (this.requiresWeekdays() && getRepeatWeekdays(this.draft).length === 0) {
-        new Notice("Choose at least one weekday.");
+        new Notice(t("repeat.chooseWeekday"));
         return;
       }
 

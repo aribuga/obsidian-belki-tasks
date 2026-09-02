@@ -3,6 +3,7 @@ import { Modal } from "obsidian";
 import { BELKI_COLOR_PALETTE, getProjectColor } from "../../colors";
 import { isReservedInboxProject, normalizeTaskProject } from "../../projects";
 import { createBelkiIcon } from "../../ui/components/BelkiIcon";
+import { t } from "../../i18n";
 
 export interface CreateProjectResult {
   name: string;
@@ -23,7 +24,7 @@ export class RenameProjectModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("belki-project-rename-modal");
-    contentEl.createEl("h2", { text: "Rename project" });
+    contentEl.createEl("h2", { text: t("modal.renameProject") });
 
     const input = contentEl.createEl("input", {
       cls: "belki-label-prompt-input",
@@ -42,21 +43,21 @@ export class RenameProjectModal extends Modal {
     };
 
     const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
-    actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } })
+    actions.createEl("button", { cls: "belki-button", text: t("common.cancel"), attr: { type: "button" } })
       .addEventListener("click", () => this.close());
 
     const submitButton = actions.createEl("button", {
       cls: "belki-button belki-button-primary",
-      text: "Rename",
+      text: t("common.rename"),
       attr: { type: "button" }
     });
 
     const submit = () => {
       const newName = input.value.trim();
-      if (!newName) { showError("Project name cannot be empty."); return; }
+      if (!newName) { showError(t("modal.projectNameCannotBeEmpty")); return; }
       if (newName === this.currentName) { this.close(); return; }
       if (this.existingProjects.some((p) => p.toLowerCase() === newName.toLowerCase())) {
-        showError("A project with that name already exists.");
+        showError(t("modal.projectWithNameAlreadyExists"));
         return;
       }
       void this.onSubmit(newName).then(() => this.close());
@@ -84,19 +85,19 @@ export class DeleteProjectModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("belki-project-delete-modal");
-    contentEl.createEl("h2", { text: `Delete "${this.projectName}"?` });
+    contentEl.createEl("h2", { text: t("modal.deleteProject", { name: this.projectName }) });
 
     const desc = this.taskCount > 0
-      ? `This will delete the project only. ${this.taskCount} task${this.taskCount === 1 ? "" : "s"} will be moved to Inbox. Tasks will not be deleted.`
-      : "This will delete the project. It has no tasks.";
+      ? t(this.taskCount === 1 ? "modal.deleteProjectDesc" : "modal.deleteProjectDescPlural", { count: this.taskCount })
+      : t("modal.deleteProjectDescNoTasks");
     contentEl.createEl("p", { text: desc, cls: "belki-modal-desc" });
 
     const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
-    actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } })
+    actions.createEl("button", { cls: "belki-button", text: t("common.cancel"), attr: { type: "button" } })
       .addEventListener("click", () => this.close());
     actions.createEl("button", {
       cls: "belki-button belki-button-destructive",
-      text: "Delete project",
+      text: t("modal.deleteProjectAction"),
       attr: { type: "button" }
     }).addEventListener("click", () => {
       void this.onConfirm().then(() => this.close());
@@ -121,11 +122,11 @@ export class CreateProjectModal extends Modal {
     contentEl.empty();
     contentEl.addClass("belki-project-rename-modal");
     contentEl.addClass("belki-project-create-modal");
-    contentEl.createEl("h2", { text: "New project" });
+    contentEl.createEl("h2", { text: t("modal.newProject") });
 
     const input = contentEl.createEl("input", {
       cls: "belki-label-prompt-input",
-      attr: { type: "text", placeholder: "Project name" }
+      attr: { type: "text", placeholder: t("settings.projectName") }
     });
 
     const appearance = contentEl.createDiv({ cls: "belki-project-create-appearance" });
@@ -138,29 +139,29 @@ export class CreateProjectModal extends Modal {
 
     const autoButton = colorControl.createEl("button", {
       cls: "belki-project-color-auto is-selected",
-      attr: { type: "button", "aria-label": "Automatic project color", "aria-pressed": "true" }
+      attr: { type: "button", "aria-label": t("project.automaticProjectColor"), "aria-pressed": "true" }
     });
     const autoDot = autoButton.createSpan({ cls: "belki-project-color-dot" });
-    const autoText = autoButton.createSpan({ cls: "belki-project-color-auto-text", text: "✓ Auto" });
+    const autoText = autoButton.createSpan({ cls: "belki-project-color-auto-text", text: t("project.auto") });
 
     const randomButton = colorControl.createEl("button", {
       cls: "belki-project-color-random",
-      attr: { type: "button", "aria-label": "Choose another project color" }
+      attr: { type: "button", "aria-label": t("project.chooseAnotherColor") }
     });
     createBelkiIcon(randomButton, "randomize");
 
     const customColor = colorControl.createEl("label", { cls: "belki-project-color-custom" });
     const customDot = customColor.createSpan({ cls: "belki-project-color-custom-dot" });
     const colorInput = customColor.createEl("input", {
-      attr: { type: "color", "aria-label": "Custom project color" }
+      attr: { type: "color", "aria-label": t("project.customProjectColor") }
     });
-    customColor.createSpan({ text: "Custom" });
+    customColor.createSpan({ text: t("project.custom") });
 
     const selectColor = (color: string | null) => {
       this.selectedColor = color;
       autoButton.toggleClass("is-selected", color === null);
       autoButton.setAttribute("aria-pressed", String(color === null));
-      autoText.setText(color === null ? "✓ Auto" : "Auto");
+      autoText.setText(color === null ? t("project.auto") : t("project.auto").replace("✓ ", ""));
       customColor.toggleClass("is-selected", color !== null);
       updatePreview();
     };
@@ -208,21 +209,21 @@ export class CreateProjectModal extends Modal {
     };
 
     const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
-    actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } })
+    actions.createEl("button", { cls: "belki-button", text: t("common.cancel"), attr: { type: "button" } })
       .addEventListener("click", () => this.close());
 
     const submitButton = actions.createEl("button", {
       cls: "belki-button belki-button-primary",
-      text: "Create",
+      text: t("common.create"),
       attr: { type: "button" }
     });
 
     const submit = () => {
       const name = normalizeTaskProject(input.value);
-      if (!name) { showError("Project name cannot be empty."); return; }
-      if (isReservedInboxProject(name)) { showError('"Inbox" is reserved.'); return; }
+      if (!name) { showError(t("modal.projectNameCannotBeEmpty")); return; }
+      if (isReservedInboxProject(name)) { showError(t("modal.inboxReserved")); return; }
       if (this.existingProjects.some((p) => p.toLowerCase() === name.toLowerCase())) {
-        showError("A project with that name already exists.");
+        showError(t("modal.projectWithNameAlreadyExists"));
         return;
       }
       this.onSubmit({

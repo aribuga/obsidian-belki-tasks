@@ -5,6 +5,7 @@ import {
   getDirectSubTaskCount,
   taskDeleteConfirmationDescription
 } from "./deleteTaskConfirmationText";
+import { t } from "../../i18n";
 
 interface DeleteTaskConfirmationModalOptions {
   task: BelkiTask;
@@ -25,7 +26,7 @@ export class DeleteTaskConfirmationModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("belki-task-delete-modal");
-    contentEl.createEl("h2", { text: "Delete task?" });
+    contentEl.createEl("h2", { text: t("modal.deleteTask") });
 
     const subTaskCount = getDirectSubTaskCount(this.options.task, this.options.tasks);
     contentEl.createEl("p", {
@@ -36,7 +37,7 @@ export class DeleteTaskConfirmationModal extends Modal {
     const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
     const cancelButton = actions.createEl("button", {
       cls: "belki-button",
-      text: "Cancel",
+      text: t("common.cancel"),
       attr: { type: "button" }
     });
     cancelButton.addEventListener("click", () => this.close());
@@ -44,7 +45,7 @@ export class DeleteTaskConfirmationModal extends Modal {
     if (subTaskCount > 0 && this.options.onDeleteWithSubtasks) {
       const deleteTaskOnlyButton = actions.createEl("button", {
         cls: "belki-button belki-button-destructive",
-        text: "Delete task only",
+        text: t("task.deleteTaskOnly"),
         attr: { type: "button" }
       });
       deleteTaskOnlyButton.addEventListener("click", () => {
@@ -54,7 +55,7 @@ export class DeleteTaskConfirmationModal extends Modal {
 
       const deleteWithSubtasksButton = actions.createEl("button", {
         cls: "belki-button belki-button-destructive",
-        text: "Delete task and sub-tasks",
+        text: t("task.deleteTaskAndSubtasks"),
         attr: { type: "button" }
       });
       deleteWithSubtasksButton.addEventListener("click", () => {
@@ -64,7 +65,7 @@ export class DeleteTaskConfirmationModal extends Modal {
     } else {
       const deleteButton = actions.createEl("button", {
         cls: "belki-button belki-button-destructive",
-        text: "Delete task",
+        text: t("task.deleteTask"),
         attr: { type: "button" }
       });
       deleteButton.addEventListener("click", () => {

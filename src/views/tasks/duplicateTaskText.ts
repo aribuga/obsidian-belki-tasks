@@ -1,4 +1,5 @@
 import type { BelkiTask } from "../../types";
+import { t } from "../../i18n";
 
 export function getDirectSubTasks(task: BelkiTask, tasks: BelkiTask[]): BelkiTask[] {
   return tasks
@@ -11,9 +12,5 @@ export function getDirectSubTaskCount(task: BelkiTask, tasks: BelkiTask[]): numb
 }
 
 export function duplicateTaskModalDescription(subTaskCount: number): string {
-  if (subTaskCount === 1) {
-    return "This task has 1 sub-task. Would you like to include it in the duplicate?";
-  }
-
-  return `This task has ${subTaskCount} sub-tasks. Would you like to include them in the duplicate?`;
+  return t(subTaskCount === 1 ? "modal.duplicateTaskDesc" : "modal.duplicateTaskDescPlural", { count: subTaskCount });
 }

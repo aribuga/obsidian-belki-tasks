@@ -37,6 +37,662 @@ var import_obsidian22 = require("obsidian");
 // src/dailyNotes.ts
 var import_obsidian = require("obsidian");
 
+// src/i18n/en.ts
+var en = {
+  // UI - Navigation
+  "nav.search": "Search",
+  "nav.inbox": "Inbox",
+  "nav.today": "Today",
+  "nav.upcoming": "Upcoming",
+  "nav.filters": "Filters & Labels",
+  "nav.projects": "Projects",
+  "nav.activity": "Activity",
+  "nav.completed": "Completed",
+  "nav.archived": "Archived",
+  // UI - Common
+  "common.addTask": "Add task",
+  "common.cancel": "Cancel",
+  "common.save": "Save",
+  "common.delete": "Delete",
+  "common.rename": "Rename",
+  "common.create": "Create",
+  "common.reset": "Reset",
+  "common.edit": "Edit",
+  "common.close": "Close",
+  "common.back": "Back",
+  "common.retry": "Retry",
+  "common.loading": "Loading...",
+  "common.refreshing": "Refreshing...",
+  "common.refresh": "Refresh",
+  "common.enabled": "Enabled",
+  "common.disabled": "Disabled",
+  // UI - Task
+  "task.title": "Task title",
+  "task.description": "Description",
+  "task.project": "Project",
+  "task.priority": "Priority",
+  "task.dueDate": "Due date",
+  "task.deadline": "Deadline",
+  "task.startDate": "Start date",
+  "task.labels": "Labels",
+  "task.repeat": "Repeat",
+  "task.attachments": "Attachments",
+  "task.subtasks": "Sub-tasks",
+  "task.noProject": "No project",
+  "task.noLabel": "No label",
+  "task.deleteTask": "Delete task",
+  "task.deleteTaskOnly": "Delete task only",
+  "task.deleteTaskAndSubtasks": "Delete task and sub-tasks",
+  "task.duplicateTask": "Duplicate task",
+  "task.taskOnly": "Task only",
+  "task.includeSubtasks": "Include sub-tasks",
+  "task.completePermanently": "Complete permanently",
+  "task.taskDetails": "Task details",
+  "task.subtaskDetails": "Sub-task details",
+  "task.subtaskOf": "Sub-task of ",
+  "task.parent": "Parent",
+  "task.addSubtask": "Add sub-task",
+  "task.subtaskTitle": "Sub-task title",
+  "task.deleteSubtask": "Delete sub-task",
+  "task.reorderSubtask": "Reorder",
+  // UI - Task Actions
+  "taskActions.moveToToday": "Move to Today",
+  "taskActions.moveToTomorrow": "Move to Tomorrow",
+  "taskActions.pickDate": "Pick date",
+  "taskActions.pickTaskDate": "Pick task date",
+  "taskActions.clearDate": "Clear date",
+  "taskActions.duplicateTask": "Duplicate task",
+  "taskActions.deleteTask": "Delete task",
+  "taskActions.taskActions": "Task actions",
+  // UI - Sorting
+  "sorting.sorting": "Sorting",
+  "sorting.sortBy": "Sort by",
+  "sorting.groupBy": "Group by",
+  "sorting.smart": "Smart",
+  "sorting.dueDate": "Due date",
+  "sorting.priority": "Priority",
+  "sorting.deadline": "Deadline",
+  "sorting.createdDate": "Created date",
+  "sorting.project": "Project",
+  "sorting.alphabetical": "Alphabetical",
+  "sorting.none": "None",
+  "sorting.label": "Label",
+  // UI - Sections
+  "section.overdue": "Overdue",
+  "section.noUpcomingTasks": "No upcoming tasks.",
+  "section.noProjectsYet": "No projects yet.",
+  "section.noCompletedTasks": "No completed tasks yet.",
+  "section.earlier": "Earlier",
+  "section.overview": "Overview",
+  "section.completedTasks": "Completed tasks",
+  "section.last26Weeks": "Last 26 weeks",
+  "section.noTasksCompletedToday": "No tasks completed on this day.",
+  "section.myFilters": "My Filters",
+  "section.labels": "Labels",
+  // UI - Activity
+  "activity.today": "Today",
+  "activity.yesterday": "Yesterday",
+  "activity.thisWeek": "This week",
+  "activity.thisMonth": "This month",
+  "activity.allTime": "All time",
+  "activity.currentStreak": "Current streak",
+  "activity.noCompletedTasksYet": "No completed tasks yet. Complete a task and your activity will appear here.",
+  "activity.youCompleted": "You completed ",
+  // UI - Date
+  "date.date": "Date",
+  "date.today": "Today",
+  "date.tomorrow": "Tomorrow",
+  "date.yesterday": "Yesterday",
+  "date.nextWeek": "Next week",
+  "date.weekend": "Weekend",
+  // UI - Repeat
+  "repeat.customRepeat": "Custom repeat",
+  "repeat.basedOn": "Based on",
+  "repeat.scheduledDate": "Scheduled date",
+  "repeat.completedDate": "Completed date",
+  "repeat.every": "Every",
+  "repeat.on": "On",
+  "repeat.ends": "Ends",
+  "repeat.never": "Never",
+  "repeat.onDate": "On date",
+  "repeat.after": "After",
+  "repeat.occurrences": "occurrences",
+  "repeat.chooseWeekday": "Choose at least one weekday.",
+  "repeat.day": "Day",
+  "repeat.week": "Week",
+  "repeat.weekday": "Weekday",
+  "repeat.month": "Month",
+  "repeat.year": "Year",
+  // UI - Calendar
+  "calendar.addIcalCalendar": "Add iCal calendar",
+  "calendar.editIcalCalendar": "Edit iCal calendar",
+  "calendar.removeCalendar": "Remove calendar?",
+  "calendar.removeCalendarDesc": "Remove {name} from belki. This clears its saved iCal URL and cached events, but does not modify tasks.",
+  "calendar.calendarName": "Calendar name",
+  "calendar.replaceIcalUrl": "Replace iCal URL",
+  "calendar.privateOrPublicIcalUrl": "Private or public iCal URL",
+  "calendar.leaveEmptyToKeepSavedUrl": "Leave empty to keep the saved URL. The existing URL is not shown.",
+  "calendar.acceptsHttpsAndWebcal": "Accepts HTTPS and webcal URLs.",
+  "calendar.calendarColor": "Calendar color",
+  "calendar.testConnection": "Test connection",
+  "calendar.saveChanges": "Save changes",
+  "calendar.addCalendar": "Add calendar",
+  "calendar.testingCalendarFeed": "Testing calendar feed...",
+  "calendar.connectionWorks": "Connection works",
+  "calendar.calendarFeedCouldNotBeTested": "Calendar feed could not be tested.",
+  "calendar.calendarUpdated": "Calendar updated.",
+  "calendar.calendarAdded": "Calendar added.",
+  "calendar.calendarRemoved": "Calendar removed.",
+  "calendar.calendarFeedCouldNotBeSaved": "Calendar feed could not be saved.",
+  "calendar.refreshingCalendarFeeds": "Refreshing calendar feeds...",
+  "calendar.noIcalCalendarsYet": "No iCal calendars yet.",
+  "calendar.customColorOverride": "Custom color override",
+  "calendar.automaticPaletteColor": "Automatic palette color",
+  // Settings
+  "settings.oldTaskFile": "Old task file",
+  "settings.oldTaskFileDesc": "Legacy Markdown file used by older belki versions.",
+  "settings.dataFolder": "Data folder",
+  "settings.dataFolderDesc": "Folder where belki stores task data and attachments.",
+  "settings.defaultOverdueRange": "Default overdue range",
+  "settings.defaultOverdueRangeDesc": "Default range used by the Today overdue section.",
+  "settings.dailyNotes": "Daily Notes",
+  "settings.enableDailyNotesIntegration": "Enable Daily Notes integration",
+  "settings.enableDailyNotesIntegrationDesc": "Allow belki to show completed tasks for the active daily note date.",
+  "settings.dailyNoteDateFormat": "Daily note date format",
+  "settings.dailyNoteDateFormatDesc": "Used to match the active note file to a date. Default: YYYY-MM-DD.",
+  "settings.autoAddCompletedTasksBlock": "Auto-add completed tasks block",
+  "settings.autoAddCompletedTasksBlockDesc": "When a daily note is opened, append a belki-completed code block if the note does not already have one.",
+  "settings.fonts": "Fonts",
+  "settings.uiFont": "UI Font",
+  "settings.uiFontDesc": "Used for sidebar, headings, buttons, settings, and the general interface.",
+  "settings.taskTitleFont": "Task Title Font",
+  "settings.taskTitleFontDesc": "Used for task row titles and the task detail title input.",
+  "settings.taskDescriptionFont": "Task Description Font",
+  "settings.taskDescriptionFontDesc": "Used for task row descriptions and the task detail description textarea.",
+  "settings.labelFont": "Label Font",
+  "settings.labelFontDesc": "Used for label chip text.",
+  "settings.projectColors": "Project colors",
+  "settings.noProjectsYet": "No projects yet. belki will generate stable colors when projects appear.",
+  "settings.labelColors": "Label colors",
+  "settings.addLabel": "Add label",
+  "settings.addLabelDesc": "Create a label without assigning it to a task yet.",
+  "settings.noLabelsYet": "No labels yet. Add one here or create one from Filters & Labels.",
+  "settings.projectName": "Project name",
+  "settings.createProject": "Create project...",
+  "settings.newProject": "New project",
+  // Commands
+  "command.open": "Open",
+  "command.quickAddTask": "Quick Add Task",
+  "command.showCompletedTasksForActiveDailyNote": "Show Completed Tasks for Active Daily Note",
+  "command.insertCompletedTasksBlockInActiveDailyNote": "Insert Completed Tasks Block in Active Daily Note",
+  "command.normalizeLabels": "Normalize Labels",
+  "command.migrateOldTaskFile": "Migrate old task file",
+  // Notices
+  "notice.taskAddedToInbox": "Task added to Inbox",
+  "notice.labelsNormalized": "belki labels normalized.",
+  "notice.noOldTasksToMigrate": "belki found no old tasks to migrate.",
+  "notice.migratedTasks": "belki migrated {count} task.",
+  "notice.migratedTasksPlural": "belki migrated {count} tasks.",
+  "notice.dailyNotesIntegrationDisabled": "belki Daily Notes integration is disabled in settings.",
+  "notice.openDailyNoteFirst": "Open a daily note first.",
+  "notice.couldNotDetectDate": "belki could not detect a date from the active note.",
+  "notice.completedTasksBlockAdded": "belki completed tasks block added.",
+  "notice.noteAlreadyHasCompletedBlock": "This note already has a belki completed tasks block.",
+  "notice.couldNotReloadTaskData": "belki could not reload task data.",
+  "notice.couldNotInitializeTaskStorage": "belki could not initialize task storage. Open the developer console for details.",
+  "notice.dateAndRepeatRuleRemoved": "Date and repeat rule removed.",
+  // Empty States
+  "empty.noTasksYet": "No tasks yet. Add one and belki will write it to {path}/YYYY-MM.md.",
+  "empty.taskStorageCouldNotBeInitialized": "Task storage could not be initialized.",
+  "empty.openDailyNoteToSeeCompletedTasks": "Open a daily note and run the belki Daily Notes command to see completed tasks.",
+  "empty.noTasksCompletedOnThisDailyNoteDate": "No tasks completed on this daily note date.",
+  // Modals
+  "modal.deleteTask": "Delete task?",
+  "modal.deleteTaskDesc": "This task will be permanently deleted from Belki. This action cannot be undone within the plugin.",
+  "modal.deleteTaskWithSubtasksDesc": "This task has {count} sub-task. Delete only this task, or delete it together with its sub-task?",
+  "modal.deleteTaskWithSubtasksDescPlural": "This task has {count} sub-tasks. Delete only this task, or delete it together with its sub-tasks?",
+  "modal.duplicateTask": "Duplicate task?",
+  "modal.duplicateTaskDesc": "This task has {count} sub-task. Would you like to include it in the duplicate?",
+  "modal.duplicateTaskDescPlural": "This task has {count} sub-tasks. Would you like to include them in the duplicate?",
+  "modal.renameLabel": "Rename label",
+  "modal.labelNameCannotBeEmpty": "Label name cannot be empty.",
+  "modal.labelWithNameAlreadyExists": "A label with that name already exists.",
+  "modal.deleteLabel": "Delete {label}?",
+  "modal.deleteLabelDesc": "This will remove {label} from {count} task. Tasks will not be deleted.",
+  "modal.deleteLabelDescPlural": "This will remove {label} from {count} tasks. Tasks will not be deleted.",
+  "modal.deleteLabelDescNoTasks": "This label is not assigned to any tasks.",
+  "modal.deleteLabelAction": "Delete label",
+  "modal.renameProject": "Rename project",
+  "modal.projectNameCannotBeEmpty": "Project name cannot be empty.",
+  "modal.projectWithNameAlreadyExists": "A project with that name already exists.",
+  "modal.deleteProject": 'Delete "{name}"?',
+  "modal.deleteProjectDesc": "This will delete the project only. {count} task will be moved to Inbox. Tasks will not be deleted.",
+  "modal.deleteProjectDescPlural": "This will delete the project only. {count} tasks will be moved to Inbox. Tasks will not be deleted.",
+  "modal.deleteProjectDescNoTasks": "This will delete the project. It has no tasks.",
+  "modal.deleteProjectAction": "Delete project",
+  "modal.newProject": "New project",
+  "modal.inboxReserved": '"Inbox" is reserved.',
+  "modal.quickAddTask": "Quick add task",
+  "modal.quickAddTaskDesc": "Capture a task now. It will appear in Inbox.",
+  // Priority
+  "priority.priority": "Priority",
+  "priority.priority1": "Priority 1",
+  "priority.priority2": "Priority 2",
+  "priority.priority3": "Priority 3",
+  "priority.priority4": "Priority 4",
+  // Date formatting
+  "date.last7Days": "Last 7 days",
+  "date.last30Days": "Last 30 days",
+  "date.older": "Older",
+  // Font options
+  "font.systemFont": "System Font",
+  // Calendar description
+  "calendar.description": "Display read-only calendar events inside Today and Upcoming by subscribing to private or public iCal feeds.",
+  "calendar.googleCalendarHelp": "Google Calendar: open Google Calendar settings, select a calendar under Settings for my calendars, open Integrate calendar, copy Secret address in iCal format, and paste it into belki. Public iCal links work only when the calendar is public. Treat private links like passwords. Each calendar is added separately; belki fetches updates periodically and cannot edit events.",
+  // Description formatting
+  "description.bold": "Bold",
+  "description.italic": "Italic",
+  "description.strikethrough": "Strikethrough",
+  "description.quote": "Quote",
+  "description.inlineCode": "Inline code",
+  "description.codeBlock": "Code block",
+  "description.bulletList": "Bullet list",
+  "description.numberedList": "Numbered list",
+  "description.link": "Link",
+  "description.formatting": "Description formatting",
+  // Composer
+  "composer.noProject": "No project",
+  "composer.createProject": "Create project...",
+  "composer.projects": "Projects",
+  // Filters
+  "filters.backToFilters": "Back to Filters & Labels",
+  "filters.createLabel": "Create label",
+  "filters.typeLabelName": "Type a label name",
+  "filters.createLabelAction": "Create label: {label}",
+  // Project colors
+  "project.auto": "\u2713 Auto",
+  "project.custom": "Custom",
+  "project.automaticProjectColor": "Automatic project color",
+  "project.chooseAnotherColor": "Choose another project color",
+  "project.customProjectColor": "Custom project color",
+  // Subtask presets
+  "subtask.everyday": "Every day",
+  "subtask.everyWeekday": "Every weekday (Mon \u2013 Fri)",
+  "subtask.monthlyOnThe": "Monthly on the",
+  "subtask.yearlyOn": "Yearly on",
+  "subtask.customDate": "Custom date",
+  // Repeat presets
+  "repeat.everyDay": "Every day",
+  "repeat.everyWeekday": "Every weekday",
+  "repeat.everyWeekOn": "Every week on",
+  "repeat.everyWeeksOn": "Every {interval} weeks on",
+  "repeat.everyWeek": "Every week",
+  "repeat.everyWeeks": "Every {interval} weeks",
+  "repeat.monthlyOnThe": "Monthly on the",
+  "repeat.everyMonthsOn": "Every {interval} months on the",
+  "repeat.yearlyOn": "Yearly on",
+  "repeat.everyYearsOn": "Every {interval} years on",
+  "repeat.daily": "Daily",
+  "repeat.weekdays": "Weekdays",
+  "repeat.weekly": "Weekly",
+  "repeat.monthly": "Monthly",
+  "repeat.yearly": "Yearly",
+  // Ribbon
+  "ribbon.openBelki": "Open belki",
+  // View
+  "view.displayText": "Tasks \xB7 belki",
+  // Task count
+  "taskCount.completedTask": "completed task",
+  "taskCount.completedTasks": "completed tasks",
+  "taskCount.task": "task",
+  "taskCount.tasks": "tasks",
+  "taskCount.completed": "completed"
+};
+
+// src/i18n/zh-CN.ts
+var zhCN = {
+  // UI - Navigation
+  "nav.search": "\u641C\u7D22",
+  "nav.inbox": "\u6536\u96C6\u7BB1",
+  "nav.today": "\u4ECA\u5929",
+  "nav.upcoming": "\u5373\u5C06\u5230\u6765",
+  "nav.filters": "\u7B5B\u9009\u5668\u4E0E\u6807\u7B7E",
+  "nav.projects": "\u9879\u76EE",
+  "nav.activity": "\u6D3B\u52A8",
+  "nav.completed": "\u5DF2\u5B8C\u6210",
+  "nav.archived": "\u5DF2\u5F52\u6863",
+  // UI - Common
+  "common.addTask": "\u6DFB\u52A0\u4EFB\u52A1",
+  "common.cancel": "\u53D6\u6D88",
+  "common.save": "\u4FDD\u5B58",
+  "common.delete": "\u5220\u9664",
+  "common.rename": "\u91CD\u547D\u540D",
+  "common.create": "\u521B\u5EFA",
+  "common.reset": "\u91CD\u7F6E",
+  "common.edit": "\u7F16\u8F91",
+  "common.close": "\u5173\u95ED",
+  "common.back": "\u8FD4\u56DE",
+  "common.retry": "\u91CD\u8BD5",
+  "common.loading": "\u52A0\u8F7D\u4E2D...",
+  "common.refreshing": "\u5237\u65B0\u4E2D...",
+  "common.refresh": "\u5237\u65B0",
+  "common.enabled": "\u5DF2\u542F\u7528",
+  "common.disabled": "\u5DF2\u7981\u7528",
+  // UI - Task
+  "task.title": "\u4EFB\u52A1\u6807\u9898",
+  "task.description": "\u63CF\u8FF0",
+  "task.project": "\u9879\u76EE",
+  "task.priority": "\u4F18\u5148\u7EA7",
+  "task.dueDate": "\u5230\u671F\u65E5\u671F",
+  "task.deadline": "\u622A\u6B62\u65E5\u671F",
+  "task.startDate": "\u5F00\u59CB\u65E5\u671F",
+  "task.labels": "\u6807\u7B7E",
+  "task.repeat": "\u91CD\u590D",
+  "task.attachments": "\u9644\u4EF6",
+  "task.subtasks": "\u5B50\u4EFB\u52A1",
+  "task.noProject": "\u65E0\u9879\u76EE",
+  "task.noLabel": "\u65E0\u6807\u7B7E",
+  "task.deleteTask": "\u5220\u9664\u4EFB\u52A1",
+  "task.deleteTaskOnly": "\u4EC5\u5220\u9664\u4EFB\u52A1",
+  "task.deleteTaskAndSubtasks": "\u5220\u9664\u4EFB\u52A1\u53CA\u5B50\u4EFB\u52A1",
+  "task.duplicateTask": "\u590D\u5236\u4EFB\u52A1",
+  "task.taskOnly": "\u4EC5\u4EFB\u52A1",
+  "task.includeSubtasks": "\u5305\u542B\u5B50\u4EFB\u52A1",
+  "task.completePermanently": "\u6C38\u4E45\u5B8C\u6210",
+  "task.taskDetails": "\u4EFB\u52A1\u8BE6\u60C5",
+  "task.subtaskDetails": "\u5B50\u4EFB\u52A1\u8BE6\u60C5",
+  "task.subtaskOf": "\u7236\u4EFB\u52A1\uFF1A",
+  "task.parent": "\u7236\u4EFB\u52A1",
+  "task.addSubtask": "\u6DFB\u52A0\u5B50\u4EFB\u52A1",
+  "task.subtaskTitle": "\u5B50\u4EFB\u52A1\u6807\u9898",
+  "task.deleteSubtask": "\u5220\u9664\u5B50\u4EFB\u52A1",
+  "task.reorderSubtask": "\u91CD\u65B0\u6392\u5E8F",
+  // UI - Task Actions
+  "taskActions.moveToToday": "\u79FB\u81F3\u4ECA\u5929",
+  "taskActions.moveToTomorrow": "\u79FB\u81F3\u660E\u5929",
+  "taskActions.pickDate": "\u9009\u62E9\u65E5\u671F",
+  "taskActions.pickTaskDate": "\u9009\u62E9\u4EFB\u52A1\u65E5\u671F",
+  "taskActions.clearDate": "\u6E05\u9664\u65E5\u671F",
+  "taskActions.duplicateTask": "\u590D\u5236\u4EFB\u52A1",
+  "taskActions.deleteTask": "\u5220\u9664\u4EFB\u52A1",
+  "taskActions.taskActions": "\u4EFB\u52A1\u64CD\u4F5C",
+  // UI - Sorting
+  "sorting.sorting": "\u6392\u5E8F",
+  "sorting.sortBy": "\u6392\u5E8F\u65B9\u5F0F",
+  "sorting.groupBy": "\u5206\u7EC4\u65B9\u5F0F",
+  "sorting.smart": "\u667A\u80FD",
+  "sorting.dueDate": "\u5230\u671F\u65E5\u671F",
+  "sorting.priority": "\u4F18\u5148\u7EA7",
+  "sorting.deadline": "\u622A\u6B62\u65E5\u671F",
+  "sorting.createdDate": "\u521B\u5EFA\u65E5\u671F",
+  "sorting.project": "\u9879\u76EE",
+  "sorting.alphabetical": "\u6309\u5B57\u6BCD",
+  "sorting.none": "\u65E0",
+  "sorting.label": "\u6807\u7B7E",
+  // UI - Sections
+  "section.overdue": "\u5DF2\u903E\u671F",
+  "section.noUpcomingTasks": "\u6682\u65E0\u5373\u5C06\u5230\u6765\u7684\u4EFB\u52A1\u3002",
+  "section.noProjectsYet": "\u6682\u65E0\u9879\u76EE\u3002",
+  "section.noCompletedTasks": "\u6682\u65E0\u5DF2\u5B8C\u6210\u7684\u4EFB\u52A1\u3002",
+  "section.earlier": "\u66F4\u65E9",
+  "section.overview": "\u6982\u89C8",
+  "section.completedTasks": "\u5DF2\u5B8C\u6210\u7684\u4EFB\u52A1",
+  "section.last26Weeks": "\u6700\u8FD1 26 \u5468",
+  "section.noTasksCompletedToday": "\u4ECA\u65E5\u65E0\u5DF2\u5B8C\u6210\u7684\u4EFB\u52A1\u3002",
+  "section.myFilters": "\u6211\u7684\u7B5B\u9009\u5668",
+  "section.labels": "\u6807\u7B7E",
+  // UI - Activity
+  "activity.today": "\u4ECA\u5929",
+  "activity.yesterday": "\u6628\u5929",
+  "activity.thisWeek": "\u672C\u5468",
+  "activity.thisMonth": "\u672C\u6708",
+  "activity.allTime": "\u5168\u90E8",
+  "activity.currentStreak": "\u8FDE\u7EED\u5929\u6570",
+  "activity.noCompletedTasksYet": "\u6682\u65E0\u5DF2\u5B8C\u6210\u7684\u4EFB\u52A1\u3002\u5B8C\u6210\u4E00\u4E2A\u4EFB\u52A1\u540E\uFF0C\u6D3B\u52A8\u8BB0\u5F55\u5C06\u663E\u793A\u5728\u6B64\u5904\u3002",
+  "activity.youCompleted": "\u4F60\u5B8C\u6210\u4E86 ",
+  // UI - Date
+  "date.date": "\u65E5\u671F",
+  "date.today": "\u4ECA\u5929",
+  "date.tomorrow": "\u660E\u5929",
+  "date.yesterday": "\u6628\u5929",
+  "date.nextWeek": "\u4E0B\u5468",
+  "date.weekend": "\u5468\u672B",
+  // UI - Repeat
+  "repeat.customRepeat": "\u81EA\u5B9A\u4E49\u91CD\u590D",
+  "repeat.basedOn": "\u57FA\u4E8E",
+  "repeat.scheduledDate": "\u8BA1\u5212\u65E5\u671F",
+  "repeat.completedDate": "\u5B8C\u6210\u65E5\u671F",
+  "repeat.every": "\u6BCF",
+  "repeat.on": "\u5728",
+  "repeat.ends": "\u7ED3\u675F",
+  "repeat.never": "\u6C38\u4E0D",
+  "repeat.onDate": "\u5728\u6307\u5B9A\u65E5\u671F",
+  "repeat.after": "\u5728",
+  "repeat.occurrences": "\u6B21\u540E",
+  "repeat.chooseWeekday": "\u8BF7\u81F3\u5C11\u9009\u62E9\u4E00\u4E2A\u5DE5\u4F5C\u65E5\u3002",
+  "repeat.day": "\u5929",
+  "repeat.week": "\u5468",
+  "repeat.weekday": "\u5DE5\u4F5C\u65E5",
+  "repeat.month": "\u6708",
+  "repeat.year": "\u5E74",
+  // UI - Calendar
+  "calendar.addIcalCalendar": "\u6DFB\u52A0 iCal \u65E5\u5386",
+  "calendar.editIcalCalendar": "\u7F16\u8F91 iCal \u65E5\u5386",
+  "calendar.removeCalendar": "\u79FB\u9664\u65E5\u5386\uFF1F",
+  "calendar.removeCalendarDesc": "\u4ECE belki \u4E2D\u79FB\u9664 {name}\u3002\u8FD9\u5C06\u6E05\u9664\u5176\u4FDD\u5B58\u7684 iCal URL \u548C\u7F13\u5B58\u4E8B\u4EF6\uFF0C\u4F46\u4E0D\u4F1A\u4FEE\u6539\u4EFB\u52A1\u3002",
+  "calendar.calendarName": "\u65E5\u5386\u540D\u79F0",
+  "calendar.replaceIcalUrl": "\u66FF\u6362 iCal URL",
+  "calendar.privateOrPublicIcalUrl": "\u79C1\u6709\u6216\u516C\u5F00 iCal URL",
+  "calendar.leaveEmptyToKeepSavedUrl": "\u7559\u7A7A\u4EE5\u4FDD\u7559\u5DF2\u4FDD\u5B58\u7684 URL\u3002\u73B0\u6709 URL \u4E0D\u4F1A\u663E\u793A\u3002",
+  "calendar.acceptsHttpsAndWebcal": "\u652F\u6301 HTTPS \u548C webcal URL\u3002",
+  "calendar.calendarColor": "\u65E5\u5386\u989C\u8272",
+  "calendar.testConnection": "\u6D4B\u8BD5\u8FDE\u63A5",
+  "calendar.saveChanges": "\u4FDD\u5B58\u66F4\u6539",
+  "calendar.addCalendar": "\u6DFB\u52A0\u65E5\u5386",
+  "calendar.testingCalendarFeed": "\u6B63\u5728\u6D4B\u8BD5\u65E5\u5386\u6E90...",
+  "calendar.connectionWorks": "\u8FDE\u63A5\u6210\u529F",
+  "calendar.calendarFeedCouldNotBeTested": "\u65E0\u6CD5\u6D4B\u8BD5\u65E5\u5386\u6E90\u3002",
+  "calendar.calendarUpdated": "\u65E5\u5386\u5DF2\u66F4\u65B0\u3002",
+  "calendar.calendarAdded": "\u65E5\u5386\u5DF2\u6DFB\u52A0\u3002",
+  "calendar.calendarRemoved": "\u65E5\u5386\u5DF2\u79FB\u9664\u3002",
+  "calendar.calendarFeedCouldNotBeSaved": "\u65E0\u6CD5\u4FDD\u5B58\u65E5\u5386\u6E90\u3002",
+  "calendar.refreshingCalendarFeeds": "\u6B63\u5728\u5237\u65B0\u65E5\u5386\u6E90...",
+  "calendar.noIcalCalendarsYet": "\u6682\u65E0 iCal \u65E5\u5386\u3002",
+  "calendar.customColorOverride": "\u81EA\u5B9A\u4E49\u989C\u8272",
+  "calendar.automaticPaletteColor": "\u81EA\u52A8\u914D\u8272",
+  // Settings
+  "settings.oldTaskFile": "\u65E7\u4EFB\u52A1\u6587\u4EF6",
+  "settings.oldTaskFileDesc": "\u65E7\u7248 belki \u4F7F\u7528\u7684 Markdown \u6587\u4EF6\u3002",
+  "settings.dataFolder": "\u6570\u636E\u6587\u4EF6\u5939",
+  "settings.dataFolderDesc": "belki \u5B58\u50A8\u4EFB\u52A1\u6570\u636E\u548C\u9644\u4EF6\u7684\u6587\u4EF6\u5939\u3002",
+  "settings.defaultOverdueRange": "\u9ED8\u8BA4\u903E\u671F\u8303\u56F4",
+  "settings.defaultOverdueRangeDesc": "\u4ECA\u5929\u903E\u671F\u90E8\u5206\u4F7F\u7528\u7684\u9ED8\u8BA4\u8303\u56F4\u3002",
+  "settings.dailyNotes": "\u65E5\u8BB0",
+  "settings.enableDailyNotesIntegration": "\u542F\u7528\u65E5\u8BB0\u96C6\u6210",
+  "settings.enableDailyNotesIntegrationDesc": "\u5141\u8BB8 belki \u663E\u793A\u5F53\u524D\u65E5\u8BB0\u65E5\u671F\u7684\u5DF2\u5B8C\u6210\u4EFB\u52A1\u3002",
+  "settings.dailyNoteDateFormat": "\u65E5\u8BB0\u65E5\u671F\u683C\u5F0F",
+  "settings.dailyNoteDateFormatDesc": "\u7528\u4E8E\u5C06\u5F53\u524D\u7B14\u8BB0\u6587\u4EF6\u5339\u914D\u5230\u65E5\u671F\u3002\u9ED8\u8BA4\uFF1AYYYY-MM-DD\u3002",
+  "settings.autoAddCompletedTasksBlock": "\u81EA\u52A8\u6DFB\u52A0\u5DF2\u5B8C\u6210\u4EFB\u52A1\u5757",
+  "settings.autoAddCompletedTasksBlockDesc": "\u6253\u5F00\u65E5\u8BB0\u65F6\uFF0C\u5982\u679C\u7B14\u8BB0\u4E2D\u6CA1\u6709 belki-completed \u4EE3\u7801\u5757\uFF0C\u5219\u81EA\u52A8\u6DFB\u52A0\u3002",
+  "settings.fonts": "\u5B57\u4F53",
+  "settings.uiFont": "\u754C\u9762\u5B57\u4F53",
+  "settings.uiFontDesc": "\u7528\u4E8E\u4FA7\u8FB9\u680F\u3001\u6807\u9898\u3001\u6309\u94AE\u3001\u8BBE\u7F6E\u548C\u901A\u7528\u754C\u9762\u3002",
+  "settings.taskTitleFont": "\u4EFB\u52A1\u6807\u9898\u5B57\u4F53",
+  "settings.taskTitleFontDesc": "\u7528\u4E8E\u4EFB\u52A1\u884C\u6807\u9898\u548C\u4EFB\u52A1\u8BE6\u60C5\u6807\u9898\u8F93\u5165\u3002",
+  "settings.taskDescriptionFont": "\u4EFB\u52A1\u63CF\u8FF0\u5B57\u4F53",
+  "settings.taskDescriptionFontDesc": "\u7528\u4E8E\u4EFB\u52A1\u884C\u63CF\u8FF0\u548C\u4EFB\u52A1\u8BE6\u60C5\u63CF\u8FF0\u6587\u672C\u6846\u3002",
+  "settings.labelFont": "\u6807\u7B7E\u5B57\u4F53",
+  "settings.labelFontDesc": "\u7528\u4E8E\u6807\u7B7E\u6587\u5B57\u3002",
+  "settings.projectColors": "\u9879\u76EE\u989C\u8272",
+  "settings.noProjectsYet": "\u6682\u65E0\u9879\u76EE\u3002\u9879\u76EE\u51FA\u73B0\u65F6 belki \u5C06\u751F\u6210\u7A33\u5B9A\u989C\u8272\u3002",
+  "settings.labelColors": "\u6807\u7B7E\u989C\u8272",
+  "settings.addLabel": "\u6DFB\u52A0\u6807\u7B7E",
+  "settings.addLabelDesc": "\u521B\u5EFA\u6807\u7B7E\u4F46\u6682\u4E0D\u5206\u914D\u7ED9\u4EFB\u52A1\u3002",
+  "settings.noLabelsYet": "\u6682\u65E0\u6807\u7B7E\u3002\u53EF\u5728\u6B64\u5904\u6DFB\u52A0\uFF0C\u6216\u4ECE\u7B5B\u9009\u5668\u4E0E\u6807\u7B7E\u4E2D\u521B\u5EFA\u3002",
+  "settings.projectName": "\u9879\u76EE\u540D\u79F0",
+  "settings.createProject": "\u521B\u5EFA\u9879\u76EE...",
+  "settings.newProject": "\u65B0\u9879\u76EE",
+  // Commands
+  "command.open": "\u6253\u5F00",
+  "command.quickAddTask": "\u5FEB\u901F\u6DFB\u52A0\u4EFB\u52A1",
+  "command.showCompletedTasksForActiveDailyNote": "\u663E\u793A\u5F53\u524D\u65E5\u8BB0\u7684\u5DF2\u5B8C\u6210\u4EFB\u52A1",
+  "command.insertCompletedTasksBlockInActiveDailyNote": "\u5728\u5F53\u524D\u65E5\u8BB0\u4E2D\u63D2\u5165\u5DF2\u5B8C\u6210\u4EFB\u52A1\u5757",
+  "command.normalizeLabels": "\u6807\u51C6\u5316\u6807\u7B7E",
+  "command.migrateOldTaskFile": "\u8FC1\u79FB\u65E7\u4EFB\u52A1\u6587\u4EF6",
+  // Notices
+  "notice.taskAddedToInbox": "\u4EFB\u52A1\u5DF2\u6DFB\u52A0\u5230\u6536\u96C6\u7BB1",
+  "notice.labelsNormalized": "belki \u6807\u7B7E\u5DF2\u6807\u51C6\u5316\u3002",
+  "notice.noOldTasksToMigrate": "belki \u672A\u627E\u5230\u9700\u8981\u8FC1\u79FB\u7684\u65E7\u4EFB\u52A1\u3002",
+  "notice.migratedTasks": "belki \u5DF2\u8FC1\u79FB {count} \u4E2A\u4EFB\u52A1\u3002",
+  "notice.migratedTasksPlural": "belki \u5DF2\u8FC1\u79FB {count} \u4E2A\u4EFB\u52A1\u3002",
+  "notice.dailyNotesIntegrationDisabled": "belki \u65E5\u8BB0\u96C6\u6210\u5DF2\u5728\u8BBE\u7F6E\u4E2D\u7981\u7528\u3002",
+  "notice.openDailyNoteFirst": "\u8BF7\u5148\u6253\u5F00\u4E00\u4E2A\u65E5\u8BB0\u3002",
+  "notice.couldNotDetectDate": "belki \u65E0\u6CD5\u4ECE\u5F53\u524D\u7B14\u8BB0\u4E2D\u68C0\u6D4B\u65E5\u671F\u3002",
+  "notice.completedTasksBlockAdded": "belki \u5DF2\u6DFB\u52A0\u5DF2\u5B8C\u6210\u4EFB\u52A1\u5757\u3002",
+  "notice.noteAlreadyHasCompletedBlock": "\u6B64\u7B14\u8BB0\u5DF2\u6709 belki \u5DF2\u5B8C\u6210\u4EFB\u52A1\u5757\u3002",
+  "notice.couldNotReloadTaskData": "belki \u65E0\u6CD5\u91CD\u65B0\u52A0\u8F7D\u4EFB\u52A1\u6570\u636E\u3002",
+  "notice.couldNotInitializeTaskStorage": "belki \u65E0\u6CD5\u521D\u59CB\u5316\u4EFB\u52A1\u5B58\u50A8\u3002\u8BF7\u6253\u5F00\u5F00\u53D1\u8005\u63A7\u5236\u53F0\u67E5\u770B\u8BE6\u60C5\u3002",
+  "notice.dateAndRepeatRuleRemoved": "\u65E5\u671F\u548C\u91CD\u590D\u89C4\u5219\u5DF2\u79FB\u9664\u3002",
+  // Empty States
+  "empty.noTasksYet": "\u6682\u65E0\u4EFB\u52A1\u3002\u6DFB\u52A0\u4E00\u4E2A\u4EFB\u52A1\u540E\uFF0Cbelki \u5C06\u5176\u5199\u5165 {path}/YYYY-MM.md\u3002",
+  "empty.taskStorageCouldNotBeInitialized": "\u4EFB\u52A1\u5B58\u50A8\u65E0\u6CD5\u521D\u59CB\u5316\u3002",
+  "empty.openDailyNoteToSeeCompletedTasks": "\u6253\u5F00\u4E00\u4E2A\u65E5\u8BB0\u5E76\u8FD0\u884C belki \u65E5\u8BB0\u547D\u4EE4\u4EE5\u67E5\u770B\u5DF2\u5B8C\u6210\u7684\u4EFB\u52A1\u3002",
+  "empty.noTasksCompletedOnThisDailyNoteDate": "\u6B64\u65E5\u8BB0\u65E5\u671F\u65E0\u5DF2\u5B8C\u6210\u7684\u4EFB\u52A1\u3002",
+  // Modals
+  "modal.deleteTask": "\u5220\u9664\u4EFB\u52A1\uFF1F",
+  "modal.deleteTaskDesc": "\u6B64\u4EFB\u52A1\u5C06\u4ECE belki \u4E2D\u6C38\u4E45\u5220\u9664\u3002\u6B64\u64CD\u4F5C\u65E0\u6CD5\u5728\u63D2\u4EF6\u5185\u64A4\u9500\u3002",
+  "modal.deleteTaskWithSubtasksDesc": "\u6B64\u4EFB\u52A1\u6709 {count} \u4E2A\u5B50\u4EFB\u52A1\u3002\u4EC5\u5220\u9664\u6B64\u4EFB\u52A1\uFF0C\u8FD8\u662F\u8FDE\u540C\u5B50\u4EFB\u52A1\u4E00\u8D77\u5220\u9664\uFF1F",
+  "modal.deleteTaskWithSubtasksDescPlural": "\u6B64\u4EFB\u52A1\u6709 {count} \u4E2A\u5B50\u4EFB\u52A1\u3002\u4EC5\u5220\u9664\u6B64\u4EFB\u52A1\uFF0C\u8FD8\u662F\u8FDE\u540C\u5B50\u4EFB\u52A1\u4E00\u8D77\u5220\u9664\uFF1F",
+  "modal.duplicateTask": "\u590D\u5236\u4EFB\u52A1\uFF1F",
+  "modal.duplicateTaskDesc": "\u6B64\u4EFB\u52A1\u6709 {count} \u4E2A\u5B50\u4EFB\u52A1\u3002\u662F\u5426\u8981\u5C06\u5B83\u4EEC\u5305\u542B\u5728\u526F\u672C\u4E2D\uFF1F",
+  "modal.duplicateTaskDescPlural": "\u6B64\u4EFB\u52A1\u6709 {count} \u4E2A\u5B50\u4EFB\u52A1\u3002\u662F\u5426\u8981\u5C06\u5B83\u4EEC\u5305\u542B\u5728\u526F\u672C\u4E2D\uFF1F",
+  "modal.renameLabel": "\u91CD\u547D\u540D\u6807\u7B7E",
+  "modal.labelNameCannotBeEmpty": "\u6807\u7B7E\u540D\u79F0\u4E0D\u80FD\u4E3A\u7A7A\u3002",
+  "modal.labelWithNameAlreadyExists": "\u5DF2\u5B58\u5728\u540C\u540D\u6807\u7B7E\u3002",
+  "modal.deleteLabel": "\u5220\u9664 {label}\uFF1F",
+  "modal.deleteLabelDesc": "\u8FD9\u5C06\u4ECE {count} \u4E2A\u4EFB\u52A1\u4E2D\u79FB\u9664 {label}\u3002\u4EFB\u52A1\u4E0D\u4F1A\u88AB\u5220\u9664\u3002",
+  "modal.deleteLabelDescPlural": "\u8FD9\u5C06\u4ECE {count} \u4E2A\u4EFB\u52A1\u4E2D\u79FB\u9664 {label}\u3002\u4EFB\u52A1\u4E0D\u4F1A\u88AB\u5220\u9664\u3002",
+  "modal.deleteLabelDescNoTasks": "\u6B64\u6807\u7B7E\u672A\u5206\u914D\u7ED9\u4EFB\u4F55\u4EFB\u52A1\u3002",
+  "modal.deleteLabelAction": "\u5220\u9664\u6807\u7B7E",
+  "modal.renameProject": "\u91CD\u547D\u540D\u9879\u76EE",
+  "modal.projectNameCannotBeEmpty": "\u9879\u76EE\u540D\u79F0\u4E0D\u80FD\u4E3A\u7A7A\u3002",
+  "modal.projectWithNameAlreadyExists": "\u5DF2\u5B58\u5728\u540C\u540D\u9879\u76EE\u3002",
+  "modal.deleteProject": "\u5220\u9664\u300C{name}\u300D\uFF1F",
+  "modal.deleteProjectDesc": "\u8FD9\u5C06\u4EC5\u5220\u9664\u9879\u76EE\u3002{count} \u4E2A\u4EFB\u52A1\u5C06\u79FB\u81F3\u6536\u96C6\u7BB1\u3002\u4EFB\u52A1\u4E0D\u4F1A\u88AB\u5220\u9664\u3002",
+  "modal.deleteProjectDescPlural": "\u8FD9\u5C06\u4EC5\u5220\u9664\u9879\u76EE\u3002{count} \u4E2A\u4EFB\u52A1\u5C06\u79FB\u81F3\u6536\u96C6\u7BB1\u3002\u4EFB\u52A1\u4E0D\u4F1A\u88AB\u5220\u9664\u3002",
+  "modal.deleteProjectDescNoTasks": "\u8FD9\u5C06\u5220\u9664\u9879\u76EE\u3002\u9879\u76EE\u4E2D\u6CA1\u6709\u4EFB\u52A1\u3002",
+  "modal.deleteProjectAction": "\u5220\u9664\u9879\u76EE",
+  "modal.newProject": "\u65B0\u9879\u76EE",
+  "modal.inboxReserved": "\u300C\u6536\u96C6\u7BB1\u300D\u4E3A\u4FDD\u7559\u540D\u79F0\u3002",
+  "modal.quickAddTask": "\u5FEB\u901F\u6DFB\u52A0\u4EFB\u52A1",
+  "modal.quickAddTaskDesc": "\u7ACB\u5373\u8BB0\u5F55\u4E00\u4E2A\u4EFB\u52A1\u3002\u5B83\u5C06\u51FA\u73B0\u5728\u6536\u96C6\u7BB1\u4E2D\u3002",
+  // Priority
+  "priority.priority": "\u4F18\u5148\u7EA7",
+  "priority.priority1": "\u4F18\u5148\u7EA7 1",
+  "priority.priority2": "\u4F18\u5148\u7EA7 2",
+  "priority.priority3": "\u4F18\u5148\u7EA7 3",
+  "priority.priority4": "\u4F18\u5148\u7EA7 4",
+  // Date formatting
+  "date.last7Days": "\u6700\u8FD1 7 \u5929",
+  "date.last30Days": "\u6700\u8FD1 30 \u5929",
+  "date.older": "\u66F4\u65E9",
+  // Font options
+  "font.systemFont": "\u7CFB\u7EDF\u5B57\u4F53",
+  // Calendar description
+  "calendar.description": "\u901A\u8FC7\u8BA2\u9605\u79C1\u6709\u6216\u516C\u5F00\u7684 iCal \u6E90\uFF0C\u5728\u4ECA\u5929\u548C\u5373\u5C06\u5230\u6765\u4E2D\u663E\u793A\u53EA\u8BFB\u65E5\u5386\u4E8B\u4EF6\u3002",
+  "calendar.googleCalendarHelp": "Google \u65E5\u5386\uFF1A\u6253\u5F00 Google \u65E5\u5386\u8BBE\u7F6E\uFF0C\u5728\u300C\u6211\u7684\u65E5\u5386\u8BBE\u7F6E\u300D\u4E0B\u9009\u62E9\u4E00\u4E2A\u65E5\u5386\uFF0C\u6253\u5F00\u300C\u96C6\u6210\u65E5\u5386\u300D\uFF0C\u590D\u5236 iCal \u683C\u5F0F\u7684\u79C1\u6709\u5730\u5740\uFF0C\u7136\u540E\u7C98\u8D34\u5230 belki \u4E2D\u3002\u516C\u5F00\u7684 iCal \u94FE\u63A5\u4EC5\u5728\u65E5\u5386\u516C\u5F00\u65F6\u6709\u6548\u3002\u8BF7\u50CF\u5BF9\u5F85\u5BC6\u7801\u4E00\u6837\u5BF9\u5F85\u79C1\u6709\u94FE\u63A5\u3002\u6BCF\u4E2A\u65E5\u5386\u5355\u72EC\u6DFB\u52A0\uFF1Bbelki \u5B9A\u671F\u83B7\u53D6\u66F4\u65B0\uFF0C\u65E0\u6CD5\u7F16\u8F91\u4E8B\u4EF6\u3002",
+  // Description formatting
+  "description.bold": "\u52A0\u7C97",
+  "description.italic": "\u659C\u4F53",
+  "description.strikethrough": "\u5220\u9664\u7EBF",
+  "description.quote": "\u5F15\u7528",
+  "description.inlineCode": "\u884C\u5185\u4EE3\u7801",
+  "description.codeBlock": "\u4EE3\u7801\u5757",
+  "description.bulletList": "\u65E0\u5E8F\u5217\u8868",
+  "description.numberedList": "\u6709\u5E8F\u5217\u8868",
+  "description.link": "\u94FE\u63A5",
+  "description.formatting": "\u63CF\u8FF0\u683C\u5F0F\u5316",
+  // Composer
+  "composer.noProject": "\u65E0\u9879\u76EE",
+  "composer.createProject": "\u521B\u5EFA\u9879\u76EE...",
+  "composer.projects": "\u9879\u76EE",
+  // Filters
+  "filters.backToFilters": "\u8FD4\u56DE\u7B5B\u9009\u5668\u4E0E\u6807\u7B7E",
+  "filters.createLabel": "\u521B\u5EFA\u6807\u7B7E",
+  "filters.typeLabelName": "\u8F93\u5165\u6807\u7B7E\u540D\u79F0",
+  "filters.createLabelAction": "\u521B\u5EFA\u6807\u7B7E\uFF1A{label}",
+  // Project colors
+  "project.auto": "\u2713 \u81EA\u52A8",
+  "project.custom": "\u81EA\u5B9A\u4E49",
+  "project.automaticProjectColor": "\u81EA\u52A8\u9879\u76EE\u989C\u8272",
+  "project.chooseAnotherColor": "\u9009\u62E9\u5176\u4ED6\u9879\u76EE\u989C\u8272",
+  "project.customProjectColor": "\u81EA\u5B9A\u4E49\u9879\u76EE\u989C\u8272",
+  // Subtask presets
+  "subtask.everyday": "\u6BCF\u5929",
+  "subtask.everyWeekday": "\u6BCF\u4E2A\u5DE5\u4F5C\u65E5\uFF08\u5468\u4E00\u81F3\u5468\u4E94\uFF09",
+  "subtask.monthlyOnThe": "\u6BCF\u6708",
+  "subtask.yearlyOn": "\u6BCF\u5E74",
+  "subtask.customDate": "\u81EA\u5B9A\u4E49\u65E5\u671F",
+  // Repeat presets
+  "repeat.everyDay": "\u6BCF\u5929",
+  "repeat.everyWeekday": "\u6BCF\u4E2A\u5DE5\u4F5C\u65E5",
+  "repeat.everyWeekOn": "\u6BCF\u5468",
+  "repeat.everyWeeksOn": "\u6BCF {interval} \u5468",
+  "repeat.everyWeek": "\u6BCF\u5468",
+  "repeat.everyWeeks": "\u6BCF {interval} \u5468",
+  "repeat.monthlyOnThe": "\u6BCF\u6708",
+  "repeat.everyMonthsOn": "\u6BCF {interval} \u4E2A\u6708",
+  "repeat.yearlyOn": "\u6BCF\u5E74",
+  "repeat.everyYearsOn": "\u6BCF {interval} \u5E74",
+  "repeat.daily": "\u6BCF\u5929",
+  "repeat.weekdays": "\u5DE5\u4F5C\u65E5",
+  "repeat.weekly": "\u6BCF\u5468",
+  "repeat.monthly": "\u6BCF\u6708",
+  "repeat.yearly": "\u6BCF\u5E74",
+  // Ribbon
+  "ribbon.openBelki": "\u6253\u5F00 belki",
+  // View
+  "view.displayText": "\u4EFB\u52A1 \xB7 belki",
+  // Task count
+  "taskCount.completedTask": "\u4E2A\u5DF2\u5B8C\u6210\u7684\u4EFB\u52A1",
+  "taskCount.completedTasks": "\u4E2A\u5DF2\u5B8C\u6210\u7684\u4EFB\u52A1",
+  "taskCount.task": "\u4E2A\u4EFB\u52A1",
+  "taskCount.tasks": "\u4E2A\u4EFB\u52A1",
+  "taskCount.completed": "\u5DF2\u5B8C\u6210"
+};
+
+// src/i18n/index.ts
+var locales = {
+  en,
+  "zh-CN": zhCN,
+  "zh": zhCN
+};
+var currentLocale = "en";
+function setLocale(locale) {
+  if (locales[locale]) {
+    currentLocale = locale;
+  } else if (locale.startsWith("zh")) {
+    currentLocale = "zh-CN";
+  } else {
+    currentLocale = "en";
+  }
+}
+function t(key, params) {
+  var _a, _b, _c;
+  let text = (_c = (_b = (_a = locales[currentLocale]) == null ? void 0 : _a[key]) != null ? _b : en[key]) != null ? _c : key;
+  if (params) {
+    for (const [paramKey, paramValue] of Object.entries(params)) {
+      text = text.replace(new RegExp(`\\{${paramKey}\\}`, "g"), String(paramValue));
+    }
+  }
+  return text;
+}
+function initI18n(appLanguage) {
+  if (appLanguage) {
+    setLocale(appLanguage);
+  }
+}
+
 // src/dateUtils.ts
 var ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 function todayIso() {
@@ -95,9 +751,9 @@ function nextWeekdayIso(targetDay) {
   return toIsoDate(date);
 }
 function formatDueDateChip(value) {
-  if (!isIsoDate(value)) return "Date";
-  if (value === todayIso()) return "Today";
-  if (value === addDaysIso(1)) return "Tomorrow";
+  if (!isIsoDate(value)) return t("date.date");
+  if (value === todayIso()) return t("date.today");
+  if (value === addDaysIso(1)) return t("date.tomorrow");
   const [year, month, day] = value.split("-").map(Number);
   const date = new Date(year, month - 1, day);
   const thisYear = (/* @__PURE__ */ new Date()).getFullYear();
@@ -815,13 +1471,13 @@ var DEFAULT_SETTINGS = {
   icalCalendarFeeds: []
 };
 var OVERDUE_RANGE_LABELS = {
-  yesterday: "Yesterday",
-  last7: "Last 7 days",
-  last30: "Last 30 days",
-  older: "Older"
+  yesterday: t("date.yesterday"),
+  last7: t("date.last7Days"),
+  last30: t("date.last30Days"),
+  older: t("date.older")
 };
 var FONT_OPTION_LABELS = {
-  system: "System Font",
+  system: t("font.systemFont"),
   ibmPlexSans: "IBM Plex Sans",
   ibmPlexMono: "IBM Plex Mono",
   spaceGrotesk: "Space Grotesk",
@@ -916,7 +1572,7 @@ var RenameLabelModal = class extends import_obsidian3.Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("belki-label-prompt");
-    contentEl.createEl("h2", { text: "Rename label" });
+    contentEl.createEl("h2", { text: t("modal.renameLabel") });
     const input = contentEl.createEl("input", {
       cls: "belki-label-prompt-input",
       attr: {
@@ -936,19 +1592,19 @@ var RenameLabelModal = class extends import_obsidian3.Modal {
     };
     actions.createEl("button", {
       cls: "belki-button",
-      text: "Cancel",
+      text: t("common.cancel"),
       attr: { type: "button" }
     }).addEventListener("click", () => this.close());
     const submitButton = actions.createEl("button", {
       cls: "belki-button belki-button-primary",
-      text: "Rename",
+      text: t("common.rename"),
       attr: { type: "button" }
     });
     const submit = () => {
       const current = normalizeLabelName(this.currentLabel);
       const next = normalizeLabelName(input.value);
       if (!next) {
-        showError("Label name cannot be empty.");
+        showError(t("modal.labelNameCannotBeEmpty"));
         return;
       }
       if (next === current) {
@@ -958,7 +1614,7 @@ var RenameLabelModal = class extends import_obsidian3.Modal {
       if (this.existingLabels.some(
         (label) => normalizeLabelName(label) === next && normalizeLabelName(label) !== current
       )) {
-        showError("A label with that name already exists.");
+        showError(t("modal.labelWithNameAlreadyExists"));
         return;
       }
       void this.onSubmit(next).then(() => this.close());
@@ -984,18 +1640,18 @@ var DeleteLabelModal = class extends import_obsidian3.Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("belki-label-prompt");
-    contentEl.createEl("h2", { text: `Delete ${displayLabel(this.label)}?` });
-    const desc = this.taskCount > 0 ? `This will remove ${displayLabel(this.label)} from ${this.taskCount} task${this.taskCount === 1 ? "" : "s"}. Tasks will not be deleted.` : "This label is not assigned to any tasks.";
+    contentEl.createEl("h2", { text: t("modal.deleteLabel", { label: displayLabel(this.label) }) });
+    const desc = this.taskCount > 0 ? t(this.taskCount === 1 ? "modal.deleteLabelDesc" : "modal.deleteLabelDescPlural", { label: displayLabel(this.label), count: this.taskCount }) : t("modal.deleteLabelDescNoTasks");
     contentEl.createEl("p", { text: desc, cls: "belki-modal-desc" });
     const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
     actions.createEl("button", {
       cls: "belki-button",
-      text: "Cancel",
+      text: t("common.cancel"),
       attr: { type: "button" }
     }).addEventListener("click", () => this.close());
     actions.createEl("button", {
       cls: "belki-button belki-button-destructive",
-      text: "Delete label",
+      text: t("modal.deleteLabelAction"),
       attr: { type: "button" }
     }).addEventListener("click", () => {
       void this.onConfirm().then(() => this.close());
@@ -1019,14 +1675,14 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     applyBelkiFontSettings(containerEl, this.plugin.settings);
-    new import_obsidian4.Setting(containerEl).setName("Old task file").setDesc("Legacy Markdown file used by older belki versions.").addText((text) => {
+    new import_obsidian4.Setting(containerEl).setName(t("settings.oldTaskFile")).setDesc(t("settings.oldTaskFileDesc")).addText((text) => {
       text.setPlaceholder("belki/tasks.md").setValue(this.plugin.settings.tasksFilePath).onChange(async (value) => {
         this.plugin.settings.tasksFilePath = value.trim() || DEFAULT_SETTINGS.tasksFilePath;
         await this.plugin.saveSettings();
         await this.plugin.reloadTasks();
       });
     });
-    new import_obsidian4.Setting(containerEl).setName("Data folder").setDesc("Folder where belki stores task data and attachments.").addText((text) => {
+    new import_obsidian4.Setting(containerEl).setName(t("settings.dataFolder")).setDesc(t("settings.dataFolderDesc")).addText((text) => {
       let draftPath = this.plugin.settings.dataFolderPath;
       const commitPathChange = async () => {
         const normalizedPath = normalizeDataFolderPath(draftPath);
@@ -1053,7 +1709,7 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
         text.inputEl.blur();
       });
     });
-    new import_obsidian4.Setting(containerEl).setName("Default overdue range").setDesc("Default range used by the Today overdue section.").addDropdown((dropdown) => {
+    new import_obsidian4.Setting(containerEl).setName(t("settings.defaultOverdueRange")).setDesc(t("settings.defaultOverdueRangeDesc")).addDropdown((dropdown) => {
       for (const range of OVERDUE_RANGES) {
         dropdown.addOption(range, overdueRangeLabel(range));
       }
@@ -1063,15 +1719,15 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
         this.plugin.refreshBelkiViews();
       });
     });
-    new import_obsidian4.Setting(containerEl).setName("Daily Notes").setHeading();
-    new import_obsidian4.Setting(containerEl).setName("Enable Daily Notes integration").setDesc("Allow belki to show completed tasks for the active daily note date.").addToggle((toggle) => {
+    new import_obsidian4.Setting(containerEl).setName(t("settings.dailyNotes")).setHeading();
+    new import_obsidian4.Setting(containerEl).setName(t("settings.enableDailyNotesIntegration")).setDesc(t("settings.enableDailyNotesIntegrationDesc")).addToggle((toggle) => {
       toggle.setValue(this.plugin.settings.dailyNotesIntegrationEnabled).onChange(async (value) => {
         this.plugin.settings.dailyNotesIntegrationEnabled = value;
         await this.plugin.saveSettings();
         this.plugin.refreshBelkiViews();
       });
     });
-    new import_obsidian4.Setting(containerEl).setName("Daily note date format").setDesc("Used to match the active note file to a date. Default: YYYY-MM-DD.").addText((text) => {
+    new import_obsidian4.Setting(containerEl).setName(t("settings.dailyNoteDateFormat")).setDesc(t("settings.dailyNoteDateFormatDesc")).addText((text) => {
       let draftFormat = this.plugin.settings.dailyNoteDateFormat;
       const commitFormat = async () => {
         const normalized = normalizeDailyNoteDateFormat(draftFormat);
@@ -1094,52 +1750,52 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
         text.inputEl.blur();
       });
     });
-    new import_obsidian4.Setting(containerEl).setName("Auto-add completed tasks block").setDesc("When a daily note is opened, append a belki-completed code block if the note does not already have one.").addToggle((toggle) => {
+    new import_obsidian4.Setting(containerEl).setName(t("settings.autoAddCompletedTasksBlock")).setDesc(t("settings.autoAddCompletedTasksBlockDesc")).addToggle((toggle) => {
       toggle.setValue(this.plugin.settings.dailyNotesAutoInsertCompletedBlock).onChange(async (value) => {
         this.plugin.settings.dailyNotesAutoInsertCompletedBlock = value;
         await this.plugin.saveSettings();
       });
     });
     this.renderCalendarSettings();
-    new import_obsidian4.Setting(containerEl).setName("Fonts").setHeading();
+    new import_obsidian4.Setting(containerEl).setName(t("settings.fonts")).setHeading();
     this.addFontSetting(
-      "UI Font",
-      "Used for sidebar, headings, buttons, settings, and the general interface.",
+      t("settings.uiFont"),
+      t("settings.uiFontDesc"),
       "uiFont"
     );
     this.addFontSetting(
-      "Task Title Font",
-      "Used for task row titles and the task detail title input.",
+      t("settings.taskTitleFont"),
+      t("settings.taskTitleFontDesc"),
       "taskTitleFont"
     );
     this.addFontSetting(
-      "Task Description Font",
-      "Used for task row descriptions and the task detail description textarea.",
+      t("settings.taskDescriptionFont"),
+      t("settings.taskDescriptionFontDesc"),
       "taskDescriptionFont"
     );
     this.addFontSetting(
-      "Label Font",
-      "Used for label chip text.",
+      t("settings.labelFont"),
+      t("settings.labelFontDesc"),
       "labelFont"
     );
-    new import_obsidian4.Setting(containerEl).setName("Project colors").setHeading();
+    new import_obsidian4.Setting(containerEl).setName(t("settings.projectColors")).setHeading();
     const projects = this.plugin.getProjectNames();
     if (projects.length === 0) {
       containerEl.createDiv({
         cls: "setting-item-description",
-        text: "No projects yet. belki will generate stable colors when projects appear."
+        text: t("settings.noProjectsYet")
       });
     }
     for (const project of projects) {
       this.addProjectColorSetting(project);
     }
-    new import_obsidian4.Setting(containerEl).setName("Label colors").setHeading();
+    new import_obsidian4.Setting(containerEl).setName(t("settings.labelColors")).setHeading();
     this.addLabelRegistrySetting();
     const labels = this.plugin.getLabelNames();
     if (labels.length === 0) {
       containerEl.createDiv({
         cls: "setting-item-description",
-        text: "No labels yet. Add one here or create one from Filters & Labels."
+        text: t("settings.noLabelsYet")
       });
     }
     for (const label of labels) {
@@ -1160,27 +1816,27 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
     });
   }
   renderCalendarSettings() {
-    new import_obsidian4.Setting(this.containerEl).setName("Calendar").setHeading();
+    new import_obsidian4.Setting(this.containerEl).setName(t("settings.dailyNotes")).setHeading();
     this.containerEl.createDiv({
       cls: "setting-item-description belki-calendar-settings-description",
-      text: "Display read-only calendar events inside Today and Upcoming by subscribing to private or public iCal feeds."
+      text: t("calendar.description")
     });
     this.containerEl.createDiv({
       cls: "setting-item-description belki-calendar-help",
-      text: "Google Calendar: open Google Calendar settings, select a calendar under Settings for my calendars, open Integrate calendar, copy Secret address in iCal format, and paste it into belki. Public iCal links work only when the calendar is public. Treat private links like passwords. Each calendar is added separately; belki fetches updates periodically and cannot edit events."
+      text: t("calendar.googleCalendarHelp")
     });
     const service = this.plugin.calendarService;
     const state = service.getConnectionState();
-    new import_obsidian4.Setting(this.containerEl).setName("Add iCal calendar").setDesc("Subscribe to an HTTPS or webcal iCal feed. The URL is stored locally and masked after saving.").addButton((button) => {
-      button.setButtonText("Add iCal calendar").onClick(() => {
+    new import_obsidian4.Setting(this.containerEl).setName(t("calendar.addIcalCalendar")).setDesc(t("calendar.acceptsHttpsAndWebcal")).addButton((button) => {
+      button.setButtonText(t("calendar.addIcalCalendar")).onClick(() => {
         new IcalCalendarFeedModal(this.app, {
-          title: "Add iCal calendar",
+          title: t("calendar.addIcalCalendar"),
           service,
           onSaved: () => this.renderSettings()
         }).open();
       });
     }).addButton((button) => {
-      button.setButtonText(state.loading ? "Refreshing..." : "Refresh all").setDisabled(state.loading).onClick(() => {
+      button.setButtonText(state.loading ? t("common.refreshing") : t("common.refresh")).setDisabled(state.loading).onClick(() => {
         void (async () => {
           const pending = service.manualRefresh();
           this.renderSettings();
@@ -1190,7 +1846,7 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
       });
     });
     if (state.loading) {
-      this.renderCalendarStatus("Refreshing calendar feeds...", "loading");
+      this.renderCalendarStatus(t("calendar.refreshingCalendarFeeds"), "loading");
     }
     if (state.partialErrors.length > 0) {
       this.renderCalendarStatus(
@@ -1202,7 +1858,7 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
     if (calendars.length === 0) {
       this.containerEl.createDiv({
         cls: "setting-item-description",
-        text: "No iCal calendars yet."
+        text: t("calendar.noIcalCalendarsYet")
       });
       return;
     }
@@ -1217,7 +1873,7 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
           this.renderSettings();
         });
       }).addButton((button) => {
-        button.setButtonText(calendar.loading ? "Refreshing..." : "Refresh").setDisabled(calendar.loading).onClick(() => {
+        button.setButtonText(calendar.loading ? t("common.refreshing") : t("common.refresh")).setDisabled(calendar.loading).onClick(() => {
           void (async () => {
             const pending = service.manualRefresh(calendar.id);
             this.renderSettings();
@@ -1226,16 +1882,16 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
           })();
         });
       }).addButton((button) => {
-        button.setButtonText("Edit").onClick(() => {
+        button.setButtonText(t("common.edit")).onClick(() => {
           new IcalCalendarFeedModal(this.app, {
-            title: "Edit iCal calendar",
+            title: t("calendar.editIcalCalendar"),
             service,
             feed,
             onSaved: () => this.renderSettings()
           }).open();
         });
       }).addButton((button) => {
-        button.setButtonText("Remove").onClick(() => {
+        button.setButtonText(t("common.delete")).onClick(() => {
           new RemoveIcalCalendarFeedModal(this.app, feed, async () => {
             await service.removeFeed(feed.id);
             this.renderSettings();
@@ -1270,14 +1926,14 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
   addProjectColorSetting(project) {
     const automaticColor = colorForName(project).regular;
     const override = this.plugin.settings.projectColors[project];
-    new import_obsidian4.Setting(this.containerEl).setName(project).setDesc(override ? "Custom color override" : "Automatic palette color").addColorPicker((picker) => {
+    new import_obsidian4.Setting(this.containerEl).setName(project).setDesc(override ? t("calendar.customColorOverride") : t("calendar.automaticPaletteColor")).addColorPicker((picker) => {
       picker.setValue(override || automaticColor).onChange(async (value) => {
         this.plugin.settings.projectColors[project] = value;
         await this.plugin.saveSettings();
         this.plugin.refreshBelkiViews();
       });
     }).addButton((button) => {
-      button.setButtonText("Reset").onClick(() => {
+      button.setButtonText(t("common.reset")).onClick(() => {
         void (async () => {
           delete this.plugin.settings.projectColors[project];
           await this.plugin.saveSettings();
@@ -1289,12 +1945,12 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
   }
   addLabelRegistrySetting() {
     let pendingLabel = "";
-    new import_obsidian4.Setting(this.containerEl).setName("Add label").setDesc("Create a label without assigning it to a task yet.").addText((text) => {
+    new import_obsidian4.Setting(this.containerEl).setName(t("settings.addLabel")).setDesc(t("settings.addLabelDesc")).addText((text) => {
       text.setPlaceholder("#label").onChange((value) => {
         pendingLabel = value;
       });
     }).addButton((button) => {
-      button.setButtonText("Add").onClick(() => {
+      button.setButtonText(t("common.addTask")).onClick(() => {
         void (async () => {
           const label = normalizeLabelName(pendingLabel);
           if (!label) {
@@ -1314,21 +1970,21 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
   addLabelColorSetting(label) {
     const automaticColor = colorForName(label).regular;
     const override = this.plugin.settings.labelColors[label];
-    new import_obsidian4.Setting(this.containerEl).setName(displayLabel(label)).setDesc(override ? "Custom color override" : "Automatic palette color").addColorPicker((picker) => {
+    new import_obsidian4.Setting(this.containerEl).setName(displayLabel(label)).setDesc(override ? t("calendar.customColorOverride") : t("calendar.automaticPaletteColor")).addColorPicker((picker) => {
       picker.setValue(override || automaticColor).onChange(async (value) => {
         this.plugin.settings.labelColors[label] = value;
         await this.plugin.saveSettings();
         this.plugin.refreshBelkiViews();
       });
     }).addButton((button) => {
-      button.setButtonText("Rename").onClick(() => {
+      button.setButtonText(t("common.rename")).onClick(() => {
         new RenameLabelModal(this.app, label, this.plugin.getLabelNames(), async (newLabel) => {
           await this.plugin.renameLabel(label, newLabel);
           this.renderSettings();
         }).open();
       });
     }).addButton((button) => {
-      button.setButtonText("Delete").onClick(() => {
+      button.setButtonText(t("common.delete")).onClick(() => {
         new DeleteLabelModal(
           this.app,
           label,
@@ -1340,7 +1996,7 @@ var BelkiSettingTab = class extends import_obsidian4.PluginSettingTab {
         ).open();
       });
     }).addButton((button) => {
-      button.setButtonText("Reset").onClick(() => {
+      button.setButtonText(t("common.reset")).onClick(() => {
         void (async () => {
           delete this.plugin.settings.labelColors[label];
           await this.plugin.saveSettings();
@@ -1371,7 +2027,7 @@ var IcalCalendarFeedModal = class extends import_obsidian4.Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.createEl("h2", { text: this.options.title });
-    new import_obsidian4.Setting(contentEl).setName("Calendar name").addText((text) => {
+    new import_obsidian4.Setting(contentEl).setName(t("calendar.calendarName")).addText((text) => {
       text.setPlaceholder("Personal").setValue(this.name).onChange((value) => {
         this.name = value;
       });
@@ -1382,7 +2038,7 @@ var IcalCalendarFeedModal = class extends import_obsidian4.Modal {
         text: `Saved URL: ${maskIcalFeedUrl(this.options.feed.url)}`
       });
     }
-    const urlSetting = new import_obsidian4.Setting(contentEl).setName(this.options.feed ? "Replace iCal URL" : "Private or public iCal URL").setDesc(this.options.feed ? "Leave empty to keep the saved URL. The existing URL is not shown." : "Accepts HTTPS and webcal URLs.").addText((text) => {
+    const urlSetting = new import_obsidian4.Setting(contentEl).setName(this.options.feed ? t("calendar.replaceIcalUrl") : t("calendar.privateOrPublicIcalUrl")).setDesc(this.options.feed ? t("calendar.leaveEmptyToKeepSavedUrl") : t("calendar.acceptsHttpsAndWebcal")).addText((text) => {
       text.setPlaceholder("https://example.com/calendar.ics").onChange((value) => {
         this.url = value;
         this.renderUrlHint();
@@ -1393,27 +2049,27 @@ var IcalCalendarFeedModal = class extends import_obsidian4.Modal {
       cls: "setting-item-description belki-calendar-url-hint"
     });
     this.renderUrlHint();
-    new import_obsidian4.Setting(contentEl).setName("Calendar color").addColorPicker((picker) => {
+    new import_obsidian4.Setting(contentEl).setName(t("calendar.calendarColor")).addColorPicker((picker) => {
       picker.setValue(this.color).onChange((value) => {
         this.color = value;
       });
     });
-    new import_obsidian4.Setting(contentEl).setName("Enabled").addToggle((toggle) => {
+    new import_obsidian4.Setting(contentEl).setName(t("common.enabled")).addToggle((toggle) => {
       toggle.setValue(this.enabled).onChange((value) => {
         this.enabled = value;
       });
     });
     this.statusEl = contentEl.createDiv({ cls: "setting-item-description belki-calendar-modal-status" });
     new import_obsidian4.Setting(contentEl).addButton((button) => {
-      button.setButtonText("Test connection").onClick(() => {
+      button.setButtonText(t("calendar.testConnection")).onClick(() => {
         void this.testConnection();
       });
     }).addButton((button) => {
-      button.setButtonText(this.options.feed ? "Save changes" : "Add calendar").setCta().onClick(() => {
+      button.setButtonText(this.options.feed ? t("calendar.saveChanges") : t("calendar.addCalendar")).setCta().onClick(() => {
         void this.save();
       });
     }).addButton((button) => {
-      button.setButtonText("Cancel").onClick(() => this.close());
+      button.setButtonText(t("common.cancel")).onClick(() => this.close());
     });
   }
   onClose() {
@@ -1430,15 +2086,15 @@ var IcalCalendarFeedModal = class extends import_obsidian4.Modal {
     };
   }
   async testConnection() {
-    this.setStatus("Testing calendar feed...", "loading");
+    this.setStatus(t("calendar.testingCalendarFeed"), "loading");
     try {
       const result = await this.options.service.testFeed(this.draftForTest());
       this.setStatus(
-        `Connection works${result.name ? `: ${result.name}` : ""}. ${result.eventCount} event${result.eventCount === 1 ? "" : "s"} found in the current window.`,
+        `${t("calendar.connectionWorks")}${result.name ? `: ${result.name}` : ""}. ${result.eventCount} event${result.eventCount === 1 ? "" : "s"} found in the current window.`,
         "success"
       );
     } catch (error) {
-      this.setStatus(calendarErrorMessage(error, "Calendar feed could not be tested."), "error");
+      this.setStatus(calendarErrorMessage(error, t("calendar.calendarFeedCouldNotBeTested")), "error");
     }
   }
   async save() {
@@ -1453,11 +2109,11 @@ var IcalCalendarFeedModal = class extends import_obsidian4.Modal {
       } else {
         await this.options.service.addFeed(this.draftForTest());
       }
-      new import_obsidian4.Notice(this.options.feed ? "Calendar updated." : "Calendar added.");
+      new import_obsidian4.Notice(this.options.feed ? t("calendar.calendarUpdated") : t("calendar.calendarAdded"));
       this.options.onSaved();
       this.close();
     } catch (error) {
-      this.setStatus(calendarErrorMessage(error, "Calendar feed could not be saved."), "error");
+      this.setStatus(calendarErrorMessage(error, t("calendar.calendarFeedCouldNotBeSaved")), "error");
     }
   }
   setStatus(message, kind) {
@@ -1485,23 +2141,23 @@ var RemoveIcalCalendarFeedModal = class extends import_obsidian4.Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl("h2", { text: "Remove calendar?" });
+    contentEl.createEl("h2", { text: t("calendar.removeCalendar") });
     contentEl.createDiv({
       cls: "setting-item-description",
-      text: `Remove ${this.feed.name} from belki. This clears its saved iCal URL and cached events, but does not modify tasks.`
+      text: t("calendar.removeCalendarDesc", { name: this.feed.name })
     });
     new import_obsidian4.Setting(contentEl).addButton((button) => {
-      button.setButtonText("Remove");
+      button.setButtonText(t("common.delete"));
       button.buttonEl.addClass("mod-warning");
       button.onClick(() => {
         void (async () => {
           await this.onConfirm();
-          new import_obsidian4.Notice("Calendar removed.");
+          new import_obsidian4.Notice(t("calendar.calendarRemoved"));
           this.close();
         })();
       });
     }).addButton((button) => {
-      button.setButtonText("Cancel").onClick(() => this.close());
+      button.setButtonText(t("common.cancel")).onClick(() => this.close());
     });
   }
   onClose() {
@@ -1520,10 +2176,10 @@ function formatSettingsRefreshTime(value) {
 }
 function calendarFeedStatusText(feed, loading) {
   if (!feed.enabled) {
-    return "Disabled";
+    return t("common.disabled");
   }
   if (loading) {
-    return "Updating...";
+    return t("common.refreshing");
   }
   if (feed.lastError) {
     const retryText = retryStatusText(feed.nextAutomaticRefreshAt);
@@ -1710,29 +2366,29 @@ function getRepeatLabel(rule) {
   const i = (_a = normalized.interval) != null ? _a : 1;
   switch (normalized.frequency) {
     case "daily":
-      return i === 1 ? "Every day" : `Every ${i} days`;
+      return i === 1 ? t("repeat.everyDay") : t("repeat.everyWeeks", { interval: i });
     case "weekdays":
-      return "Every weekday";
+      return t("repeat.everyWeekday");
     case "weekly": {
       const weekdays = getRepeatWeekdays(normalized);
       if (weekdays.length === 1) {
         const day = WEEKDAY_NAMES[weekdays[0]];
-        return i === 1 ? `Every week on ${day}` : `Every ${i} weeks on ${day}`;
+        return i === 1 ? `${t("repeat.everyWeek")} ${day}` : `${t("repeat.everyWeeks", { interval: i })} ${day}`;
       }
       if (weekdays.length > 1) {
         const days = weekdays.map((weekday) => WEEKDAY_SHORT_NAMES[weekday]).join(", ");
-        return i === 1 ? `Every week on ${days}` : `Every ${i} weeks on ${days}`;
+        return i === 1 ? `${t("repeat.everyWeek")} ${days}` : `${t("repeat.everyWeeks", { interval: i })} ${days}`;
       }
-      return i === 1 ? "Every week" : `Every ${i} weeks`;
+      return i === 1 ? t("repeat.everyWeek") : t("repeat.everyWeeks", { interval: i });
     }
     case "monthly": {
       const ord = ordinal((_b = normalized.dayOfMonth) != null ? _b : 1);
-      return i === 1 ? `Monthly on the ${ord}` : `Every ${i} months on the ${ord}`;
+      return i === 1 ? `${t("repeat.monthlyOnThe")} ${ord}` : `${t("repeat.everyMonthsOn", { interval: i })} ${ord}`;
     }
     case "yearly": {
       const mo = MONTH_NAMES[(_c = normalized.month) != null ? _c : 1];
       const d = (_d = normalized.dayOfMonth) != null ? _d : 1;
-      return i === 1 ? `Yearly on ${mo} ${d}` : `Every ${i} years on ${mo} ${d}`;
+      return i === 1 ? `${t("repeat.yearlyOn")} ${mo} ${d}` : `${t("repeat.everyYearsOn", { interval: i })} ${mo} ${d}`;
     }
   }
 }
@@ -1742,33 +2398,33 @@ function getRepeatChipLabel(rule) {
   const i = (_a = normalized.interval) != null ? _a : 1;
   switch (normalized.frequency) {
     case "daily":
-      return i === 1 ? "Daily" : `${i}d`;
+      return i === 1 ? t("repeat.daily") : `${i}d`;
     case "weekdays":
-      return "Weekdays";
+      return t("repeat.weekdays");
     case "weekly": {
       const weekdays = getRepeatWeekdays(normalized);
       if (weekdays.length === 1) {
         const day = WEEKDAY_SHORT_NAMES[weekdays[0]];
-        return i === 1 ? `Weekly ${day}` : `${i}w \xB7 ${day}`;
+        return i === 1 ? `${t("repeat.weekly")} ${day}` : `${i}w \xB7 ${day}`;
       }
       if (weekdays.length > 1) {
         if (weekdays.length > 3) {
-          return i === 1 ? `Weekly \xB7 ${weekdays.length} days` : `${i}w \xB7 ${weekdays.length} days`;
+          return i === 1 ? `${t("repeat.weekly")} \xB7 ${weekdays.length} days` : `${i}w \xB7 ${weekdays.length} days`;
         }
         const days = weekdays.map((weekday) => WEEKDAY_SHORT_NAMES[weekday]).join(", ");
-        return i === 1 ? `Weekly \xB7 ${days}` : `${i}w \xB7 ${days}`;
+        return i === 1 ? `${t("repeat.weekly")} \xB7 ${days}` : `${i}w \xB7 ${days}`;
       }
-      return i === 1 ? "Weekly" : `${i}w`;
+      return i === 1 ? t("repeat.weekly") : `${i}w`;
     }
     case "monthly": {
       const ord = ordinal((_b = normalized.dayOfMonth) != null ? _b : 1);
-      return i === 1 ? `Monthly \xB7 ${ord}` : `${i}mo \xB7 ${ord}`;
+      return i === 1 ? `${t("repeat.monthly")} \xB7 ${ord}` : `${i}mo \xB7 ${ord}`;
     }
     case "yearly": {
       const month = MONTH_NAMES[(_c = normalized.month) != null ? _c : 1];
       const shortMonth = month.slice(0, 3);
       const day = (_d = normalized.dayOfMonth) != null ? _d : 1;
-      return i === 1 ? `Yearly \xB7 ${shortMonth} ${day}` : `${i}y \xB7 ${shortMonth} ${day}`;
+      return i === 1 ? `${t("repeat.yearly")} \xB7 ${shortMonth} ${day}` : `${i}y \xB7 ${shortMonth} ${day}`;
     }
   }
 }
@@ -1779,11 +2435,11 @@ function getRepeatPresets(due) {
   const date = new Date(parseInt(due.slice(0, 4)), month - 1, day);
   const weekday = date.getDay();
   return [
-    { label: "Every day", rule: { frequency: "daily", ...PRESET_DEFAULTS } },
-    { label: `Every ${WEEKDAY_NAMES[weekday]}`, rule: { frequency: "weekly", ...PRESET_DEFAULTS, weekday, weekdays: [weekday] } },
-    { label: "Every weekday (Mon \u2013 Fri)", rule: { frequency: "weekdays", ...PRESET_DEFAULTS } },
-    { label: `Monthly on the ${ordinal(day)}`, rule: { frequency: "monthly", ...PRESET_DEFAULTS, dayOfMonth: day } },
-    { label: `Yearly on ${MONTH_NAMES[month]} ${day}`, rule: { frequency: "yearly", ...PRESET_DEFAULTS, month, dayOfMonth: day } }
+    { label: t("repeat.everyDay"), rule: { frequency: "daily", ...PRESET_DEFAULTS } },
+    { label: `${t("repeat.everyWeek")} ${WEEKDAY_NAMES[weekday]}`, rule: { frequency: "weekly", ...PRESET_DEFAULTS, weekday, weekdays: [weekday] } },
+    { label: t("repeat.everyWeekday"), rule: { frequency: "weekdays", ...PRESET_DEFAULTS } },
+    { label: `${t("repeat.monthlyOnThe")} ${ordinal(day)}`, rule: { frequency: "monthly", ...PRESET_DEFAULTS, dayOfMonth: day } },
+    { label: `${t("repeat.yearlyOn")} ${MONTH_NAMES[month]} ${day}`, rule: { frequency: "yearly", ...PRESET_DEFAULTS, month, dayOfMonth: day } }
   ];
 }
 function nextOccurrence(rule, fromDate) {
@@ -3889,16 +4545,16 @@ var import_obsidian12 = require("obsidian");
 
 // src/priority.ts
 var PRIORITY_COLORS = {
-  P1: { name: "Priority 1", color: "#E03E3E", light: "#FBE4E3" },
-  P2: { name: "Priority 2", color: "#D9730D", light: "#FAEBDD" },
-  P3: { name: "Priority 3", color: "#0C6E99", light: "#DDEBF1" },
+  P1: { name: t("priority.priority1"), color: "#E03E3E", light: "#FBE4E3" },
+  P2: { name: t("priority.priority2"), color: "#D9730D", light: "#FAEBDD" },
+  P3: { name: t("priority.priority3"), color: "#0C6E99", light: "#DDEBF1" },
   P4: {
-    name: "Priority 4",
+    name: t("priority.priority4"),
     color: "var(--belki-muted)",
     light: "transparent"
   },
   none: {
-    name: "Priority",
+    name: t("priority.priority"),
     color: "var(--belki-muted)",
     light: "transparent"
   }
@@ -3916,12 +4572,12 @@ function hasVisiblePriority(priority) {
   return !isDefaultPriority(priority);
 }
 function getPriorityDropdownLabel(priority) {
-  if (priority === "none") return "Priority 4";
+  if (priority === "none") return t("priority.priority4");
   return getPriorityColor(priority).name;
 }
 function getPriorityDisplayLabel(priority) {
-  if (isDefaultPriority(priority)) return "Priority";
-  return priority || "Priority";
+  if (isDefaultPriority(priority)) return t("priority.priority");
+  return priority || t("priority.priority");
 }
 function getPriorityClass(priority) {
   if (isDefaultPriority(priority)) return "";
@@ -4407,11 +5063,11 @@ var import_obsidian11 = require("obsidian");
 // src/views/CustomRepeatModal.ts
 var import_obsidian10 = require("obsidian");
 var FREQ_LABELS = {
-  daily: "Day",
-  weekly: "Week",
-  weekdays: "Weekday",
-  monthly: "Month",
-  yearly: "Year"
+  daily: t("repeat.day"),
+  weekly: t("repeat.week"),
+  weekdays: t("repeat.weekday"),
+  monthly: t("repeat.month"),
+  yearly: t("repeat.year")
 };
 var DISPLAY_DAYS = [
   { label: "Mon", value: 1 },
@@ -4429,7 +5085,7 @@ var CustomRepeatModal = class extends import_obsidian10.Modal {
     this.draft = current ? normalizeRepeatRule(current) : { frequency: "weekly", interval: 1, mode: "scheduledDate", ends: "never" };
   }
   onOpen() {
-    this.titleEl.setText("Custom repeat");
+    this.titleEl.setText(t("repeat.customRepeat"));
     this.modalEl.addClass("belki-custom-repeat-modal");
     this.render();
   }
@@ -4439,18 +5095,18 @@ var CustomRepeatModal = class extends import_obsidian10.Modal {
   render() {
     const { contentEl } = this;
     contentEl.empty();
-    this.renderSection(contentEl, "Based on");
+    this.renderSection(contentEl, t("repeat.basedOn"));
     const modeWrap = contentEl.createDiv({ cls: "belki-repeat-radio-group" });
-    this.renderRadio(modeWrap, "Scheduled date", this.draft.mode === "scheduledDate", () => {
+    this.renderRadio(modeWrap, t("repeat.scheduledDate"), this.draft.mode === "scheduledDate", () => {
       this.draft.mode = "scheduledDate";
       this.render();
     });
-    this.renderRadio(modeWrap, "Completed date", this.draft.mode === "completedDate", () => {
+    this.renderRadio(modeWrap, t("repeat.completedDate"), this.draft.mode === "completedDate", () => {
       this.draft.mode = "completedDate";
       this.clearWeekdays();
       this.render();
     });
-    this.renderSection(contentEl, "Every");
+    this.renderSection(contentEl, t("repeat.every"));
     const everyRow = contentEl.createDiv({ cls: "belki-repeat-every-row" });
     const intervalInput = everyRow.createEl("input", {
       cls: "belki-repeat-interval-input",
@@ -4481,7 +5137,7 @@ var CustomRepeatModal = class extends import_obsidian10.Modal {
       this.render();
     });
     if (this.draft.frequency === "weekly" && this.draft.mode === "scheduledDate") {
-      this.renderSection(contentEl, "On");
+      this.renderSection(contentEl, t("repeat.on"));
       const dayRow = contentEl.createDiv({ cls: "belki-repeat-day-row" });
       const selectedWeekdays = getRepeatWeekdays(this.draft);
       for (const { label, value } of DISPLAY_DAYS) {
@@ -4499,16 +5155,16 @@ var CustomRepeatModal = class extends import_obsidian10.Modal {
         });
       }
     }
-    this.renderSection(contentEl, "Ends");
+    this.renderSection(contentEl, t("repeat.ends"));
     const endsWrap = contentEl.createDiv({ cls: "belki-repeat-radio-group" });
-    this.renderRadio(endsWrap, "Never", this.draft.ends === "never", () => {
+    this.renderRadio(endsWrap, t("repeat.never"), this.draft.ends === "never", () => {
       this.draft.ends = "never";
       this.draft.endsDate = void 0;
       this.draft.endsCount = void 0;
       this.render();
     });
     const onDateRow = endsWrap.createDiv({ cls: "belki-repeat-ends-row" });
-    this.renderRadio(onDateRow, "On date", this.draft.ends === "onDate", () => {
+    this.renderRadio(onDateRow, t("repeat.onDate"), this.draft.ends === "onDate", () => {
       this.draft.ends = "onDate";
       this.draft.endsCount = void 0;
       this.render();
@@ -4523,7 +5179,7 @@ var CustomRepeatModal = class extends import_obsidian10.Modal {
       });
     }
     const afterRow = endsWrap.createDiv({ cls: "belki-repeat-ends-row" });
-    this.renderRadio(afterRow, "After", this.draft.ends === "afterOccurrences", () => {
+    this.renderRadio(afterRow, t("repeat.after"), this.draft.ends === "afterOccurrences", () => {
       this.draft.ends = "afterOccurrences";
       this.draft.endsDate = void 0;
       this.render();
@@ -4537,20 +5193,20 @@ var CustomRepeatModal = class extends import_obsidian10.Modal {
         const v = parseInt(countInput.value);
         if (v >= 1) this.draft.endsCount = v;
       });
-      afterRow.createSpan({ cls: "belki-repeat-ends-label", text: "occurrences" });
+      afterRow.createSpan({ cls: "belki-repeat-ends-label", text: t("repeat.occurrences") });
     }
     const preview = contentEl.createDiv({ cls: "belki-repeat-preview" });
     createBelkiIcon(preview, "recurring", { className: "belki-chip-icon" });
     preview.createSpan({ text: getRepeatLabel(this.draft) });
     const actions = createBelkiActionRow(contentEl, { className: "belki-repeat-modal-actions" });
-    const cancelBtn = createBelkiButton(actions, { text: "Cancel" });
-    const saveBtn = createBelkiButton(actions, { text: "Save", variant: "primary" });
+    const cancelBtn = createBelkiButton(actions, { text: t("common.cancel") });
+    const saveBtn = createBelkiButton(actions, { text: t("common.save"), variant: "primary" });
     const requiresWeekdays = this.requiresWeekdays();
     saveBtn.toggleAttribute("disabled", requiresWeekdays && getRepeatWeekdays(this.draft).length === 0);
     cancelBtn.addEventListener("click", () => this.close());
     saveBtn.addEventListener("click", () => {
       if (this.requiresWeekdays() && getRepeatWeekdays(this.draft).length === 0) {
-        new import_obsidian10.Notice("Choose at least one weekday.");
+        new import_obsidian10.Notice(t("repeat.chooseWeekday"));
         return;
       }
       const v = parseInt(intervalInput.value);
@@ -5322,7 +5978,7 @@ var AddTaskComposer = class {
     this.titleInput = form.createEl("textarea", {
       cls: "belki-composer-title",
       attr: {
-        placeholder: "Task title",
+        placeholder: t("task.title"),
         rows: "1"
       }
     });
@@ -5347,7 +6003,7 @@ var AddTaskComposer = class {
     const descriptionInput = form.createEl("textarea", {
       cls: "belki-composer-description",
       attr: {
-        placeholder: "Description"
+        placeholder: t("task.description")
       }
     });
     const closeWikilinkDropdown = attachWikilinkAutocomplete(descriptionInput, options.app);
@@ -5373,7 +6029,7 @@ var AddTaskComposer = class {
     const prioritySelect = priorityWrap.createEl("select", {
       cls: "belki-chip-select",
       attr: {
-        "aria-label": "Priority"
+        "aria-label": t("task.priority")
       }
     });
     for (const priority of PRIORITIES.filter((priority2) => priority2 !== "none")) {
@@ -5506,9 +6162,9 @@ var AddTaskComposer = class {
       }
     });
     const actions = createBelkiActionRow(footer, { className: "belki-composer-actions" });
-    const cancelButton = createBelkiButton(actions, { text: "Cancel" });
+    const cancelButton = createBelkiButton(actions, { text: t("common.cancel") });
     const addButton = createBelkiButton(actions, {
-      text: "Add task",
+      text: t("common.addTask"),
       variant: "primary",
       attr: {
         type: "submit"
@@ -6229,9 +6885,9 @@ function getDirectSubTaskCount(task, tasks) {
 }
 function taskDeleteConfirmationDescription(subTaskCount) {
   if (subTaskCount > 0) {
-    return `This task has ${subTaskCount} sub-task${subTaskCount === 1 ? "" : "s"}. Delete only this task, or delete it together with ${subTaskCount === 1 ? "its sub-task" : "its sub-tasks"}?`;
+    return t(subTaskCount === 1 ? "modal.deleteTaskWithSubtasksDesc" : "modal.deleteTaskWithSubtasksDescPlural", { count: subTaskCount });
   }
-  return "This task will be permanently deleted from Belki. This action cannot be undone within the plugin.";
+  return t("modal.deleteTaskDesc");
 }
 
 // src/views/tasks/DeleteTaskConfirmationModal.ts
@@ -6244,7 +6900,7 @@ var DeleteTaskConfirmationModal = class extends import_obsidian14.Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("belki-task-delete-modal");
-    contentEl.createEl("h2", { text: "Delete task?" });
+    contentEl.createEl("h2", { text: t("modal.deleteTask") });
     const subTaskCount = getDirectSubTaskCount(this.options.task, this.options.tasks);
     contentEl.createEl("p", {
       cls: "belki-modal-desc",
@@ -6253,14 +6909,14 @@ var DeleteTaskConfirmationModal = class extends import_obsidian14.Modal {
     const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
     const cancelButton = actions.createEl("button", {
       cls: "belki-button",
-      text: "Cancel",
+      text: t("common.cancel"),
       attr: { type: "button" }
     });
     cancelButton.addEventListener("click", () => this.close());
     if (subTaskCount > 0 && this.options.onDeleteWithSubtasks) {
       const deleteTaskOnlyButton = actions.createEl("button", {
         cls: "belki-button belki-button-destructive",
-        text: "Delete task only",
+        text: t("task.deleteTaskOnly"),
         attr: { type: "button" }
       });
       deleteTaskOnlyButton.addEventListener("click", () => {
@@ -6269,7 +6925,7 @@ var DeleteTaskConfirmationModal = class extends import_obsidian14.Modal {
       });
       const deleteWithSubtasksButton = actions.createEl("button", {
         cls: "belki-button belki-button-destructive",
-        text: "Delete task and sub-tasks",
+        text: t("task.deleteTaskAndSubtasks"),
         attr: { type: "button" }
       });
       deleteWithSubtasksButton.addEventListener("click", () => {
@@ -6280,7 +6936,7 @@ var DeleteTaskConfirmationModal = class extends import_obsidian14.Modal {
     } else {
       const deleteButton = actions.createEl("button", {
         cls: "belki-button belki-button-destructive",
-        text: "Delete task",
+        text: t("task.deleteTask"),
         attr: { type: "button" }
       });
       deleteButton.addEventListener("click", () => {
@@ -6300,12 +6956,12 @@ var DeleteTaskConfirmationModal = class extends import_obsidian14.Modal {
 // src/views/task-detail/SubtaskSection.ts
 function renderSubtaskSection(parent, options) {
   const allTasks = options.store.getTasks();
-  const subTasks = allTasks.filter((t) => t.parentId === options.parentTask.id);
-  const doneCount = subTasks.filter((t) => t.completed).length;
+  const subTasks = allTasks.filter((t2) => t2.parentId === options.parentTask.id);
+  const doneCount = subTasks.filter((t2) => t2.completed).length;
   const section = parent.createDiv({ cls: "belki-subtasks-section" });
   const header = section.createDiv({ cls: "belki-attachments-header" });
   const titleEl = header.createEl("h3", { cls: "belki-subtasks-title" });
-  titleEl.createSpan({ text: "Sub-tasks" });
+  titleEl.createSpan({ text: t("task.subtasks") });
   const countEl = titleEl.createSpan({
     cls: "belki-subtasks-count",
     text: subTasks.length > 0 ? ` ${doneCount}/${subTasks.length}` : ""
@@ -6324,13 +6980,13 @@ function renderSubtaskSection(parent, options) {
     return event.clientY > rect.top + rect.height / 2 ? "after" : "before";
   };
   const updateHeader = () => {
-    const current = options.store.getTasks().filter((t) => t.parentId === options.parentTask.id);
-    const done = current.filter((t) => t.completed).length;
+    const current = options.store.getTasks().filter((t2) => t2.parentId === options.parentTask.id);
+    const done = current.filter((t2) => t2.completed).length;
     countEl.setText(current.length > 0 ? ` ${done}/${current.length}` : "");
   };
   const renderList = () => {
     list.empty();
-    const all = options.store.getTasks().filter((t) => t.parentId === options.parentTask.id);
+    const all = options.store.getTasks().filter((t2) => t2.parentId === options.parentTask.id);
     const current = [...all].sort((a, b) => a.order - b.order);
     current.forEach((sub) => {
       const row = list.createDiv({ cls: "belki-subtask-row" });
@@ -6423,7 +7079,7 @@ function renderSubtaskSection(parent, options) {
       });
       const deleteBtn = titleLine.createSpan({
         cls: "belki-subtask-delete",
-        attr: { role: "button", tabindex: "0", "aria-label": "Delete sub-task" }
+        attr: { role: "button", tabindex: "0", "aria-label": t("task.deleteSubtask") }
       });
       createBelkiIcon(deleteBtn, "delete");
       const confirmDeleteSubTask = () => {
@@ -6477,7 +7133,7 @@ function renderSubtaskSection(parent, options) {
     let expandedPanel = null;
     const input = addRow.createEl("input", {
       cls: "belki-subtask-input",
-      attr: { type: "text", placeholder: "Sub-task title" }
+      attr: { type: "text", placeholder: t("task.subtaskTitle") }
     });
     const chipsRow = addRow.createDiv({ cls: "belki-subtask-chips" });
     const expandPanel = addRow.createDiv({ cls: "belki-subtask-expand-panel is-hidden" });
@@ -6492,10 +7148,10 @@ function renderSubtaskSection(parent, options) {
       expandPanel.empty();
       expandPanel.removeClass("is-hidden");
       const presets = [
-        ["Today", todayIso()],
-        ["Tomorrow", addDaysIso(1)],
-        ["Next week", addDaysIso(7)],
-        ["Weekend", nextWeekdayIso(6)]
+        [t("date.today"), todayIso()],
+        [t("date.tomorrow"), addDaysIso(1)],
+        [t("date.nextWeek"), addDaysIso(7)],
+        [t("date.weekend"), nextWeekdayIso(6)]
       ];
       for (const [label, value] of presets) {
         const btn = expandPanel.createEl("button", {
@@ -6510,7 +7166,7 @@ function renderSubtaskSection(parent, options) {
       }
       const customInput = expandPanel.createEl("input", {
         cls: "belki-subtask-preset-date",
-        attr: { type: "date", title: "Custom date" }
+        attr: { type: "date", title: t("subtask.customDate") }
       });
       if (composerDue) customInput.value = composerDue;
       customInput.addEventListener("change", () => {
@@ -6584,12 +7240,12 @@ function renderSubtaskSection(parent, options) {
     const btnRow = addRow.createDiv({ cls: "belki-subtask-btn-row" });
     const addBtn = btnRow.createEl("button", {
       cls: "belki-button belki-button-primary",
-      text: "Add task",
+      text: t("common.addTask"),
       attr: { type: "button" }
     });
     const cancelBtn = btnRow.createEl("button", {
       cls: "belki-button",
-      text: "Cancel",
+      text: t("common.cancel"),
       attr: { type: "button" }
     });
     const submit = () => {
@@ -6637,7 +7293,7 @@ function renderSubtaskSection(parent, options) {
       attr: { type: "button" }
     });
     createBelkiIcon(btn, "add");
-    btn.createSpan({ text: "Add sub-task" });
+    btn.createSpan({ text: t("task.addSubtask") });
     btn.addEventListener("click", showComposer);
   };
   showAddButton();
@@ -6657,15 +7313,15 @@ function createSubTaskDragImage(row) {
 
 // src/views/TaskDetailModal.ts
 var DESCRIPTION_FORMAT_ACTIONS = [
-  { id: "bold", label: "B", title: "Bold" },
-  { id: "italic", label: "I", title: "Italic" },
-  { id: "strike", label: "S", title: "Strikethrough" },
-  { id: "quote", label: "\u201C", title: "Quote" },
-  { id: "inline-code", label: "`", title: "Inline code" },
-  { id: "code-block", label: "{ }", title: "Code block" },
-  { id: "bullet-list", label: "\u2022", title: "Bullet list" },
-  { id: "numbered-list", label: "1.", title: "Numbered list" },
-  { id: "link", label: "\u2197", title: "Link" }
+  { id: "bold", label: "B", title: t("description.bold") },
+  { id: "italic", label: "I", title: t("description.italic") },
+  { id: "strike", label: "S", title: t("description.strikethrough") },
+  { id: "quote", label: "\u201C", title: t("description.quote") },
+  { id: "inline-code", label: "`", title: t("description.inlineCode") },
+  { id: "code-block", label: "{ }", title: t("description.codeBlock") },
+  { id: "bullet-list", label: "\u2022", title: t("description.bulletList") },
+  { id: "numbered-list", label: "1.", title: t("description.numberedList") },
+  { id: "link", label: "\u2197", title: t("description.link") }
 ];
 var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
   constructor(app, options) {
@@ -6727,17 +7383,17 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
     applyBelkiFontSettings(contentEl, this.options.settings);
     this.modalEl.addEventListener("keydown", this.handleEscape, true);
     const isSubTask = Boolean(this.draft.parentId);
-    const parentTask = isSubTask ? this.options.store.getTasks().find((t) => t.id === this.draft.parentId) : void 0;
+    const parentTask = isSubTask ? this.options.store.getTasks().find((t2) => t2.id === this.draft.parentId) : void 0;
     const mobileHeader = contentEl.createDiv({ cls: "belki-detail-mobile-header" });
     const mobileBackButton = mobileHeader.createEl("button", {
       cls: "belki-detail-mobile-back",
-      attr: { type: "button", "aria-label": "Back to task list" }
+      attr: { type: "button", "aria-label": t("common.back") }
     });
     createBelkiIcon(mobileBackButton, "back");
     mobileBackButton.addEventListener("click", () => this.close());
     mobileHeader.createDiv({
       cls: "belki-detail-mobile-title",
-      text: isSubTask ? "Sub-task" : "Task details"
+      text: isSubTask ? t("task.subtaskDetails") : t("task.taskDetails")
     });
     const shell = contentEl.createDiv({ cls: "belki-detail-shell" });
     const main = shell.createDiv({ cls: "belki-detail-main" });
@@ -6745,14 +7401,14 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
     this.sideEl = side;
     const closeButton = shell.createEl("button", {
       cls: "belki-detail-close",
-      attr: { type: "button", "aria-label": "Close task details" }
+      attr: { type: "button", "aria-label": t("common.close") }
     });
     createBelkiIcon(closeButton, "close");
     closeButton.addEventListener("click", () => this.close());
     if (isSubTask && parentTask) {
       const contextBar = main.createDiv({ cls: "belki-subtask-context-bar" });
       createBelkiIcon(contextBar, "collapse", { className: "belki-subtask-context-arrow" });
-      contextBar.createSpan({ cls: "belki-subtask-context-label", text: "Sub-task of " });
+      contextBar.createSpan({ cls: "belki-subtask-context-label", text: t("task.subtaskOf") });
       const parentLink = contextBar.createEl("button", {
         cls: "belki-subtask-context-parent",
         text: `"${parentTask.title}"`,
@@ -6856,7 +7512,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
     void refreshRendered();
     const descriptionInput = main.createEl("textarea", {
       cls: "belki-detail-description",
-      attr: { placeholder: "Description" }
+      attr: { placeholder: t("task.description") }
     });
     descriptionInput.value = this.draft.description || "";
     descriptionInput.addClass("is-hidden");
@@ -6964,7 +7620,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
     const footer = contentEl.createDiv({ cls: "belki-detail-footer" });
     footer.createEl("button", {
       cls: "belki-detail-delete",
-      text: "Delete task",
+      text: t("task.deleteTask"),
       attr: { type: "button" }
     }).addEventListener("click", () => {
       new DeleteTaskConfirmationModal(this.app, {
@@ -6984,7 +7640,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
     });
     if (this.draft.repeat && !this.draft.completed) {
       createBelkiButton(footer, {
-        text: "Complete permanently",
+        text: t("task.completePermanently"),
         variant: "danger",
         className: "belki-detail-complete-perm"
       }).addEventListener("click", () => {
@@ -7001,8 +7657,8 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
       });
     }
     const footerActions = createBelkiActionRow(footer, { className: "belki-detail-actions" });
-    createBelkiButton(footerActions, { text: "Cancel" }).addEventListener("click", () => this.close());
-    createBelkiButton(footerActions, { text: "Save", variant: "primary" }).addEventListener("click", () => {
+    createBelkiButton(footerActions, { text: t("common.cancel") }).addEventListener("click", () => this.close());
+    createBelkiButton(footerActions, { text: t("common.save"), variant: "primary" }).addEventListener("click", () => {
       void this.save();
     });
     if (!import_obsidian15.Platform.isMobile) {
@@ -7075,7 +7731,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
     }
     const toolbar = doc.body.createDiv({
       cls: "belki-description-toolbar is-hidden",
-      attr: { role: "toolbar", "aria-label": "Description formatting" }
+      attr: { role: "toolbar", "aria-label": t("description.formatting") }
     });
     const hide = () => {
       toolbar.addClass("is-hidden");
@@ -7190,10 +7846,10 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
   }
   renderSidePanel(parent) {
     const isSubTask = Boolean(this.draft.parentId);
-    const parentTask = isSubTask ? this.options.store.getTasks().find((t) => t.id === this.draft.parentId) : void 0;
-    parent.createEl("h3", { text: isSubTask ? "Sub-task details" : "Task details" });
+    const parentTask = isSubTask ? this.options.store.getTasks().find((t2) => t2.id === this.draft.parentId) : void 0;
+    parent.createEl("h3", { text: isSubTask ? t("task.subtaskDetails") : t("task.taskDetails") });
     if (isSubTask && parentTask) {
-      const field = this.createField(parent, "Parent");
+      const field = this.createField(parent, t("task.parent"));
       const parentBtn = field.createEl("button", {
         cls: "belki-subtask-parent-field",
         text: parentTask.title,
@@ -7222,7 +7878,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
         this.draft.due = due;
       },
       onClearDueAndRepeat: () => {
-        if (this.draft.repeat) new import_obsidian15.Notice("Date and repeat rule removed.");
+        if (this.draft.repeat) new import_obsidian15.Notice(t("notice.dateAndRepeatRuleRemoved"));
         this.draft.due = void 0;
         this.draft.repeat = void 0;
       },
@@ -7242,7 +7898,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
   renderAttachments(parent) {
     const section = parent.createDiv({ cls: "belki-attachments-section" });
     const header = section.createDiv({ cls: "belki-attachments-header" });
-    header.createEl("h3", { text: "Attachments" });
+    header.createEl("h3", { text: t("task.attachments") });
     const list = section.createDiv({ cls: "belki-attachments-list" });
     const renderList = () => {
       list.empty();
@@ -7253,7 +7909,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
       if (this.draft.attachments.length === 0) {
         list.createDiv({
           cls: "belki-attachments-empty",
-          text: "No attachments yet."
+          text: t("task.attachments") + " - " + t("common.addTask")
         });
       }
       if (imagePaths.length > 0) {
@@ -7344,7 +8000,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
       attr: { type: "button" }
     });
     createBelkiIcon(addAttachmentButton, "add");
-    addAttachmentButton.createSpan({ text: "Add attachment" });
+    addAttachmentButton.createSpan({ text: t("task.attachments") });
     addAttachmentButton.addEventListener("click", () => {
       fileInput.click();
     });
@@ -7444,7 +8100,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
     }
   }
   renderProject(parent) {
-    const field = this.createField(parent, "Project");
+    const field = this.createField(parent, t("task.project"));
     field.addClass("belki-detail-project-field");
     const projectPicker = field.createEl("button", {
       cls: "belki-project-picker belki-detail-project-picker",
@@ -7467,17 +8123,17 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
       cls: "belki-detail-project-create-input",
       attr: {
         type: "text",
-        placeholder: "Project name"
+        placeholder: t("settings.projectName")
       }
     });
     const createButton = createRow.createEl("button", {
       cls: "belki-detail-project-create-button",
-      text: "Create",
+      text: t("common.create"),
       attr: { type: "button" }
     });
     const cancelCreateButton = createRow.createEl("button", {
       cls: "belki-detail-project-cancel-button",
-      text: "Cancel",
+      text: t("common.cancel"),
       attr: { type: "button" }
     });
     const createValue = "__belki_create_project__";
@@ -7491,9 +8147,9 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
       const currentProject = normalizeTaskProject(this.draft.project) || "";
       const projects = getProjects();
       projectMenu.empty();
-      renderProjectOption("No project", "", void 0, currentProject === "");
+      renderProjectOption(t("task.noProject"), "", void 0, currentProject === "");
       if (projects.length > 0) {
-        projectMenu.createDiv({ cls: "belki-project-section-label", text: "Projects" });
+        projectMenu.createDiv({ cls: "belki-project-section-label", text: t("composer.projects") });
       }
       for (const project of projects) {
         renderProjectOption(
@@ -7503,7 +8159,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
           currentProject === project
         );
       }
-      renderProjectOption("Create project...", createValue, void 0, false);
+      renderProjectOption(t("composer.createProject"), createValue, void 0, false);
     };
     const handleOutsidePointer = (event) => {
       const target = event.target;
@@ -7567,7 +8223,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
     }
     const updateProjectStyle = () => {
       const project = normalizeTaskProject(this.draft.project);
-      projectLabel.setText(project || "No project");
+      projectLabel.setText(project || t("task.noProject"));
       if (!project) {
         projectDot.setCssStyles({ backgroundColor: "var(--belki-faint)" });
         projectPicker.setCssStyles({
@@ -7625,13 +8281,13 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
     this.closeProjectMenu = closeProjectMenu;
   }
   renderPriority(parent) {
-    const field = this.createField(parent, "Priority");
+    const field = this.createField(parent, t("task.priority"));
     const priorityWrap = field.createDiv({ cls: "belki-priority-select-wrap belki-detail-priority-wrap" });
     const indicator = priorityWrap.createSpan({ cls: "belki-priority-indicator" });
     const display = priorityWrap.createSpan({ cls: "belki-priority-display" });
     const select = priorityWrap.createEl("select", {
       cls: "belki-detail-input belki-priority-select",
-      attr: { "aria-label": "Priority" }
+      attr: { "aria-label": t("task.priority") }
     });
     for (const priority of PRIORITIES.filter((priority2) => priority2 !== "none")) {
       select.createEl("option", { text: getPriorityDropdownLabel(priority), value: priority });
@@ -7655,7 +8311,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
     updatePriorityStyle();
   }
   renderLabels(parent) {
-    const field = this.createField(parent, "Labels");
+    const field = this.createField(parent, t("task.labels"));
     const chips = field.createDiv({ cls: "belki-detail-labels" });
     const input = field.createEl("input", {
       cls: "belki-detail-input",
@@ -7710,7 +8366,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
       suggestions.empty();
       const query = normalizeLabelName(input.value);
       if (!query) {
-        suggestions.createDiv({ cls: "belki-label-empty", text: "Type a label name" });
+        suggestions.createDiv({ cls: "belki-label-empty", text: t("filters.typeLabelName") });
         return;
       }
       const labels = dedupeLabels(this.options.labels);
@@ -7737,7 +8393,7 @@ var TaskDetailModal = class _TaskDetailModal extends import_obsidian15.Modal {
       if (!labels.includes(query) && !this.draft.labels.includes(query)) {
         const create = suggestions.createEl("button", {
           cls: "belki-label-suggestion",
-          text: `Create label: ${displayLabel(query)}`,
+          text: t("filters.createLabelAction", { label: displayLabel(query) }),
           attr: { type: "button" }
         });
         bindSuggestion(create, query);
@@ -8057,7 +8713,7 @@ var RenameProjectModal = class extends import_obsidian16.Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("belki-project-rename-modal");
-    contentEl.createEl("h2", { text: "Rename project" });
+    contentEl.createEl("h2", { text: t("modal.renameProject") });
     const input = contentEl.createEl("input", {
       cls: "belki-label-prompt-input",
       attr: { type: "text", value: this.currentName }
@@ -8072,16 +8728,16 @@ var RenameProjectModal = class extends import_obsidian16.Modal {
       errorEl.setText(msg);
     };
     const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
-    actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } }).addEventListener("click", () => this.close());
+    actions.createEl("button", { cls: "belki-button", text: t("common.cancel"), attr: { type: "button" } }).addEventListener("click", () => this.close());
     const submitButton = actions.createEl("button", {
       cls: "belki-button belki-button-primary",
-      text: "Rename",
+      text: t("common.rename"),
       attr: { type: "button" }
     });
     const submit = () => {
       const newName = input.value.trim();
       if (!newName) {
-        showError("Project name cannot be empty.");
+        showError(t("modal.projectNameCannotBeEmpty"));
         return;
       }
       if (newName === this.currentName) {
@@ -8089,7 +8745,7 @@ var RenameProjectModal = class extends import_obsidian16.Modal {
         return;
       }
       if (this.existingProjects.some((p) => p.toLowerCase() === newName.toLowerCase())) {
-        showError("A project with that name already exists.");
+        showError(t("modal.projectWithNameAlreadyExists"));
         return;
       }
       void this.onSubmit(newName).then(() => this.close());
@@ -8115,14 +8771,14 @@ var DeleteProjectModal = class extends import_obsidian16.Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("belki-project-delete-modal");
-    contentEl.createEl("h2", { text: `Delete "${this.projectName}"?` });
-    const desc = this.taskCount > 0 ? `This will delete the project only. ${this.taskCount} task${this.taskCount === 1 ? "" : "s"} will be moved to Inbox. Tasks will not be deleted.` : "This will delete the project. It has no tasks.";
+    contentEl.createEl("h2", { text: t("modal.deleteProject", { name: this.projectName }) });
+    const desc = this.taskCount > 0 ? t(this.taskCount === 1 ? "modal.deleteProjectDesc" : "modal.deleteProjectDescPlural", { count: this.taskCount }) : t("modal.deleteProjectDescNoTasks");
     contentEl.createEl("p", { text: desc, cls: "belki-modal-desc" });
     const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
-    actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } }).addEventListener("click", () => this.close());
+    actions.createEl("button", { cls: "belki-button", text: t("common.cancel"), attr: { type: "button" } }).addEventListener("click", () => this.close());
     actions.createEl("button", {
       cls: "belki-button belki-button-destructive",
-      text: "Delete project",
+      text: t("modal.deleteProjectAction"),
       attr: { type: "button" }
     }).addEventListener("click", () => {
       void this.onConfirm().then(() => this.close());
@@ -8142,10 +8798,10 @@ var CreateProjectModal = class extends import_obsidian16.Modal {
     contentEl.empty();
     contentEl.addClass("belki-project-rename-modal");
     contentEl.addClass("belki-project-create-modal");
-    contentEl.createEl("h2", { text: "New project" });
+    contentEl.createEl("h2", { text: t("modal.newProject") });
     const input = contentEl.createEl("input", {
       cls: "belki-label-prompt-input",
-      attr: { type: "text", placeholder: "Project name" }
+      attr: { type: "text", placeholder: t("settings.projectName") }
     });
     const appearance = contentEl.createDiv({ cls: "belki-project-create-appearance" });
     const preview = appearance.createDiv({ cls: "belki-project-create-preview" });
@@ -8155,26 +8811,26 @@ var CreateProjectModal = class extends import_obsidian16.Modal {
     const colorControl = appearance.createDiv({ cls: "belki-project-create-color-control" });
     const autoButton = colorControl.createEl("button", {
       cls: "belki-project-color-auto is-selected",
-      attr: { type: "button", "aria-label": "Automatic project color", "aria-pressed": "true" }
+      attr: { type: "button", "aria-label": t("project.automaticProjectColor"), "aria-pressed": "true" }
     });
     const autoDot = autoButton.createSpan({ cls: "belki-project-color-dot" });
-    const autoText = autoButton.createSpan({ cls: "belki-project-color-auto-text", text: "\u2713 Auto" });
+    const autoText = autoButton.createSpan({ cls: "belki-project-color-auto-text", text: t("project.auto") });
     const randomButton = colorControl.createEl("button", {
       cls: "belki-project-color-random",
-      attr: { type: "button", "aria-label": "Choose another project color" }
+      attr: { type: "button", "aria-label": t("project.chooseAnotherColor") }
     });
     createBelkiIcon(randomButton, "randomize");
     const customColor = colorControl.createEl("label", { cls: "belki-project-color-custom" });
     const customDot = customColor.createSpan({ cls: "belki-project-color-custom-dot" });
     const colorInput = customColor.createEl("input", {
-      attr: { type: "color", "aria-label": "Custom project color" }
+      attr: { type: "color", "aria-label": t("project.customProjectColor") }
     });
-    customColor.createSpan({ text: "Custom" });
+    customColor.createSpan({ text: t("project.custom") });
     const selectColor = (color) => {
       this.selectedColor = color;
       autoButton.toggleClass("is-selected", color === null);
       autoButton.setAttribute("aria-pressed", String(color === null));
-      autoText.setText(color === null ? "\u2713 Auto" : "Auto");
+      autoText.setText(color === null ? t("project.auto") : t("project.auto").replace("\u2713 ", ""));
       customColor.toggleClass("is-selected", color !== null);
       updatePreview();
     };
@@ -8214,24 +8870,24 @@ var CreateProjectModal = class extends import_obsidian16.Modal {
       errorEl.setText(msg);
     };
     const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
-    actions.createEl("button", { cls: "belki-button", text: "Cancel", attr: { type: "button" } }).addEventListener("click", () => this.close());
+    actions.createEl("button", { cls: "belki-button", text: t("common.cancel"), attr: { type: "button" } }).addEventListener("click", () => this.close());
     const submitButton = actions.createEl("button", {
       cls: "belki-button belki-button-primary",
-      text: "Create",
+      text: t("common.create"),
       attr: { type: "button" }
     });
     const submit = () => {
       const name = normalizeTaskProject(input.value);
       if (!name) {
-        showError("Project name cannot be empty.");
+        showError(t("modal.projectNameCannotBeEmpty"));
         return;
       }
       if (isReservedInboxProject(name)) {
-        showError('"Inbox" is reserved.');
+        showError(t("modal.inboxReserved"));
         return;
       }
       if (this.existingProjects.some((p) => p.toLowerCase() === name.toLowerCase())) {
-        showError("A project with that name already exists.");
+        showError(t("modal.projectWithNameAlreadyExists"));
         return;
       }
       this.onSubmit({
@@ -8447,7 +9103,7 @@ function renderFiltersAndLabelsView(options) {
     return;
   }
   const filtersSection = options.parent.createDiv({ cls: "belki-filter-section" });
-  filtersSection.createEl("h2", { text: "My Filters" });
+  filtersSection.createEl("h2", { text: t("section.myFilters") });
   const filterList = filtersSection.createDiv({ cls: "belki-filter-list" });
   for (const filter of options.filterDefinitions) {
     renderFilterRow(filterList, filter.name, filter.count, filter.icon, () => {
@@ -8456,10 +9112,10 @@ function renderFiltersAndLabelsView(options) {
   }
   const labelsSection = options.parent.createDiv({ cls: "belki-filter-section" });
   const labelsHeader = labelsSection.createDiv({ cls: "belki-labels-header" });
-  labelsHeader.createEl("h2", { text: "Labels" });
+  labelsHeader.createEl("h2", { text: t("section.labels") });
   const labelAddButton = labelsHeader.createEl("button", {
     cls: "belki-label-add",
-    attr: { type: "button", "aria-label": "Create label" }
+    attr: { type: "button", "aria-label": t("filters.createLabel") }
   });
   createBelkiIcon(labelAddButton, "add");
   labelAddButton.addEventListener("click", () => {
@@ -8467,7 +9123,7 @@ function renderFiltersAndLabelsView(options) {
   });
   const labelList = labelsSection.createDiv({ cls: "belki-filter-list" });
   if (options.labels.length === 0) {
-    labelList.createDiv({ cls: "belki-empty belki-empty-small", text: "No labels yet." });
+    labelList.createDiv({ cls: "belki-empty belki-empty-small", text: t("settings.noLabelsYet") });
     return;
   }
   for (const label of options.labels) {
@@ -8476,7 +9132,7 @@ function renderFiltersAndLabelsView(options) {
   }
 }
 function renderBackToFilters(parent, onClick) {
-  parent.createEl("button", { cls: "belki-back-button", text: "Back to Filters & Labels" }).addEventListener("click", onClick);
+  parent.createEl("button", { cls: "belki-back-button", text: t("filters.backToFilters") }).addEventListener("click", onClick);
 }
 function renderFilterRow(parent, name, count, icon, onClick, color) {
   const row = parent.createEl("button", { cls: "belki-filter-row", attr: { type: "button" } });
@@ -8537,10 +9193,7 @@ function getDirectSubTaskCount2(task, tasks) {
   return getDirectSubTasks(task, tasks).length;
 }
 function duplicateTaskModalDescription(subTaskCount) {
-  if (subTaskCount === 1) {
-    return "This task has 1 sub-task. Would you like to include it in the duplicate?";
-  }
-  return `This task has ${subTaskCount} sub-tasks. Would you like to include them in the duplicate?`;
+  return t(subTaskCount === 1 ? "modal.duplicateTaskDesc" : "modal.duplicateTaskDescPlural", { count: subTaskCount });
 }
 
 // src/views/tasks/DuplicateTaskModal.ts
@@ -8553,7 +9206,7 @@ var DuplicateTaskModal = class extends import_obsidian17.Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("belki-task-duplicate-modal");
-    contentEl.createEl("h2", { text: "Duplicate task?" });
+    contentEl.createEl("h2", { text: t("modal.duplicateTask") });
     const subTaskCount = getDirectSubTaskCount2(this.options.task, this.options.tasks);
     contentEl.createEl("p", {
       cls: "belki-modal-desc",
@@ -8562,17 +9215,17 @@ var DuplicateTaskModal = class extends import_obsidian17.Modal {
     const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
     const cancelButton = actions.createEl("button", {
       cls: "belki-button",
-      text: "Cancel",
+      text: t("common.cancel"),
       attr: { type: "button" }
     });
     const taskOnlyButton = actions.createEl("button", {
       cls: "belki-button",
-      text: "Task only",
+      text: t("task.taskOnly"),
       attr: { type: "button" }
     });
     const includeSubtasksButton = actions.createEl("button", {
       cls: "belki-button belki-button-primary",
-      text: "Include sub-tasks",
+      text: t("task.includeSubtasks"),
       attr: { type: "button" }
     });
     const buttons = [cancelButton, taskOnlyButton, includeSubtasksButton];
@@ -8601,7 +9254,7 @@ function renderTaskActions(options) {
     cls: "belki-task-actions-button",
     attr: {
       type: "button",
-      "aria-label": "Task actions"
+      "aria-label": t("taskActions.taskActions")
     }
   });
   createBelkiIcon(actionButton, "more");
@@ -8616,13 +9269,13 @@ function renderTaskActionMenu(options) {
   const menu = options.container.createDiv({ cls: "belki-task-action-menu" });
   menu.addEventListener("click", (event) => event.stopPropagation());
   if (!options.task.completed && options.task.due !== todayIso()) {
-    createTaskActionMenuButton(menu, "Move to Today", () => {
+    createTaskActionMenuButton(menu, t("taskActions.moveToToday"), () => {
       options.onMoveDue(todayIso());
     });
   }
   const tomorrow = addDaysIso(1);
   if (!options.task.completed && options.task.due !== tomorrow) {
-    createTaskActionMenuButton(menu, "Move to Tomorrow", () => {
+    createTaskActionMenuButton(menu, t("taskActions.moveToTomorrow"), () => {
       options.onMoveDue(tomorrow);
     });
   }
@@ -8631,8 +9284,8 @@ function renderTaskActionMenu(options) {
     renderCustomDatePicker(datePickerWrap, options.task.due, (value) => {
       options.onMoveDue(value);
     }, {
-      triggerLabel: "Pick date",
-      triggerAriaLabel: "Pick task date",
+      triggerLabel: t("taskActions.pickDate"),
+      triggerAriaLabel: t("taskActions.pickTaskDate"),
       alwaysShowTriggerLabel: true
     });
     (_a = datePickerWrap.querySelector(".belki-cal-trigger")) == null ? void 0 : _a.addEventListener("click", () => {
@@ -8644,14 +9297,14 @@ function renderTaskActionMenu(options) {
     });
   }
   if (!options.task.completed && options.task.due) {
-    createTaskActionMenuButton(menu, "Clear date", () => {
+    createTaskActionMenuButton(menu, t("taskActions.clearDate"), () => {
       options.onMoveDue(void 0);
     });
   }
-  createTaskActionMenuButton(menu, "Duplicate task", () => {
+  createTaskActionMenuButton(menu, t("taskActions.duplicateTask"), () => {
     options.onDuplicate();
   });
-  createTaskActionMenuButton(menu, "Delete task", () => {
+  createTaskActionMenuButton(menu, t("taskActions.deleteTask"), () => {
     options.onDelete();
   });
   positionTaskActionMenu(menu, options.trigger);
@@ -8966,7 +9619,7 @@ function renderCalendarEventStrip(parent, options) {
 // src/quickAddCommand.ts
 var QUICK_ADD_TASK_COMMAND_ID = "quick-add-task";
 var QUICK_ADD_TASK_COMMAND_FULL_ID = `belki:${QUICK_ADD_TASK_COMMAND_ID}`;
-var QUICK_ADD_TASK_COMMAND_NAME = "Quick Add Task";
+var QUICK_ADD_TASK_COMMAND_NAME = t("command.quickAddTask");
 var QUICK_ADD_TASK_HOTKEYS = [
   {
     modifiers: ["Mod", "Shift"],
@@ -9254,7 +9907,7 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
     return VIEW_TYPE_BELKI;
   }
   getDisplayText() {
-    return "Tasks \xB7 belki";
+    return t("view.displayText");
   }
   getIcon() {
     return "check-circle-2";
@@ -9466,7 +10119,7 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
       });
       const sidebarAddMain = sidebarAdd.createSpan({ cls: "belki-add-sidebar-main" });
       createBelkiIcon(sidebarAddMain, "add", { className: "belki-add-plus", size: 18 });
-      sidebarAddMain.createSpan({ cls: "belki-add-text", text: "Add task" });
+      sidebarAddMain.createSpan({ cls: "belki-add-text", text: t("common.addTask") });
       if (shortcutHint) {
         sidebarAdd.createSpan({
           cls: "belki-add-shortcut",
@@ -9481,27 +10134,27 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
     const tasks = this.store.getTasks();
     const activeTopLevel = this.getActiveTopLevelTasks(tasks);
     const nav = sidebar.createDiv({ cls: "belki-nav" });
-    this.renderNavButton(nav, "Search", "search", void 0, "search");
-    this.renderNavButton(nav, "Inbox", "inbox", this.getInboxTasks(activeTopLevel).length, "inbox");
-    this.renderNavButton(nav, "Today", "today", this.getTodayTasks(activeTopLevel).length, "today");
-    this.renderNavButton(nav, "Upcoming", "upcoming", this.getUpcomingTasks(activeTopLevel).length, "upcoming");
-    this.renderNavButton(nav, "Filters & Labels", "filters", void 0, "filters");
-    this.renderNavButton(nav, "Projects", "projects", void 0, "projects");
-    this.renderNavButton(nav, "Activity", "activity", void 0, "activity");
+    this.renderNavButton(nav, t("nav.search"), "search", void 0, "search");
+    this.renderNavButton(nav, t("nav.inbox"), "inbox", this.getInboxTasks(activeTopLevel).length, "inbox");
+    this.renderNavButton(nav, t("nav.today"), "today", this.getTodayTasks(activeTopLevel).length, "today");
+    this.renderNavButton(nav, t("nav.upcoming"), "upcoming", this.getUpcomingTasks(activeTopLevel).length, "upcoming");
+    this.renderNavButton(nav, t("nav.filters"), "filters", void 0, "filters");
+    this.renderNavButton(nav, t("nav.projects"), "projects", void 0, "projects");
+    this.renderNavButton(nav, t("nav.activity"), "activity", void 0, "activity");
     const projectsSection = sidebar.createDiv({ cls: "belki-sidebar-section" });
     const projectsHeadingRow = projectsSection.createDiv({ cls: "belki-sidebar-heading-row" });
-    projectsHeadingRow.createDiv({ cls: "belki-sidebar-heading", text: "Projects" });
+    projectsHeadingRow.createDiv({ cls: "belki-sidebar-heading", text: t("nav.projects") });
     const addProjectBtn = projectsHeadingRow.createEl("button", {
       cls: "belki-sidebar-add-project",
       attr: {
         type: "button",
-        title: "New project",
-        "aria-label": "New project",
-        "data-sidebar-label": "New project"
+        title: t("settings.newProject"),
+        "aria-label": t("settings.newProject"),
+        "data-sidebar-label": t("settings.newProject")
       }
     });
     createBelkiIcon(addProjectBtn, "add");
-    addProjectBtn.createSpan({ cls: "belki-sidebar-add-project-label", text: "Project" });
+    addProjectBtn.createSpan({ cls: "belki-sidebar-add-project-label", text: t("settings.newProject") });
     addProjectBtn.addEventListener("click", () => {
       new CreateProjectModal(this.app, this.getKnownProjects(), (project) => {
         this.ensureProjectInRegistry(project.name);
@@ -9553,14 +10206,14 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
         cls: "belki-project-button belki-archived-button",
         attr: {
           type: "button",
-          title: `Archived (${this.settings.archivedProjects.length})`,
-          "aria-label": `Archived (${this.settings.archivedProjects.length})`,
-          "data-sidebar-label": `Archived (${this.settings.archivedProjects.length})`
+          title: `${t("nav.archived")} (${this.settings.archivedProjects.length})`,
+          "aria-label": `${t("nav.archived")} (${this.settings.archivedProjects.length})`,
+          "data-sidebar-label": `${t("nav.archived")} (${this.settings.archivedProjects.length})`
         }
       });
       archiveButton.toggleClass("is-active", this.mode === "archived");
       createBelkiIcon(archiveButton, "archive", { className: "belki-nav-icon", size: 18 });
-      archiveButton.createSpan({ cls: "belki-nav-label", text: "Archived" });
+      archiveButton.createSpan({ cls: "belki-nav-label", text: t("nav.archived") });
       archiveButton.createSpan({ cls: "belki-count", text: String(this.settings.archivedProjects.length) });
       archiveButton.addEventListener("click", () => {
         this.mode = "archived";
@@ -9575,7 +10228,7 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
     }
     this.renderNavButton(
       nav,
-      "Completed",
+      t("nav.completed"),
       "completed",
       this.getCompletedDisplayTasks(tasks).length,
       "completed"
@@ -9714,14 +10367,14 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
     const inlineAdd = addArea.createEl("button", { cls: "belki-add-inline" });
     inlineAdd.toggleClass("is-active", this.composerOpen && !import_obsidian18.Platform.isMobile);
     createBelkiIcon(inlineAdd, "add", { className: "belki-add-plus", size: 18 });
-    inlineAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
+    inlineAdd.createSpan({ cls: "belki-add-text", text: t("common.addTask") });
     inlineAdd.addEventListener("click", () => {
       this.openContextualTaskComposer();
     });
     if (tasks.length === 0) {
       main.createDiv({
         cls: "belki-empty",
-        text: `No tasks yet. Add one and belki will write it to ${this.store.dataDir}/YYYY-MM.md.`
+        text: t("empty.noTasksYet", { path: this.store.dataDir })
       });
     }
   }
@@ -9729,12 +10382,12 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
     const error = parent.createDiv({ cls: "belki-empty belki-storage-error" });
     error.createDiv({
       cls: "belki-storage-error-title",
-      text: "Task storage could not be initialized."
+      text: t("empty.taskStorageCouldNotBeInitialized")
     });
     error.createDiv({ cls: "belki-storage-error-message", text: message });
     const retry = error.createEl("button", {
       cls: "belki-storage-error-retry",
-      text: "Retry",
+      text: t("common.retry"),
       attr: { type: "button" }
     });
     retry.addEventListener("click", () => {
@@ -9948,7 +10601,7 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
       }
     });
     createBelkiIcon(button, "sorting", { className: "belki-sorting-icon" });
-    button.createSpan({ text: "Sorting" });
+    button.createSpan({ text: t("sorting.sorting") });
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -9959,7 +10612,7 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
       return;
     }
     const popover = wrapper.createDiv({ cls: "belki-sorting-popover" });
-    popover.createDiv({ cls: "belki-sorting-title", text: "Sort by" });
+    popover.createDiv({ cls: "belki-sorting-title", text: t("sorting.sortBy") });
     for (const option of SORT_OPTIONS) {
       const item = popover.createEl("button", {
         cls: "belki-sorting-option",
@@ -9988,11 +10641,11 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
     }
     if (this.mode === "projects") {
       popover.createDiv({ cls: "belki-sorting-divider" });
-      popover.createDiv({ cls: "belki-sorting-title", text: "Group by" });
+      popover.createDiv({ cls: "belki-sorting-title", text: t("sorting.groupBy") });
       const GROUP_OPTIONS = [
-        { label: "None", value: "none" },
-        { label: "Label", value: "label" },
-        { label: "Priority", value: "priority" }
+        { label: t("sorting.none"), value: "none" },
+        { label: t("sorting.label"), value: "label" },
+        { label: t("sorting.priority"), value: "priority" }
       ];
       for (const opt of GROUP_OPTIONS) {
         const item = popover.createEl("button", {
@@ -10029,7 +10682,7 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
       const overdue = this.sortTasks(this.getOverdueTasks(active));
       const hasAnyOverdue = active.some((task) => task.due && task.due < todayIso());
       if (hasAnyOverdue) {
-        const section2 = this.createSection(parent, "Overdue", overdue.length, (header) => {
+        const section2 = this.createSection(parent, t("section.overdue"), overdue.length, (header) => {
           this.renderOverdueRangeSelect(header);
           this.renderBulkRescheduleAction(header, overdue);
         });
@@ -10057,14 +10710,14 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
         this.renderTaskList(section2, this.sortTasks(tasks));
       }
       if (dates.length === 0) {
-        this.renderEmptySection(parent, "No upcoming tasks.");
+        this.renderEmptySection(parent, t("section.noUpcomingTasks"));
       }
       return;
     }
     if (this.mode === "projects") {
       const projects = this.selectedProject ? [this.selectedProject] : this.getActiveProjects();
       if (projects.length === 0) {
-        this.renderEmptySection(parent, "No projects yet.");
+        this.renderEmptySection(parent, t("section.noProjectsYet"));
         return;
       }
       for (const project of projects) {
@@ -10119,7 +10772,7 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
   renderCompletedView(parent, allTasks) {
     const completed = this.getCompletedDisplayTasks(allTasks);
     if (completed.length === 0) {
-      this.renderEmptySection(parent, "No completed tasks yet.");
+      this.renderEmptySection(parent, t("section.noCompletedTasks"));
       return;
     }
     const groups = /* @__PURE__ */ new Map();
@@ -10140,7 +10793,7 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
       this.renderTaskList(section, tasks);
     }
     if (noDate.length > 0) {
-      const section = this.createSection(parent, "Earlier", noDate.length);
+      const section = this.createSection(parent, t("section.earlier"), noDate.length);
       this.renderTaskList(section, noDate);
     }
   }
@@ -10152,24 +10805,24 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
     if (data.allTimeCount === 0) {
       activity.createDiv({
         cls: "belki-activity-empty",
-        text: "No completed tasks yet. Complete a task and your activity will appear here."
+        text: t("activity.noCompletedTasksYet")
       });
       return;
     }
     const dashboard = activity.createDiv({ cls: "belki-activity-dashboard" });
     const dashboardTop = dashboard.createDiv({ cls: "belki-activity-dashboard-top" });
-    dashboardTop.createSpan({ cls: "belki-activity-tab is-active", text: "Overview" });
+    dashboardTop.createSpan({ cls: "belki-activity-tab is-active", text: t("section.overview") });
     const summary = dashboard.createDiv({ cls: "belki-activity-summary" });
-    this.renderActivitySummaryCard(summary, "Today", data.todayCount);
-    this.renderActivitySummaryCard(summary, "Yesterday", data.yesterdayCount);
-    this.renderActivitySummaryCard(summary, "This week", data.weekCount);
-    this.renderActivitySummaryCard(summary, "This month", data.monthCount);
-    this.renderActivitySummaryCard(summary, "All time", data.allTimeCount);
-    this.renderActivitySummaryCard(summary, "Current streak", `${data.currentStreak}d`);
+    this.renderActivitySummaryCard(summary, t("activity.today"), data.todayCount);
+    this.renderActivitySummaryCard(summary, t("activity.yesterday"), data.yesterdayCount);
+    this.renderActivitySummaryCard(summary, t("activity.thisWeek"), data.weekCount);
+    this.renderActivitySummaryCard(summary, t("activity.thisMonth"), data.monthCount);
+    this.renderActivitySummaryCard(summary, t("activity.allTime"), data.allTimeCount);
+    this.renderActivitySummaryCard(summary, t("activity.currentStreak"), `${data.currentStreak}d`);
     const heatmapSection = dashboard.createDiv({ cls: "belki-activity-panel" });
     const heatmapHeader = heatmapSection.createDiv({ cls: "belki-activity-panel-header" });
-    heatmapHeader.createEl("h2", { text: "Completed tasks" });
-    heatmapHeader.createSpan({ text: "Last 26 weeks" });
+    heatmapHeader.createEl("h2", { text: t("section.completedTasks") });
+    heatmapHeader.createSpan({ text: t("section.last26Weeks") });
     const heatmapScroller = heatmapSection.createDiv({ cls: "belki-activity-heatmap-scroll" });
     const heatmap = heatmapScroller.createDiv({ cls: "belki-activity-heatmap" });
     for (const day of data.heatmapDays) {
@@ -10195,7 +10848,7 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
     if (selectedTasks.length === 0) {
       feed.createDiv({
         cls: "belki-empty belki-empty-small",
-        text: "No tasks completed on this day."
+        text: t("section.noTasksCompletedToday")
       });
       return;
     }
@@ -10210,7 +10863,7 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
     if (!date) {
       daily.createDiv({
         cls: "belki-empty belki-empty-small",
-        text: "Open a daily note and run the belki Daily Notes command to see completed tasks."
+        text: t("empty.openDailyNoteToSeeCompletedTasks")
       });
       return;
     }
@@ -10232,7 +10885,7 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
     if (tasks.length === 0) {
       panel.createDiv({
         cls: "belki-empty belki-empty-small",
-        text: "No tasks completed on this daily note date."
+        text: t("empty.noTasksCompletedOnThisDailyNoteDate")
       });
       return;
     }
@@ -10269,7 +10922,7 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
       }
     });
     const title = row.createDiv({ cls: "belki-activity-row-title" });
-    title.createSpan({ text: "You completed " });
+    title.createSpan({ text: t("activity.youCompleted") });
     renderLinkedText(task.title, title.createSpan({ cls: "belki-activity-task-title" }), {
       app: this.app,
       sourcePath: task.sourcePath
@@ -10877,7 +11530,7 @@ var TaskBoardView = class extends import_obsidian18.ItemView {
     }
     if (subTasks.length > 0) {
       const isExpanded = this.expandedSubtaskPreviewIds.has(task.id);
-      const done = subTasks.filter((t) => t.completed).length;
+      const done = subTasks.filter((t2) => t2.completed).length;
       const counterEl = meta.createEl("button", {
         cls: "belki-task-subtask-counter",
         attr: {
@@ -11736,27 +12389,27 @@ var QuickAddModal = class extends import_obsidian19.Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("belki-quick-add-modal");
-    contentEl.createEl("h2", { text: "Quick add task" });
+    contentEl.createEl("h2", { text: t("modal.quickAddTask") });
     contentEl.createEl("p", {
       cls: "belki-quick-add-desc",
-      text: "Capture a task now. It will appear in Inbox."
+      text: t("modal.quickAddTaskDesc")
     });
     const input = contentEl.createEl("input", {
       cls: "belki-quick-add-input",
       attr: {
         type: "text",
-        placeholder: "Task title"
+        placeholder: t("task.title")
       }
     });
     const actions = contentEl.createDiv({ cls: "belki-quick-add-actions" });
     actions.createEl("button", {
       cls: "belki-button",
-      text: "Cancel",
+      text: t("common.cancel"),
       attr: { type: "button" }
     }).addEventListener("click", () => this.close());
     const addButton = actions.createEl("button", {
       cls: "belki-button belki-button-primary",
-      text: "Add task",
+      text: t("common.addTask"),
       attr: { type: "button" }
     });
     const submit = async () => {
@@ -12461,7 +13114,7 @@ function backoffDelayForFailureCount(count) {
 // src/calendar/IcalCalendarProvider.ts
 var import_obsidian21 = require("obsidian");
 
-// node_modules/ical.js/dist/ical.js
+// node_modules/.pnpm/ical.js@2.2.1/node_modules/ical.js/dist/ical.js
 var ical_exports = {};
 __export(ical_exports, {
   default: () => ICALmodule
@@ -13305,22 +13958,22 @@ var _Time = class _Time {
    * @return {Time}                         The date on which week number 1 starts
    */
   static weekOneStarts(aYear, aWeekStart) {
-    let t = _Time.fromData({
+    let t2 = _Time.fromData({
       year: aYear,
       month: 1,
       day: 1,
       isDate: true
     });
-    let dow = t.dayOfWeek();
+    let dow = t2.dayOfWeek();
     let wkst = aWeekStart || _Time.DEFAULT_WEEK_START;
     if (dow > _Time.THURSDAY) {
-      t.day += 7;
+      t2.day += 7;
     }
     if (wkst > _Time.THURSDAY) {
-      t.day -= 7;
+      t2.day -= 7;
     }
-    t.day -= dow - wkst;
-    return t;
+    t2.day -= dow - wkst;
+    return t2;
   }
   /**
    * Get the dominical letter for the given year. Letters range from A - G for
@@ -14177,8 +14830,8 @@ __publicField(_Time, "_wnCache", {});
  * @param {Timezone=} aZone         Timezone this position occurs in
  */
 __publicField(_Time, "fromData", function fromData(aData, aZone) {
-  let t = new _Time();
-  return t.fromData(aData, aZone);
+  let t2 = new _Time();
+  return t2.fromData(aData, aZone);
 });
 __privateAdd(_Time, _epochTime, null);
 /**
@@ -16232,7 +16885,7 @@ var _RecurIterator = class _RecurIterator {
     return aRuleType in this.rule.parts;
   }
   expand_year_days(aYear) {
-    let t = new Time();
+    let t2 = new Time();
     this.days = [];
     let parts = {};
     let rules = ["BYDAY", "BYWEEKNO", "BYMONTHDAY", "BYMONTH", "BYYEARDAY"];
@@ -16244,15 +16897,15 @@ var _RecurIterator = class _RecurIterator {
     if ("BYMONTH" in parts && "BYWEEKNO" in parts) {
       let valid = 1;
       let validWeeks = {};
-      t.year = aYear;
-      t.isDate = true;
+      t2.year = aYear;
+      t2.isDate = true;
       for (let monthIdx = 0; monthIdx < this.by_data.BYMONTH.length; monthIdx++) {
         let month = this.by_data.BYMONTH[monthIdx];
-        t.month = month;
-        t.day = 1;
-        let first_week = t.weekNumber(this.rule.wkst);
-        t.day = Time.daysInMonth(month, aYear);
-        let last_week = t.weekNumber(this.rule.wkst);
+        t2.month = month;
+        t2.day = 1;
+        let first_week = t2.weekNumber(this.rule.wkst);
+        t2.day = Time.daysInMonth(month, aYear);
+        let last_week = t2.weekNumber(this.rule.wkst);
         for (monthIdx = first_week; monthIdx < last_week; monthIdx++) {
           validWeeks[monthIdx] = 1;
         }
@@ -16278,11 +16931,11 @@ var _RecurIterator = class _RecurIterator {
       this.days.push(t1.dayOfYear());
     } else if (partCount == 1 && "BYMONTH" in parts) {
       for (let month of this.by_data.BYMONTH) {
-        let t2 = this.dtstart.clone();
-        t2.year = aYear;
-        t2.month = month;
-        t2.isDate = true;
-        this.days.push(t2.dayOfYear());
+        let t22 = this.dtstart.clone();
+        t22.year = aYear;
+        t22.month = month;
+        t22.isDate = true;
+        this.days.push(t22.dayOfYear());
       }
     } else if (partCount == 1 && "BYMONTHDAY" in parts) {
       for (let monthday of this.by_data.BYMONTHDAY) {
@@ -16303,11 +16956,11 @@ var _RecurIterator = class _RecurIterator {
           if (monthday < 0) {
             monthday = monthday + daysInMonth + 1;
           }
-          t.day = monthday;
-          t.month = month;
-          t.year = aYear;
-          t.isDate = true;
-          this.days.push(t.dayOfYear());
+          t2.day = monthday;
+          t2.month = month;
+          t2.year = aYear;
+          t2.isDate = true;
+          this.days.push(t2.dayOfYear());
         }
       }
     } else if (partCount == 1 && "BYWEEKNO" in parts) ;
@@ -16317,19 +16970,19 @@ var _RecurIterator = class _RecurIterator {
     } else if (partCount == 2 && "BYDAY" in parts && "BYMONTH" in parts) {
       for (let month of this.by_data.BYMONTH) {
         let daysInMonth = Time.daysInMonth(month, aYear);
-        t.year = aYear;
-        t.month = month;
-        t.day = 1;
-        t.isDate = true;
-        let first_dow = t.dayOfWeek();
-        let doy_offset = t.dayOfYear() - 1;
-        t.day = daysInMonth;
-        let last_dow = t.dayOfWeek();
+        t2.year = aYear;
+        t2.month = month;
+        t2.day = 1;
+        t2.isDate = true;
+        let first_dow = t2.dayOfWeek();
+        let doy_offset = t2.dayOfYear() - 1;
+        t2.day = daysInMonth;
+        let last_dow = t2.dayOfWeek();
         if (this.has_by_data("BYSETPOS")) {
           let by_month_day = [];
           for (let day = 1; day <= daysInMonth; day++) {
-            t.day = day;
-            if (this.is_day_in_byday(t)) {
+            t2.day = day;
+            if (this.is_day_in_byday(t2)) {
               by_month_day.push(day);
             }
           }
@@ -20242,7 +20895,10 @@ var BelkiPlugin = class extends import_obsidian22.Plugin {
     this.unloaded = false;
   }
   async onload() {
+    var _a, _b, _c;
     await this.loadSettings();
+    const obsidianLanguage = (_c = (_b = (_a = this.app) == null ? void 0 : _a.settings) == null ? void 0 : _b.language) != null ? _c : "en";
+    initI18n(obsidianLanguage);
     this.store = new TaskStore(this.app, this.settings);
     this.calendarService = new CalendarService({
       settings: this.settings,
@@ -20268,19 +20924,19 @@ var BelkiPlugin = class extends import_obsidian22.Plugin {
         }
       )
     );
-    this.addRibbonIcon("check-circle-2", "Open belki", () => {
+    this.addRibbonIcon("check-circle-2", t("ribbon.openBelki"), () => {
       void this.activateView();
     });
     this.addCommand({
       id: "open",
-      name: "Open",
+      name: t("command.open"),
       callback: () => {
         void this.activateView();
       }
     });
     this.addCommand({
       id: QUICK_ADD_TASK_COMMAND_ID,
-      name: QUICK_ADD_TASK_COMMAND_NAME,
+      name: t("command.quickAddTask"),
       hotkeys: QUICK_ADD_TASK_HOTKEYS,
       callback: () => {
         this.handleQuickAddTaskCommand();
@@ -20288,21 +20944,21 @@ var BelkiPlugin = class extends import_obsidian22.Plugin {
     });
     this.addCommand({
       id: "show-active-daily-note-completed-tasks",
-      name: "Show Completed Tasks for Active Daily Note",
+      name: t("command.showCompletedTasksForActiveDailyNote"),
       callback: () => {
         void this.openActiveDailyNoteCompletedTasks();
       }
     });
     this.addCommand({
       id: "insert-active-daily-note-completed-block",
-      name: "Insert Completed Tasks Block in Active Daily Note",
+      name: t("command.insertCompletedTasksBlockInActiveDailyNote"),
       callback: () => {
         void this.insertActiveDailyNoteCompletedBlock();
       }
     });
     this.addCommand({
       id: "normalize-labels",
-      name: "Normalize Labels",
+      name: t("command.normalizeLabels"),
       callback: async () => {
         await this.store.normalizeLabels();
         this.settings.labelColors = normalizeLabelColorMap(this.settings.labelColors);
@@ -20311,19 +20967,19 @@ var BelkiPlugin = class extends import_obsidian22.Plugin {
           ...Object.keys(this.settings.labelColors)
         ]);
         await this.saveSettings();
-        new import_obsidian22.Notice("belki labels normalized.");
+        new import_obsidian22.Notice(t("notice.labelsNormalized"));
       }
     });
     this.addCommand({
       id: "migrate-old-task-file",
-      name: "Migrate old task file",
+      name: t("command.migrateOldTaskFile"),
       callback: async () => {
         const migratedCount = await this.store.migrateOldTaskFile();
         if (migratedCount === 0) {
-          new import_obsidian22.Notice("belki found no old tasks to migrate.");
+          new import_obsidian22.Notice(t("notice.noOldTasksToMigrate"));
           return;
         }
-        new import_obsidian22.Notice(`belki migrated ${migratedCount} task${migratedCount === 1 ? "" : "s"}.`);
+        new import_obsidian22.Notice(t(migratedCount === 1 ? "notice.migratedTasks" : "notice.migratedTasksPlural", { count: migratedCount }));
       }
     });
     this.addSettingTab(new BelkiSettingTab(this.app, this));
@@ -20449,7 +21105,7 @@ var BelkiPlugin = class extends import_obsidian22.Plugin {
       }
       await this.store.reloadFromDisk();
     } catch (error) {
-      new import_obsidian22.Notice("belki could not reload task data.");
+      new import_obsidian22.Notice(t("notice.couldNotReloadTaskData"));
       console.error(error);
     }
   }
@@ -20555,17 +21211,17 @@ var BelkiPlugin = class extends import_obsidian22.Plugin {
   }
   async openActiveDailyNoteCompletedTasks() {
     if (!this.settings.dailyNotesIntegrationEnabled) {
-      new import_obsidian22.Notice("belki Daily Notes integration is disabled in settings.");
+      new import_obsidian22.Notice(t("notice.dailyNotesIntegrationDisabled"));
       return;
     }
     const file = this.app.workspace.getActiveFile();
     if (!file) {
-      new import_obsidian22.Notice("Open a daily note first.");
+      new import_obsidian22.Notice(t("notice.openDailyNoteFirst"));
       return;
     }
     const date = this.dateFromDailyNoteFile(file);
     if (!date) {
-      new import_obsidian22.Notice("belki could not detect a date from the active note.");
+      new import_obsidian22.Notice(t("notice.couldNotDetectDate"));
       return;
     }
     await this.activateDailyNoteView(date, file.path);
@@ -20586,28 +21242,28 @@ var BelkiPlugin = class extends import_obsidian22.Plugin {
   openQuickAddModal() {
     new QuickAddModal(this.app, async (title) => {
       await this.store.createTask({ title });
-      new import_obsidian22.Notice("Task added to Inbox");
+      new import_obsidian22.Notice(t("notice.taskAddedToInbox"));
     }).open();
   }
   async insertActiveDailyNoteCompletedBlock() {
     if (!this.settings.dailyNotesIntegrationEnabled) {
-      new import_obsidian22.Notice("belki Daily Notes integration is disabled in settings.");
+      new import_obsidian22.Notice(t("notice.dailyNotesIntegrationDisabled"));
       return;
     }
     const file = this.app.workspace.getActiveFile();
     if (!file) {
-      new import_obsidian22.Notice("Open a daily note first.");
+      new import_obsidian22.Notice(t("notice.openDailyNoteFirst"));
       return;
     }
     if (!this.dateFromDailyNoteFile(file)) {
-      new import_obsidian22.Notice("belki could not detect a date from the active note.");
+      new import_obsidian22.Notice(t("notice.couldNotDetectDate"));
       return;
     }
     const result = await this.ensureDailyNoteCompletedBlock(file);
     if (result === "inserted") {
-      new import_obsidian22.Notice("belki completed tasks block added.");
+      new import_obsidian22.Notice(t("notice.completedTasksBlockAdded"));
     } else if (result === "exists") {
-      new import_obsidian22.Notice("This note already has a belki completed tasks block.");
+      new import_obsidian22.Notice(t("notice.noteAlreadyHasCompletedBlock"));
     }
   }
   async handleDailyNoteFileOpen(file) {
@@ -20688,8 +21344,8 @@ var BelkiPlugin = class extends import_obsidian22.Plugin {
         this.storeInitialized = true;
         void this.calendarService.refreshStartup();
       } catch (error) {
-        this.storeInitializationError = "belki could not initialize task storage.";
-        new import_obsidian22.Notice("belki could not initialize task storage. Open the developer console for details.");
+        this.storeInitializationError = t("empty.taskStorageCouldNotBeInitialized");
+        new import_obsidian22.Notice(t("notice.couldNotInitializeTaskStorage"));
         console.error("[belki] Failed to initialize task storage.", error, {
           dataFolderPath: this.settings.dataFolderPath,
           tasksFilePath: this.settings.tasksFilePath
