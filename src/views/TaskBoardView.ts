@@ -69,6 +69,7 @@ import { collectUpcomingSectionDates } from "../calendar/calendarGrouping";
 import { renderCalendarEventStrip } from "./calendar/CalendarEventStrip";
 import { getVisibleOverdueTasksForBulkReschedule } from "../taskBulkActions";
 import { getQuickAddTaskHotkeyHint } from "../quickAddCommand";
+import { t } from "../i18n";
 
 export const VIEW_TYPE_BELKI = "belki-task-board";
 
@@ -265,7 +266,7 @@ export class TaskBoardView extends ItemView {
   }
 
   getDisplayText(): string {
-    return "Tasks · belki";
+    return t("view.displayText");
   }
 
   getIcon(): string {
@@ -500,7 +501,7 @@ export class TaskBoardView extends ItemView {
       });
       const sidebarAddMain = sidebarAdd.createSpan({ cls: "belki-add-sidebar-main" });
       createBelkiIcon(sidebarAddMain, "add", { className: "belki-add-plus", size: 18 });
-      sidebarAddMain.createSpan({ cls: "belki-add-text", text: "Add task" });
+      sidebarAddMain.createSpan({ cls: "belki-add-text", text: t("common.addTask") });
       if (shortcutHint) {
         sidebarAdd.createSpan({
           cls: "belki-add-shortcut",
@@ -517,28 +518,28 @@ export class TaskBoardView extends ItemView {
     const activeTopLevel = this.getActiveTopLevelTasks(tasks);
     const nav = sidebar.createDiv({ cls: "belki-nav" });
 
-    this.renderNavButton(nav, "Search", "search", undefined, "search");
-    this.renderNavButton(nav, "Inbox", "inbox", this.getInboxTasks(activeTopLevel).length, "inbox");
-    this.renderNavButton(nav, "Today", "today", this.getTodayTasks(activeTopLevel).length, "today");
-    this.renderNavButton(nav, "Upcoming", "upcoming", this.getUpcomingTasks(activeTopLevel).length, "upcoming");
-    this.renderNavButton(nav, "Filters & Labels", "filters", undefined, "filters");
-    this.renderNavButton(nav, "Projects", "projects", undefined, "projects");
-    this.renderNavButton(nav, "Activity", "activity", undefined, "activity");
+    this.renderNavButton(nav, t("nav.search"), "search", undefined, "search");
+    this.renderNavButton(nav, t("nav.inbox"), "inbox", this.getInboxTasks(activeTopLevel).length, "inbox");
+    this.renderNavButton(nav, t("nav.today"), "today", this.getTodayTasks(activeTopLevel).length, "today");
+    this.renderNavButton(nav, t("nav.upcoming"), "upcoming", this.getUpcomingTasks(activeTopLevel).length, "upcoming");
+    this.renderNavButton(nav, t("nav.filters"), "filters", undefined, "filters");
+    this.renderNavButton(nav, t("nav.projects"), "projects", undefined, "projects");
+    this.renderNavButton(nav, t("nav.activity"), "activity", undefined, "activity");
 
     const projectsSection = sidebar.createDiv({ cls: "belki-sidebar-section" });
     const projectsHeadingRow = projectsSection.createDiv({ cls: "belki-sidebar-heading-row" });
-    projectsHeadingRow.createDiv({ cls: "belki-sidebar-heading", text: "Projects" });
+    projectsHeadingRow.createDiv({ cls: "belki-sidebar-heading", text: t("nav.projects") });
     const addProjectBtn = projectsHeadingRow.createEl("button", {
       cls: "belki-sidebar-add-project",
       attr: {
         type: "button",
-        title: "New project",
-        "aria-label": "New project",
-        "data-sidebar-label": "New project"
+        title: t("settings.newProject"),
+        "aria-label": t("settings.newProject"),
+        "data-sidebar-label": t("settings.newProject")
       }
     });
     createBelkiIcon(addProjectBtn, "add");
-    addProjectBtn.createSpan({ cls: "belki-sidebar-add-project-label", text: "Project" });
+    addProjectBtn.createSpan({ cls: "belki-sidebar-add-project-label", text: t("settings.newProject") });
     addProjectBtn.addEventListener("click", () => {
       new CreateProjectModal(this.app, this.getKnownProjects(), (project) => {
         this.ensureProjectInRegistry(project.name);
@@ -594,14 +595,14 @@ export class TaskBoardView extends ItemView {
         cls: "belki-project-button belki-archived-button",
         attr: {
           type: "button",
-          title: `Archived (${this.settings.archivedProjects.length})`,
-          "aria-label": `Archived (${this.settings.archivedProjects.length})`,
-          "data-sidebar-label": `Archived (${this.settings.archivedProjects.length})`
+          title: `${t("nav.archived")} (${this.settings.archivedProjects.length})`,
+          "aria-label": `${t("nav.archived")} (${this.settings.archivedProjects.length})`,
+          "data-sidebar-label": `${t("nav.archived")} (${this.settings.archivedProjects.length})`
         }
       });
       archiveButton.toggleClass("is-active", this.mode === "archived");
       createBelkiIcon(archiveButton, "archive", { className: "belki-nav-icon", size: 18 });
-      archiveButton.createSpan({ cls: "belki-nav-label", text: "Archived" });
+      archiveButton.createSpan({ cls: "belki-nav-label", text: t("nav.archived") });
       archiveButton.createSpan({ cls: "belki-count", text: String(this.settings.archivedProjects.length) });
       archiveButton.addEventListener("click", () => {
         this.mode = "archived";
@@ -617,7 +618,7 @@ export class TaskBoardView extends ItemView {
 
     this.renderNavButton(
       nav,
-      "Completed",
+      t("nav.completed"),
       "completed",
       this.getCompletedDisplayTasks(tasks).length,
       "completed"
@@ -788,7 +789,7 @@ export class TaskBoardView extends ItemView {
     const inlineAdd = addArea.createEl("button", { cls: "belki-add-inline" });
     inlineAdd.toggleClass("is-active", this.composerOpen && !Platform.isMobile);
     createBelkiIcon(inlineAdd, "add", { className: "belki-add-plus", size: 18 });
-    inlineAdd.createSpan({ cls: "belki-add-text", text: "Add task" });
+    inlineAdd.createSpan({ cls: "belki-add-text", text: t("common.addTask") });
     inlineAdd.addEventListener("click", () => {
       this.openContextualTaskComposer();
     });
@@ -796,7 +797,7 @@ export class TaskBoardView extends ItemView {
     if (tasks.length === 0) {
       main.createDiv({
         cls: "belki-empty",
-        text: `No tasks yet. Add one and belki will write it to ${this.store.dataDir}/YYYY-MM.md.`
+        text: t("empty.noTasksYet", { path: this.store.dataDir })
       });
     }
   }
@@ -805,12 +806,12 @@ export class TaskBoardView extends ItemView {
     const error = parent.createDiv({ cls: "belki-empty belki-storage-error" });
     error.createDiv({
       cls: "belki-storage-error-title",
-      text: "Task storage could not be initialized."
+      text: t("empty.taskStorageCouldNotBeInitialized")
     });
     error.createDiv({ cls: "belki-storage-error-message", text: message });
     const retry = error.createEl("button", {
       cls: "belki-storage-error-retry",
-      text: "Retry",
+      text: t("common.retry"),
       attr: { type: "button" }
     });
     retry.addEventListener("click", () => {
@@ -1059,7 +1060,7 @@ export class TaskBoardView extends ItemView {
       }
     });
     createBelkiIcon(button, "sorting", { className: "belki-sorting-icon" });
-    button.createSpan({ text: "Sorting" });
+    button.createSpan({ text: t("sorting.sorting") });
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -1072,7 +1073,7 @@ export class TaskBoardView extends ItemView {
     }
 
     const popover = wrapper.createDiv({ cls: "belki-sorting-popover" });
-    popover.createDiv({ cls: "belki-sorting-title", text: "Sort by" });
+    popover.createDiv({ cls: "belki-sorting-title", text: t("sorting.sortBy") });
     for (const option of SORT_OPTIONS) {
       const item = popover.createEl("button", {
         cls: "belki-sorting-option",
@@ -1102,11 +1103,11 @@ export class TaskBoardView extends ItemView {
 
     if (this.mode === "projects") {
       popover.createDiv({ cls: "belki-sorting-divider" });
-      popover.createDiv({ cls: "belki-sorting-title", text: "Group by" });
+      popover.createDiv({ cls: "belki-sorting-title", text: t("sorting.groupBy") });
       const GROUP_OPTIONS: { label: string; value: "none" | "label" | "priority" }[] = [
-        { label: "None", value: "none" },
-        { label: "Label", value: "label" },
-        { label: "Priority", value: "priority" }
+        { label: t("sorting.none"), value: "none" },
+        { label: t("sorting.label"), value: "label" },
+        { label: t("sorting.priority"), value: "priority" }
       ];
       for (const opt of GROUP_OPTIONS) {
         const item = popover.createEl("button", {
@@ -1149,7 +1150,7 @@ export class TaskBoardView extends ItemView {
       const hasAnyOverdue = active.some((task) => task.due && task.due < todayIso());
 
       if (hasAnyOverdue) {
-        const section = this.createSection(parent, "Overdue", overdue.length, (header) => {
+        const section = this.createSection(parent, t("section.overdue"), overdue.length, (header) => {
           this.renderOverdueRangeSelect(header);
           this.renderBulkRescheduleAction(header, overdue);
         });
@@ -1180,7 +1181,7 @@ export class TaskBoardView extends ItemView {
       }
 
       if (dates.length === 0) {
-        this.renderEmptySection(parent, "No upcoming tasks.");
+        this.renderEmptySection(parent, t("section.noUpcomingTasks"));
       }
       return;
     }
@@ -1191,7 +1192,7 @@ export class TaskBoardView extends ItemView {
         : this.getActiveProjects();
 
       if (projects.length === 0) {
-        this.renderEmptySection(parent, "No projects yet.");
+        this.renderEmptySection(parent, t("section.noProjectsYet"));
         return;
       }
 
@@ -1258,7 +1259,7 @@ export class TaskBoardView extends ItemView {
     const completed = this.getCompletedDisplayTasks(allTasks);
 
     if (completed.length === 0) {
-      this.renderEmptySection(parent, "No completed tasks yet.");
+      this.renderEmptySection(parent, t("section.noCompletedTasks"));
       return;
     }
 
@@ -1284,7 +1285,7 @@ export class TaskBoardView extends ItemView {
     }
 
     if (noDate.length > 0) {
-      const section = this.createSection(parent, "Earlier", noDate.length);
+      const section = this.createSection(parent, t("section.earlier"), noDate.length);
       this.renderTaskList(section, noDate);
     }
   }
@@ -1299,27 +1300,27 @@ export class TaskBoardView extends ItemView {
     if (data.allTimeCount === 0) {
       activity.createDiv({
         cls: "belki-activity-empty",
-        text: "No completed tasks yet. Complete a task and your activity will appear here."
+        text: t("activity.noCompletedTasksYet")
       });
       return;
     }
 
     const dashboard = activity.createDiv({ cls: "belki-activity-dashboard" });
     const dashboardTop = dashboard.createDiv({ cls: "belki-activity-dashboard-top" });
-    dashboardTop.createSpan({ cls: "belki-activity-tab is-active", text: "Overview" });
+    dashboardTop.createSpan({ cls: "belki-activity-tab is-active", text: t("section.overview") });
 
     const summary = dashboard.createDiv({ cls: "belki-activity-summary" });
-    this.renderActivitySummaryCard(summary, "Today", data.todayCount);
-    this.renderActivitySummaryCard(summary, "Yesterday", data.yesterdayCount);
-    this.renderActivitySummaryCard(summary, "This week", data.weekCount);
-    this.renderActivitySummaryCard(summary, "This month", data.monthCount);
-    this.renderActivitySummaryCard(summary, "All time", data.allTimeCount);
-    this.renderActivitySummaryCard(summary, "Current streak", `${data.currentStreak}d`);
+    this.renderActivitySummaryCard(summary, t("activity.today"), data.todayCount);
+    this.renderActivitySummaryCard(summary, t("activity.yesterday"), data.yesterdayCount);
+    this.renderActivitySummaryCard(summary, t("activity.thisWeek"), data.weekCount);
+    this.renderActivitySummaryCard(summary, t("activity.thisMonth"), data.monthCount);
+    this.renderActivitySummaryCard(summary, t("activity.allTime"), data.allTimeCount);
+    this.renderActivitySummaryCard(summary, t("activity.currentStreak"), `${data.currentStreak}d`);
 
     const heatmapSection = dashboard.createDiv({ cls: "belki-activity-panel" });
     const heatmapHeader = heatmapSection.createDiv({ cls: "belki-activity-panel-header" });
-    heatmapHeader.createEl("h2", { text: "Completed tasks" });
-    heatmapHeader.createSpan({ text: "Last 26 weeks" });
+    heatmapHeader.createEl("h2", { text: t("section.completedTasks") });
+    heatmapHeader.createSpan({ text: t("section.last26Weeks") });
 
     const heatmapScroller = heatmapSection.createDiv({ cls: "belki-activity-heatmap-scroll" });
     const heatmap = heatmapScroller.createDiv({ cls: "belki-activity-heatmap" });
@@ -1348,7 +1349,7 @@ export class TaskBoardView extends ItemView {
     if (selectedTasks.length === 0) {
       feed.createDiv({
         cls: "belki-empty belki-empty-small",
-        text: "No tasks completed on this day."
+        text: t("section.noTasksCompletedToday")
       });
       return;
     }
@@ -1366,7 +1367,7 @@ export class TaskBoardView extends ItemView {
     if (!date) {
       daily.createDiv({
         cls: "belki-empty belki-empty-small",
-        text: "Open a daily note and run the belki Daily Notes command to see completed tasks."
+        text: t("empty.openDailyNoteToSeeCompletedTasks")
       });
       return;
     }
@@ -1391,7 +1392,7 @@ export class TaskBoardView extends ItemView {
     if (tasks.length === 0) {
       panel.createDiv({
         cls: "belki-empty belki-empty-small",
-        text: "No tasks completed on this daily note date."
+        text: t("empty.noTasksCompletedOnThisDailyNoteDate")
       });
       return;
     }
@@ -1436,7 +1437,7 @@ export class TaskBoardView extends ItemView {
     });
 
     const title = row.createDiv({ cls: "belki-activity-row-title" });
-    title.createSpan({ text: "You completed " });
+    title.createSpan({ text: t("activity.youCompleted") });
     renderLinkedText(task.title, title.createSpan({ cls: "belki-activity-task-title" }), {
       app: this.app,
       sourcePath: task.sourcePath

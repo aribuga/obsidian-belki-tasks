@@ -1,5 +1,6 @@
 import { App, Modal } from "obsidian";
 import { displayLabel, normalizeLabelName } from "../labels";
+import { t } from "../i18n";
 
 export class RenameLabelModal extends Modal {
   constructor(
@@ -15,7 +16,7 @@ export class RenameLabelModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("belki-label-prompt");
-    contentEl.createEl("h2", { text: "Rename label" });
+    contentEl.createEl("h2", { text: t("modal.renameLabel") });
 
     const input = contentEl.createEl("input", {
       cls: "belki-label-prompt-input",
@@ -40,14 +41,14 @@ export class RenameLabelModal extends Modal {
     actions
       .createEl("button", {
         cls: "belki-button",
-        text: "Cancel",
+        text: t("common.cancel"),
         attr: { type: "button" }
       })
       .addEventListener("click", () => this.close());
 
     const submitButton = actions.createEl("button", {
       cls: "belki-button belki-button-primary",
-      text: "Rename",
+      text: t("common.rename"),
       attr: { type: "button" }
     });
 
@@ -55,7 +56,7 @@ export class RenameLabelModal extends Modal {
       const current = normalizeLabelName(this.currentLabel);
       const next = normalizeLabelName(input.value);
       if (!next) {
-        showError("Label name cannot be empty.");
+        showError(t("modal.labelNameCannotBeEmpty"));
         return;
       }
       if (next === current) {
@@ -67,7 +68,7 @@ export class RenameLabelModal extends Modal {
           (label) => normalizeLabelName(label) === next && normalizeLabelName(label) !== current
         )
       ) {
-        showError("A label with that name already exists.");
+        showError(t("modal.labelWithNameAlreadyExists"));
         return;
       }
 
@@ -99,19 +100,19 @@ export class DeleteLabelModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("belki-label-prompt");
-    contentEl.createEl("h2", { text: `Delete ${displayLabel(this.label)}?` });
+    contentEl.createEl("h2", { text: t("modal.deleteLabel", { label: displayLabel(this.label) }) });
 
     const desc =
       this.taskCount > 0
-        ? `This will remove ${displayLabel(this.label)} from ${this.taskCount} task${this.taskCount === 1 ? "" : "s"}. Tasks will not be deleted.`
-        : "This label is not assigned to any tasks.";
+        ? t(this.taskCount === 1 ? "modal.deleteLabelDesc" : "modal.deleteLabelDescPlural", { label: displayLabel(this.label), count: this.taskCount })
+        : t("modal.deleteLabelDescNoTasks");
     contentEl.createEl("p", { text: desc, cls: "belki-modal-desc" });
 
     const actions = contentEl.createDiv({ cls: "belki-label-prompt-actions" });
     actions
       .createEl("button", {
         cls: "belki-button",
-        text: "Cancel",
+        text: t("common.cancel"),
         attr: { type: "button" }
       })
       .addEventListener("click", () => this.close());
@@ -119,7 +120,7 @@ export class DeleteLabelModal extends Modal {
     actions
       .createEl("button", {
         cls: "belki-button belki-button-destructive",
-        text: "Delete label",
+        text: t("modal.deleteLabelAction"),
         attr: { type: "button" }
       })
       .addEventListener("click", () => {

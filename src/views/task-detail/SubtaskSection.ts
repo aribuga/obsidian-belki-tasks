@@ -11,6 +11,7 @@ import { PRIORITIES } from "../../types";
 import type { BelkiTask, Priority } from "../../types";
 import { createBelkiIcon } from "../../ui/components/BelkiIcon";
 import { DeleteTaskConfirmationModal } from "../tasks/DeleteTaskConfirmationModal";
+import { t } from "../../i18n";
 
 export interface SubtaskSectionOptions {
   app: App;
@@ -28,7 +29,7 @@ export function renderSubtaskSection(parent: HTMLElement, options: SubtaskSectio
   const section = parent.createDiv({ cls: "belki-subtasks-section" });
   const header = section.createDiv({ cls: "belki-attachments-header" });
   const titleEl = header.createEl("h3", { cls: "belki-subtasks-title" });
-  titleEl.createSpan({ text: "Sub-tasks" });
+  titleEl.createSpan({ text: t("task.subtasks") });
   const countEl = titleEl.createSpan({
     cls: "belki-subtasks-count",
     text: subTasks.length > 0 ? ` ${doneCount}/${subTasks.length}` : ""
@@ -166,7 +167,7 @@ export function renderSubtaskSection(parent: HTMLElement, options: SubtaskSectio
 
       const deleteBtn = titleLine.createSpan({
         cls: "belki-subtask-delete",
-        attr: { role: "button", tabindex: "0", "aria-label": "Delete sub-task" }
+        attr: { role: "button", tabindex: "0", "aria-label": t("task.deleteSubtask") }
       });
       createBelkiIcon(deleteBtn, "delete");
       const confirmDeleteSubTask = () => {
@@ -228,7 +229,7 @@ export function renderSubtaskSection(parent: HTMLElement, options: SubtaskSectio
 
     const input = addRow.createEl("input", {
       cls: "belki-subtask-input",
-      attr: { type: "text", placeholder: "Sub-task title" }
+      attr: { type: "text", placeholder: t("task.subtaskTitle") }
     });
 
     const chipsRow = addRow.createDiv({ cls: "belki-subtask-chips" });
@@ -247,10 +248,10 @@ export function renderSubtaskSection(parent: HTMLElement, options: SubtaskSectio
       expandPanel.removeClass("is-hidden");
 
       const presets: [string, string][] = [
-        ["Today", todayIso()],
-        ["Tomorrow", addDaysIso(1)],
-        ["Next week", addDaysIso(7)],
-        ["Weekend", nextWeekdayIso(6)]
+        [t("date.today"), todayIso()],
+        [t("date.tomorrow"), addDaysIso(1)],
+        [t("date.nextWeek"), addDaysIso(7)],
+        [t("date.weekend"), nextWeekdayIso(6)]
       ];
       for (const [label, value] of presets) {
         const btn = expandPanel.createEl("button", {
@@ -263,7 +264,7 @@ export function renderSubtaskSection(parent: HTMLElement, options: SubtaskSectio
 
       const customInput = expandPanel.createEl("input", {
         cls: "belki-subtask-preset-date",
-        attr: { type: "date", title: "Custom date" }
+        attr: { type: "date", title: t("subtask.customDate") }
       });
       if (composerDue) customInput.value = composerDue;
       customInput.addEventListener("change", () => { if (customInput.value) { composerDue = customInput.value; closePanel(); } });
@@ -321,12 +322,12 @@ export function renderSubtaskSection(parent: HTMLElement, options: SubtaskSectio
     const btnRow = addRow.createDiv({ cls: "belki-subtask-btn-row" });
     const addBtn = btnRow.createEl("button", {
       cls: "belki-button belki-button-primary",
-      text: "Add task",
+      text: t("common.addTask"),
       attr: { type: "button" }
     });
     const cancelBtn = btnRow.createEl("button", {
       cls: "belki-button",
-      text: "Cancel",
+      text: t("common.cancel"),
       attr: { type: "button" }
     });
 
@@ -371,7 +372,7 @@ export function renderSubtaskSection(parent: HTMLElement, options: SubtaskSectio
       attr: { type: "button" }
     });
     createBelkiIcon(btn, "add");
-    btn.createSpan({ text: "Add sub-task" });
+    btn.createSpan({ text: t("task.addSubtask") });
     btn.addEventListener("click", showComposer);
   };
 

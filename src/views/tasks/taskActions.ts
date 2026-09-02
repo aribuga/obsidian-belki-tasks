@@ -2,6 +2,7 @@ import { addDaysIso, todayIso } from "../../dateUtils";
 import { createBelkiIcon } from "../../ui/components/BelkiIcon";
 import { BelkiTask } from "../../types";
 import { renderCustomDatePicker } from "../datePicker";
+import { t } from "../../i18n";
 
 interface RenderTaskActionsOptions {
   row: HTMLElement;
@@ -24,7 +25,7 @@ export function renderTaskActions(options: RenderTaskActionsOptions): void {
     cls: "belki-task-actions-button",
     attr: {
       type: "button",
-      "aria-label": "Task actions"
+      "aria-label": t("taskActions.taskActions")
     }
   });
   createBelkiIcon(actionButton, "more");
@@ -40,14 +41,14 @@ export function renderTaskActionMenu(options: RenderTaskActionMenuOptions): HTML
   menu.addEventListener("click", (event) => event.stopPropagation());
 
   if (!options.task.completed && options.task.due !== todayIso()) {
-    createTaskActionMenuButton(menu, "Move to Today", () => {
+    createTaskActionMenuButton(menu, t("taskActions.moveToToday"), () => {
       options.onMoveDue(todayIso());
     });
   }
 
   const tomorrow = addDaysIso(1);
   if (!options.task.completed && options.task.due !== tomorrow) {
-    createTaskActionMenuButton(menu, "Move to Tomorrow", () => {
+    createTaskActionMenuButton(menu, t("taskActions.moveToTomorrow"), () => {
       options.onMoveDue(tomorrow);
     });
   }
@@ -57,8 +58,8 @@ export function renderTaskActionMenu(options: RenderTaskActionMenuOptions): HTML
     renderCustomDatePicker(datePickerWrap, options.task.due, (value) => {
       options.onMoveDue(value);
     }, {
-      triggerLabel: "Pick date",
-      triggerAriaLabel: "Pick task date",
+      triggerLabel: t("taskActions.pickDate"),
+      triggerAriaLabel: t("taskActions.pickTaskDate"),
       alwaysShowTriggerLabel: true
     });
     datePickerWrap.querySelector<HTMLElement>(".belki-cal-trigger")?.addEventListener("click", () => {
@@ -71,16 +72,16 @@ export function renderTaskActionMenu(options: RenderTaskActionMenuOptions): HTML
   }
 
   if (!options.task.completed && options.task.due) {
-    createTaskActionMenuButton(menu, "Clear date", () => {
+    createTaskActionMenuButton(menu, t("taskActions.clearDate"), () => {
       options.onMoveDue(undefined);
     });
   }
 
-  createTaskActionMenuButton(menu, "Duplicate task", () => {
+  createTaskActionMenuButton(menu, t("taskActions.duplicateTask"), () => {
     options.onDuplicate();
   });
 
-  createTaskActionMenuButton(menu, "Delete task", () => {
+  createTaskActionMenuButton(menu, t("taskActions.deleteTask"), () => {
     options.onDelete();
   });
 

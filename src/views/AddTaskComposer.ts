@@ -18,6 +18,7 @@ import { renderComposerLabels } from "./composer/ComposerLabels";
 import type { ComposerLabelsController } from "./composer/ComposerLabels";
 import { renderComposerProjects } from "./composer/ComposerProjects";
 import type { ComposerProjectsController } from "./composer/ComposerProjects";
+import { t } from "../i18n";
 
 interface ComposerOptions {
   app: App;
@@ -45,7 +46,7 @@ export class AddTaskComposer {
     this.titleInput = form.createEl("textarea", {
       cls: "belki-composer-title",
       attr: {
-        placeholder: "Task title",
+        placeholder: t("task.title"),
         rows: "1"
       }
     });
@@ -73,7 +74,7 @@ export class AddTaskComposer {
     const descriptionInput = form.createEl("textarea", {
       cls: "belki-composer-description",
       attr: {
-        placeholder: "Description"
+        placeholder: t("task.description")
       }
     });
 
@@ -110,7 +111,7 @@ export class AddTaskComposer {
     const prioritySelect = priorityWrap.createEl("select", {
       cls: "belki-chip-select",
       attr: {
-        "aria-label": "Priority"
+        "aria-label": t("task.priority")
       }
     });
     for (const priority of PRIORITIES.filter((priority) => priority !== "none")) {
@@ -265,9 +266,9 @@ export class AddTaskComposer {
       }
     });
     const actions = createBelkiActionRow(footer, { className: "belki-composer-actions" });
-    const cancelButton = createBelkiButton(actions, { text: "Cancel" });
+    const cancelButton = createBelkiButton(actions, { text: t("common.cancel") });
     const addButton = createBelkiButton(actions, {
-      text: "Add task",
+      text: t("common.addTask"),
       variant: "primary",
       attr: {
         type: "submit"

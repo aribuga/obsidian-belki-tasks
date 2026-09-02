@@ -30,6 +30,7 @@ import {
   QUICK_ADD_TASK_COMMAND_NAME,
   resolveQuickAddCommandTarget
 } from "./quickAddCommand";
+import { t, initI18n } from "./i18n";
 
 const BELKI_COMPLETED_CODE_BLOCK = "```belki-completed\n```";
 const BELKI_COMPLETED_CODE_BLOCK_RE = /```belki-completed\b[\s\S]*?```/i;
@@ -47,6 +48,10 @@ export default class BelkiPlugin extends Plugin {
 
   async onload(): Promise<void> {
     await this.loadSettings();
+
+    // Initialize i18n based on Obsidian language
+    const obsidianLanguage = (this.app as any)?.settings?.language ?? "en";
+    initI18n(obsidianLanguage);
 
     this.store = new TaskStore(this.app, this.settings);
     this.calendarService = new CalendarService({
@@ -74,13 +79,13 @@ export default class BelkiPlugin extends Plugin {
         )
     );
 
-    this.addRibbonIcon("check-circle-2", "Open belki", () => {
+    this.addRibbonIcon("check-circle-2", t("ribbon.openBelki"), () => {
       void this.activateView();
     });
 
     this.addCommand({
       id: "open",
-      name: "Open",
+      name: t("command.open"),
       callback: () => {
         void this.activateView();
       }
@@ -88,7 +93,7 @@ export default class BelkiPlugin extends Plugin {
 
     this.addCommand({
       id: QUICK_ADD_TASK_COMMAND_ID,
-      name: QUICK_ADD_TASK_COMMAND_NAME,
+      name: t("command.quickAddTask"),
       hotkeys: QUICK_ADD_TASK_HOTKEYS,
       callback: () => {
         this.handleQuickAddTaskCommand();
@@ -97,7 +102,7 @@ export default class BelkiPlugin extends Plugin {
 
     this.addCommand({
       id: "show-active-daily-note-completed-tasks",
-      name: "Show Completed Tasks for Active Daily Note",
+      name: t("command.showCompletedTasksForActiveDailyNote"),
       callback: () => {
         void this.openActiveDailyNoteCompletedTasks();
       }
@@ -105,7 +110,7 @@ export default class BelkiPlugin extends Plugin {
 
     this.addCommand({
       id: "insert-active-daily-note-completed-block",
-      name: "Insert Completed Tasks Block in Active Daily Note",
+      name: t("command.insertCompletedTasksBlockInActiveDailyNote"),
       callback: () => {
         void this.insertActiveDailyNoteCompletedBlock();
       }
@@ -113,7 +118,7 @@ export default class BelkiPlugin extends Plugin {
 
     this.addCommand({
       id: "normalize-labels",
-      name: "Normalize Labels",
+      name: t("command.normalizeLabels"),
       callback: async () => {
         await this.store.normalizeLabels();
         this.settings.labelColors = normalizeLabelColorMap(this.settings.labelColors);
@@ -122,21 +127,21 @@ export default class BelkiPlugin extends Plugin {
           ...Object.keys(this.settings.labelColors)
         ]);
         await this.saveSettings();
-        new Notice("belki labels normalized.");
+        new Notice(t("notice.labelsNormalized"));
       }
     });
 
     this.addCommand({
       id: "migrate-old-task-file",
-      name: "Migrate old task file",
+      name: t("command.migrateOldTaskFile"),
       callback: async () => {
         const migratedCount = await this.store.migrateOldTaskFile();
         if (migratedCount === 0) {
-          new Notice("belki found no old tasks to migrate.");
+          new Notice(t("notice.noOldTasksToMigrate"));
           return;
         }
 
-        new Notice(`belki migrated ${migratedCount} task${migratedCount === 1 ? "" : "s"}.`);
+        new Notice(t(migratedCount === 1 ? "notice.migratedTasks" : "notice.migratedTasksPlural", { count: migratedCount }));
       }
     });
 
@@ -283,7 +288,7 @@ export default class BelkiPlugin extends Plugin {
 
       await this.store.reloadFromDisk();
     } catch (error) {
-      new Notice("belki could not reload task data.");
+      new Notice(t("notice.couldNotReloadTaskData"));
       console.error(error);
     }
   }
@@ -408,19 +413,19 @@ export default class BelkiPlugin extends Plugin {
 
   private async openActiveDailyNoteCompletedTasks(): Promise<void> {
     if (!this.settings.dailyNotesIntegrationEnabled) {
-      new Notice("belki Daily Notes integration is disabled in settings.");
+      new Notice(t("notice.dailyNotesIntegrationDisabled"));
       return;
     }
 
     const file = this.app.workspace.getActiveFile();
     if (!file) {
-      new Notice("Open a daily note first.");
+      new Notice(t("notice.openDailyNoteFirst"));
       return;
     }
 
     const date = this.dateFromDailyNoteFile(file);
     if (!date) {
-      new Notice("belki could not detect a date from the active note.");
+      new Notice(t("notice.couldNotDetectDate"));
       return;
     }
 
@@ -446,32 +451,32 @@ export default class BelkiPlugin extends Plugin {
   private openQuickAddModal(): void {
     new QuickAddModal(this.app, async (title) => {
       await this.store.createTask({ title });
-      new Notice("Task added to Inbox");
+      new Notice(t("notice.taskAddedToInbox"));
     }).open();
   }
 
   private async insertActiveDailyNoteCompletedBlock(): Promise<void> {
     if (!this.settings.dailyNotesIntegrationEnabled) {
-      new Notice("belki Daily Notes integration is disabled in settings.");
+      new Notice(t("notice.dailyNotesIntegrationDisabled"));
       return;
     }
 
     const file = this.app.workspace.getActiveFile();
     if (!file) {
-      new Notice("Open a daily note first.");
+      new Notice(t("notice.openDailyNoteFirst"));
       return;
     }
 
     if (!this.dateFromDailyNoteFile(file)) {
-      new Notice("belki could not detect a date from the active note.");
+      new Notice(t("notice.couldNotDetectDate"));
       return;
     }
 
     const result = await this.ensureDailyNoteCompletedBlock(file);
     if (result === "inserted") {
-      new Notice("belki completed tasks block added.");
+      new Notice(t("notice.completedTasksBlockAdded"));
     } else if (result === "exists") {
-      new Notice("This note already has a belki completed tasks block.");
+      new Notice(t("notice.noteAlreadyHasCompletedBlock"));
     }
   }
 
@@ -573,8 +578,8 @@ export default class BelkiPlugin extends Plugin {
         this.storeInitialized = true;
         void this.calendarService.refreshStartup();
       } catch (error) {
-        this.storeInitializationError = "belki could not initialize task storage.";
-        new Notice("belki could not initialize task storage. Open the developer console for details.");
+        this.storeInitializationError = t("empty.taskStorageCouldNotBeInitialized");
+        new Notice(t("notice.couldNotInitializeTaskStorage"));
         console.error("[belki] Failed to initialize task storage.", error, {
           dataFolderPath: this.settings.dataFolderPath,
           tasksFilePath: this.settings.tasksFilePath

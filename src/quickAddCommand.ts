@@ -1,8 +1,9 @@
 import type { Hotkey, Modifier } from "obsidian";
+import { t } from "./i18n";
 
 export const QUICK_ADD_TASK_COMMAND_ID = "quick-add-task";
 export const QUICK_ADD_TASK_COMMAND_FULL_ID = `belki:${QUICK_ADD_TASK_COMMAND_ID}`;
-export const QUICK_ADD_TASK_COMMAND_NAME = "Quick Add Task";
+export const QUICK_ADD_TASK_COMMAND_NAME = t("command.quickAddTask");
 export const QUICK_ADD_TASK_HOTKEYS: Hotkey[] = [
   {
     modifiers: ["Mod", "Shift"],

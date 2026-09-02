@@ -27,6 +27,7 @@ import {
   maskIcalFeedUrl,
   type IcalFeedDraft
 } from "./calendar/icalFeedSettings";
+import { t } from "./i18n";
 
 interface BelkiSettingsPlugin extends Plugin {
   settings: BelkiSettings;
@@ -60,8 +61,8 @@ export class BelkiSettingTab extends PluginSettingTab {
     applyBelkiFontSettings(containerEl, this.plugin.settings);
 
     new Setting(containerEl)
-      .setName("Old task file")
-      .setDesc("Legacy Markdown file used by older belki versions.")
+      .setName(t("settings.oldTaskFile"))
+      .setDesc(t("settings.oldTaskFileDesc"))
       .addText((text) => {
         text
           .setPlaceholder("belki/tasks.md")
@@ -74,8 +75,8 @@ export class BelkiSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Data folder")
-      .setDesc("Folder where belki stores task data and attachments.")
+      .setName(t("settings.dataFolder"))
+      .setDesc(t("settings.dataFolderDesc"))
       .addText((text) => {
         let draftPath = this.plugin.settings.dataFolderPath;
         const commitPathChange = async () => {
@@ -112,8 +113,8 @@ export class BelkiSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Default overdue range")
-      .setDesc("Default range used by the Today overdue section.")
+      .setName(t("settings.defaultOverdueRange"))
+      .setDesc(t("settings.defaultOverdueRangeDesc"))
       .addDropdown((dropdown) => {
         for (const range of OVERDUE_RANGES) {
           dropdown.addOption(range, overdueRangeLabel(range));
@@ -127,11 +128,11 @@ export class BelkiSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(containerEl).setName("Daily Notes").setHeading();
+    new Setting(containerEl).setName(t("settings.dailyNotes")).setHeading();
 
     new Setting(containerEl)
-      .setName("Enable Daily Notes integration")
-      .setDesc("Allow belki to show completed tasks for the active daily note date.")
+      .setName(t("settings.enableDailyNotesIntegration"))
+      .setDesc(t("settings.enableDailyNotesIntegrationDesc"))
       .addToggle((toggle) => {
         toggle
           .setValue(this.plugin.settings.dailyNotesIntegrationEnabled)
@@ -143,8 +144,8 @@ export class BelkiSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Daily note date format")
-      .setDesc("Used to match the active note file to a date. Default: YYYY-MM-DD.")
+      .setName(t("settings.dailyNoteDateFormat"))
+      .setDesc(t("settings.dailyNoteDateFormatDesc"))
       .addText((text) => {
         let draftFormat = this.plugin.settings.dailyNoteDateFormat;
         const commitFormat = async () => {
@@ -176,8 +177,8 @@ export class BelkiSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Auto-add completed tasks block")
-      .setDesc("When a daily note is opened, append a belki-completed code block if the note does not already have one.")
+      .setName(t("settings.autoAddCompletedTasksBlock"))
+      .setDesc(t("settings.autoAddCompletedTasksBlockDesc"))
       .addToggle((toggle) => {
         toggle
           .setValue(this.plugin.settings.dailyNotesAutoInsertCompletedBlock)
@@ -189,36 +190,36 @@ export class BelkiSettingTab extends PluginSettingTab {
 
     this.renderCalendarSettings();
 
-    new Setting(containerEl).setName("Fonts").setHeading();
+    new Setting(containerEl).setName(t("settings.fonts")).setHeading();
 
     this.addFontSetting(
-      "UI Font",
-      "Used for sidebar, headings, buttons, settings, and the general interface.",
+      t("settings.uiFont"),
+      t("settings.uiFontDesc"),
       "uiFont"
     );
     this.addFontSetting(
-      "Task Title Font",
-      "Used for task row titles and the task detail title input.",
+      t("settings.taskTitleFont"),
+      t("settings.taskTitleFontDesc"),
       "taskTitleFont"
     );
     this.addFontSetting(
-      "Task Description Font",
-      "Used for task row descriptions and the task detail description textarea.",
+      t("settings.taskDescriptionFont"),
+      t("settings.taskDescriptionFontDesc"),
       "taskDescriptionFont"
     );
     this.addFontSetting(
-      "Label Font",
-      "Used for label chip text.",
+      t("settings.labelFont"),
+      t("settings.labelFontDesc"),
       "labelFont"
     );
 
-    new Setting(containerEl).setName("Project colors").setHeading();
+    new Setting(containerEl).setName(t("settings.projectColors")).setHeading();
 
     const projects = this.plugin.getProjectNames();
     if (projects.length === 0) {
       containerEl.createDiv({
         cls: "setting-item-description",
-        text: "No projects yet. belki will generate stable colors when projects appear."
+        text: t("settings.noProjectsYet")
       });
     }
 
@@ -226,7 +227,7 @@ export class BelkiSettingTab extends PluginSettingTab {
       this.addProjectColorSetting(project);
     }
 
-    new Setting(containerEl).setName("Label colors").setHeading();
+    new Setting(containerEl).setName(t("settings.labelColors")).setHeading();
 
     this.addLabelRegistrySetting();
 
@@ -234,7 +235,7 @@ export class BelkiSettingTab extends PluginSettingTab {
     if (labels.length === 0) {
       containerEl.createDiv({
         cls: "setting-item-description",
-        text: "No labels yet. Add one here or create one from Filters & Labels."
+        text: t("settings.noLabelsYet")
       });
     }
 
@@ -267,34 +268,34 @@ export class BelkiSettingTab extends PluginSettingTab {
   }
 
   private renderCalendarSettings(): void {
-    new Setting(this.containerEl).setName("Calendar").setHeading();
+    new Setting(this.containerEl).setName(t("settings.dailyNotes")).setHeading();
     this.containerEl.createDiv({
       cls: "setting-item-description belki-calendar-settings-description",
-      text: "Display read-only calendar events inside Today and Upcoming by subscribing to private or public iCal feeds."
+      text: t("calendar.description")
     });
 
     this.containerEl.createDiv({
       cls: "setting-item-description belki-calendar-help",
-      text: "Google Calendar: open Google Calendar settings, select a calendar under Settings for my calendars, open Integrate calendar, copy Secret address in iCal format, and paste it into belki. Public iCal links work only when the calendar is public. Treat private links like passwords. Each calendar is added separately; belki fetches updates periodically and cannot edit events."
+      text: t("calendar.googleCalendarHelp")
     });
 
     const service = this.plugin.calendarService;
     const state = service.getConnectionState();
 
     new Setting(this.containerEl)
-      .setName("Add iCal calendar")
-      .setDesc("Subscribe to an HTTPS or webcal iCal feed. The URL is stored locally and masked after saving.")
+      .setName(t("calendar.addIcalCalendar"))
+      .setDesc(t("calendar.acceptsHttpsAndWebcal"))
       .addButton((button) => {
-        button.setButtonText("Add iCal calendar").onClick(() => {
+        button.setButtonText(t("calendar.addIcalCalendar")).onClick(() => {
           new IcalCalendarFeedModal(this.app, {
-            title: "Add iCal calendar",
+            title: t("calendar.addIcalCalendar"),
             service,
             onSaved: () => this.renderSettings()
           }).open();
         });
       })
       .addButton((button) => {
-        button.setButtonText(state.loading ? "Refreshing..." : "Refresh all").setDisabled(state.loading).onClick(() => {
+        button.setButtonText(state.loading ? t("common.refreshing") : t("common.refresh")).setDisabled(state.loading).onClick(() => {
           void (async () => {
             const pending = service.manualRefresh();
             this.renderSettings();
@@ -305,7 +306,7 @@ export class BelkiSettingTab extends PluginSettingTab {
       });
 
     if (state.loading) {
-      this.renderCalendarStatus("Refreshing calendar feeds...", "loading");
+      this.renderCalendarStatus(t("calendar.refreshingCalendarFeeds"), "loading");
     }
 
     if (state.partialErrors.length > 0) {
@@ -319,7 +320,7 @@ export class BelkiSettingTab extends PluginSettingTab {
     if (calendars.length === 0) {
       this.containerEl.createDiv({
         cls: "setting-item-description",
-        text: "No iCal calendars yet."
+        text: t("calendar.noIcalCalendarsYet")
       });
       return;
     }
@@ -343,7 +344,7 @@ export class BelkiSettingTab extends PluginSettingTab {
         })
         .addButton((button) => {
           button
-            .setButtonText(calendar.loading ? "Refreshing..." : "Refresh")
+            .setButtonText(calendar.loading ? t("common.refreshing") : t("common.refresh"))
             .setDisabled(calendar.loading)
             .onClick(() => {
               void (async () => {
@@ -355,9 +356,9 @@ export class BelkiSettingTab extends PluginSettingTab {
             });
         })
         .addButton((button) => {
-          button.setButtonText("Edit").onClick(() => {
+          button.setButtonText(t("common.edit")).onClick(() => {
             new IcalCalendarFeedModal(this.app, {
-              title: "Edit iCal calendar",
+              title: t("calendar.editIcalCalendar"),
               service,
               feed,
               onSaved: () => this.renderSettings()
@@ -365,7 +366,7 @@ export class BelkiSettingTab extends PluginSettingTab {
           });
         })
         .addButton((button) => {
-          button.setButtonText("Remove").onClick(() => {
+          button.setButtonText(t("common.delete")).onClick(() => {
             new RemoveIcalCalendarFeedModal(this.app, feed, async () => {
               await service.removeFeed(feed.id);
               this.renderSettings();
@@ -408,7 +409,7 @@ export class BelkiSettingTab extends PluginSettingTab {
 
     new Setting(this.containerEl)
       .setName(project)
-      .setDesc(override ? "Custom color override" : "Automatic palette color")
+      .setDesc(override ? t("calendar.customColorOverride") : t("calendar.automaticPaletteColor"))
       .addColorPicker((picker) => {
         picker.setValue(override || automaticColor).onChange(async (value) => {
           this.plugin.settings.projectColors[project] = value;
@@ -417,7 +418,7 @@ export class BelkiSettingTab extends PluginSettingTab {
         });
       })
       .addButton((button) => {
-        button.setButtonText("Reset").onClick(() => {
+        button.setButtonText(t("common.reset")).onClick(() => {
           void (async () => {
             delete this.plugin.settings.projectColors[project];
             await this.plugin.saveSettings();
@@ -432,15 +433,15 @@ export class BelkiSettingTab extends PluginSettingTab {
     let pendingLabel = "";
 
     new Setting(this.containerEl)
-      .setName("Add label")
-      .setDesc("Create a label without assigning it to a task yet.")
+      .setName(t("settings.addLabel"))
+      .setDesc(t("settings.addLabelDesc"))
       .addText((text) => {
         text.setPlaceholder("#label").onChange((value) => {
           pendingLabel = value;
         });
       })
       .addButton((button) => {
-        button.setButtonText("Add").onClick(() => {
+        button.setButtonText(t("common.addTask")).onClick(() => {
           void (async () => {
             const label = normalizeLabelName(pendingLabel);
             if (!label) {
@@ -465,7 +466,7 @@ export class BelkiSettingTab extends PluginSettingTab {
 
     new Setting(this.containerEl)
       .setName(displayLabel(label))
-      .setDesc(override ? "Custom color override" : "Automatic palette color")
+      .setDesc(override ? t("calendar.customColorOverride") : t("calendar.automaticPaletteColor"))
       .addColorPicker((picker) => {
         picker.setValue(override || automaticColor).onChange(async (value) => {
           this.plugin.settings.labelColors[label] = value;
@@ -474,7 +475,7 @@ export class BelkiSettingTab extends PluginSettingTab {
         });
       })
       .addButton((button) => {
-        button.setButtonText("Rename").onClick(() => {
+        button.setButtonText(t("common.rename")).onClick(() => {
           new RenameLabelModal(this.app, label, this.plugin.getLabelNames(), async (newLabel) => {
             await this.plugin.renameLabel(label, newLabel);
             this.renderSettings();
@@ -482,7 +483,7 @@ export class BelkiSettingTab extends PluginSettingTab {
         });
       })
       .addButton((button) => {
-        button.setButtonText("Delete").onClick(() => {
+        button.setButtonText(t("common.delete")).onClick(() => {
           new DeleteLabelModal(
             this.app,
             label,
@@ -495,7 +496,7 @@ export class BelkiSettingTab extends PluginSettingTab {
         });
       })
       .addButton((button) => {
-        button.setButtonText("Reset").onClick(() => {
+        button.setButtonText(t("common.reset")).onClick(() => {
           void (async () => {
             delete this.plugin.settings.labelColors[label];
             await this.plugin.saveSettings();
@@ -537,7 +538,7 @@ class IcalCalendarFeedModal extends Modal {
     contentEl.createEl("h2", { text: this.options.title });
 
     new Setting(contentEl)
-      .setName("Calendar name")
+      .setName(t("calendar.calendarName"))
       .addText((text) => {
         text
           .setPlaceholder("Personal")
@@ -555,10 +556,10 @@ class IcalCalendarFeedModal extends Modal {
     }
 
     const urlSetting = new Setting(contentEl)
-      .setName(this.options.feed ? "Replace iCal URL" : "Private or public iCal URL")
+      .setName(this.options.feed ? t("calendar.replaceIcalUrl") : t("calendar.privateOrPublicIcalUrl"))
       .setDesc(this.options.feed
-        ? "Leave empty to keep the saved URL. The existing URL is not shown."
-        : "Accepts HTTPS and webcal URLs.")
+        ? t("calendar.leaveEmptyToKeepSavedUrl")
+        : t("calendar.acceptsHttpsAndWebcal"))
       .addText((text) => {
         text
           .setPlaceholder("https://example.com/calendar.ics")
@@ -575,7 +576,7 @@ class IcalCalendarFeedModal extends Modal {
     this.renderUrlHint();
 
     new Setting(contentEl)
-      .setName("Calendar color")
+      .setName(t("calendar.calendarColor"))
       .addColorPicker((picker) => {
         picker
           .setValue(this.color)
@@ -585,7 +586,7 @@ class IcalCalendarFeedModal extends Modal {
       });
 
     new Setting(contentEl)
-      .setName("Enabled")
+      .setName(t("common.enabled"))
       .addToggle((toggle) => {
         toggle
           .setValue(this.enabled)
@@ -598,20 +599,20 @@ class IcalCalendarFeedModal extends Modal {
 
     new Setting(contentEl)
       .addButton((button) => {
-        button.setButtonText("Test connection").onClick(() => {
+        button.setButtonText(t("calendar.testConnection")).onClick(() => {
           void this.testConnection();
         });
       })
       .addButton((button) => {
         button
-          .setButtonText(this.options.feed ? "Save changes" : "Add calendar")
+          .setButtonText(this.options.feed ? t("calendar.saveChanges") : t("calendar.addCalendar"))
           .setCta()
           .onClick(() => {
             void this.save();
           });
       })
       .addButton((button) => {
-        button.setButtonText("Cancel").onClick(() => this.close());
+        button.setButtonText(t("common.cancel")).onClick(() => this.close());
       });
   }
 
@@ -630,15 +631,15 @@ class IcalCalendarFeedModal extends Modal {
   }
 
   private async testConnection(): Promise<void> {
-    this.setStatus("Testing calendar feed...", "loading");
+    this.setStatus(t("calendar.testingCalendarFeed"), "loading");
     try {
       const result = await this.options.service.testFeed(this.draftForTest());
       this.setStatus(
-        `Connection works${result.name ? `: ${result.name}` : ""}. ${result.eventCount} event${result.eventCount === 1 ? "" : "s"} found in the current window.`,
+        `${t("calendar.connectionWorks")}${result.name ? `: ${result.name}` : ""}. ${result.eventCount} event${result.eventCount === 1 ? "" : "s"} found in the current window.`,
         "success"
       );
     } catch (error) {
-      this.setStatus(calendarErrorMessage(error, "Calendar feed could not be tested."), "error");
+      this.setStatus(calendarErrorMessage(error, t("calendar.calendarFeedCouldNotBeTested")), "error");
     }
   }
 
@@ -655,11 +656,11 @@ class IcalCalendarFeedModal extends Modal {
         await this.options.service.addFeed(this.draftForTest());
       }
 
-      new Notice(this.options.feed ? "Calendar updated." : "Calendar added.");
+      new Notice(this.options.feed ? t("calendar.calendarUpdated") : t("calendar.calendarAdded"));
       this.options.onSaved();
       this.close();
     } catch (error) {
-      this.setStatus(calendarErrorMessage(error, "Calendar feed could not be saved."), "error");
+      this.setStatus(calendarErrorMessage(error, t("calendar.calendarFeedCouldNotBeSaved")), "error");
     }
   }
 
@@ -694,26 +695,26 @@ class RemoveIcalCalendarFeedModal extends Modal {
   onOpen(): void {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl("h2", { text: "Remove calendar?" });
+    contentEl.createEl("h2", { text: t("calendar.removeCalendar") });
     contentEl.createDiv({
       cls: "setting-item-description",
-      text: `Remove ${this.feed.name} from belki. This clears its saved iCal URL and cached events, but does not modify tasks.`
+      text: t("calendar.removeCalendarDesc", { name: this.feed.name })
     });
 
     new Setting(contentEl)
       .addButton((button) => {
-        button.setButtonText("Remove");
+        button.setButtonText(t("common.delete"));
         button.buttonEl.addClass("mod-warning");
         button.onClick(() => {
           void (async () => {
             await this.onConfirm();
-            new Notice("Calendar removed.");
+            new Notice(t("calendar.calendarRemoved"));
             this.close();
           })();
         });
       })
       .addButton((button) => {
-        button.setButtonText("Cancel").onClick(() => this.close());
+        button.setButtonText(t("common.cancel")).onClick(() => this.close());
       });
   }
 
@@ -736,11 +737,11 @@ function formatSettingsRefreshTime(value: string): string {
 
 function calendarFeedStatusText(feed: IcalCalendarFeed, loading: boolean): string {
   if (!feed.enabled) {
-    return "Disabled";
+    return t("common.disabled");
   }
 
   if (loading) {
-    return "Updating...";
+    return t("common.refreshing");
   }
 
   if (feed.lastError) {

@@ -5,29 +5,29 @@
 <h1 align="center">belki</h1>
 
 <p align="center">
-  A calm Todoist-like task manager for Obsidian.<br>
-  Tasks stay inside your vault as local Markdown files.
+  一款类 Todoist 的 Obsidian 的冷静型任务管理插件。<br>
+  任务将在本地以 Markdown 文件的形式保存在您的存储库中。
 </p>
 
 <p align="center">
-  <a href="https://community.obsidian.md/plugins/belki">Community plugin</a>
+  <a href="https://community.obsidian.md/plugins/belki">社区插件</a>
   ·
-  <a href="https://github.com/aribuga/obsidian-belki-tasks/releases">Releases</a>
+  <a href="https://github.com/aribuga/obsidian-belki-tasks/releases">发布</a>
   ·
-  <a href="docs/README.md">Docs</a>
+  <a href="docs/README.md">文档</a>
 </p>
 
 ---
 
-belki is a Todoist-inspired task manager that lives inside your Obsidian vault. Your tasks are stored as plain Markdown files you own. Optional read-only calendar subscriptions never turn events into belki tasks or write event data into task Markdown files.
+belki 是一款受 Todoist 启发的任务管理工具，它集成在您的 Obsidian Vault 中。您的任务会以纯 Markdown 文件的形式存储，并且完全由您掌控。可选的只读日历订阅不会将日历事件转换为 belki 任务，也不会将事件数据写入任务 Markdown 文件。
 
-belki aims to sit between lightweight checkbox-based task plugins and heavier task-note systems: structured enough to work as a real task manager, but small enough to stay calm and easy to use.
+belki 的目标是于轻量级的复选框任务插件和繁杂的任务笔记系统之间找到平衡：结构足够完善，可以作为真正的任务管理器，同时又足够小巧，以保持冷静和易于使用。
 
-> belki is **not** a Todoist integration. It does not connect to Todoist.
+> Belki不是Todoist 的集成方案，它与 Todoist 没有关系。
 
 ---
 
-## Screenshots
+## 屏幕截图
 
 <p align="center">
   <img src="assets/screenshots/today.png" alt="belki Today view" width="49%">
@@ -55,9 +55,9 @@ belki aims to sit between lightweight checkbox-based task plugins and heavier ta
 
 ---
 
-## Features
+## 特性
 
-### Views
+### 视图
 
 - **Inbox** — tasks without a project.
 - **Today** — today's tasks, overdue tasks, and optional read-only calendar events.
@@ -69,7 +69,7 @@ belki aims to sit between lightweight checkbox-based task plugins and heavier ta
 - **Search** — quick overlay search across task title, description, project, and labels.
 - **Daily Notes** — show completed tasks for a daily note in a belki panel or `belki-completed` code block, with optional auto-insert.
 
-### Task Management
+### 任务管理
 
 - Add tasks from the board, the desktop floating composer, the mobile full-screen composer, or the command palette with `belki: Quick Add Task`.
 - Use the default `Cmd/Ctrl + Shift + A` shortcut for Quick Add. In an active desktop belki view it opens the contextual composer; outside belki and on mobile it opens the global Quick Add modal.
@@ -82,7 +82,7 @@ belki aims to sit between lightweight checkbox-based task plugins and heavier ta
 - Use wikilinks such as `[[Project brief]]` in task titles and descriptions.
 - Sort by Smart, Due date, Priority, Deadline, Created date, Project, or Alphabetical.
 
-### Sub-tasks
+### 子任务
 
 - Add sub-tasks from the parent task detail view.
 - Parent task rows show a sub-task completion counter.
@@ -91,7 +91,7 @@ belki aims to sit between lightweight checkbox-based task plugins and heavier ta
 - Reorder sub-tasks in the task detail view on desktop.
 - Sub-tasks stay hidden from top-level views to avoid duplication.
 
-### Recurring Tasks
+### 重复性任务
 
 - Daily, weekly, monthly, yearly, and custom repeat rules.
 - Calendar-based or completion-based repeats.
@@ -99,8 +99,7 @@ belki aims to sit between lightweight checkbox-based task plugins and heavier ta
 - Recurring tasks advance to the next occurrence when completed.
 - Use **Complete permanently** to finish a recurring task.
 
-### Projects, Labels, and Priority
-
+### 项目、标签和优先级
 - Create, rename, archive, delete, and color projects.
 - Choose a project color while creating a project, or use Auto.
 - Rename or delete labels without deleting tasks.
@@ -108,7 +107,7 @@ belki aims to sit between lightweight checkbox-based task plugins and heavier ta
 - Priority levels use a Todoist-like model: Priority 1, Priority 2, Priority 3, and default Priority 4.
 - Priority is shown subtly on the completion circle.
 
-### Attachments
+### 附件
 
 - Attach files to tasks.
 - Image attachments show inline previews and a lightbox.
@@ -116,7 +115,7 @@ belki aims to sit between lightweight checkbox-based task plugins and heavier ta
 - Attachments are stored inside your vault.
 - Duplicating a task copies attachments into the duplicate task's own attachment folder instead of sharing the original files.
 
-### Mobile
+### 移动端
 
 - Responsive single-column mobile layout.
 - Full-screen mobile task composer.
@@ -125,7 +124,7 @@ belki aims to sit between lightweight checkbox-based task plugins and heavier ta
 - Task action menu includes Move to Today, Move to Tomorrow, Pick date, Clear date, Duplicate task, and Delete task.
 - Mobile keeps the global Quick Add flow rather than using the desktop floating composer.
 
-### Optional Integrations
+### 可选集成项
 
 - Multiple iCal calendar subscription events can appear read-only inline inside Today and Upcoming.
 - Google Calendar, Apple/iCloud Calendar, and other HTTPS or `webcal://` iCal feeds are supported when they expose a valid iCal feed URL.
@@ -136,7 +135,7 @@ belki aims to sit between lightweight checkbox-based task plugins and heavier ta
 
 ---
 
-## How It Stores Tasks
+## 如何运作
 
 belki creates a data folder in your vault. The default location is:
 
@@ -168,7 +167,7 @@ See [Markdown storage](docs/markdown-storage.md) for full details.
 
 ---
 
-## Obsidian Search and Excluded Files
+## Obsidian 搜索和排除文件
 
 belki stores task data as local Markdown files in the configurable data folder, `_belki_files/` by default. Since these are real vault files, users who do not want belki task data to appear in Obsidian search, graph, or unlinked mentions should add `_belki_files/` to:
 
@@ -178,9 +177,9 @@ belki itself only reads its configured data folder and does not scan the whole v
 
 ---
 
-## Installation
+## 安装
 
-### Community Plugins
+### 社区插件
 
 1. Open Obsidian Settings → Community plugins.
 2. Click **Browse** and search for `belki`.
@@ -189,7 +188,7 @@ belki itself only reads its configured data folder and does not scan the whole v
 
 Community listing: [community.obsidian.md/plugins/belki](https://community.obsidian.md/plugins/belki)
 
-### Manual Installation
+### 手动安装
 
 1. Download `manifest.json`, `main.js`, and `styles.css` from a [GitHub release](https://github.com/aribuga/obsidian-belki-tasks/releases).
 2. Create this folder inside your vault:
@@ -203,7 +202,7 @@ Community listing: [community.obsidian.md/plugins/belki](https://community.obsid
 
 ---
 
-## Quick Start
+## 快速入门
 
 1. Install and enable belki.
 2. Run `belki: Open` from the command palette.
@@ -215,24 +214,24 @@ See [Getting started](docs/getting-started.md) for a walkthrough.
 
 ---
 
-## Documentation
+## 文档
 
-| Page | Description |
+| 页面 | 描述 |
 |---|---|
-| [Getting started](docs/getting-started.md) | Install and take your first steps |
-| [Tasks](docs/tasks.md) | Creating, editing, and completing tasks |
-| [Projects and Inbox](docs/projects-and-inbox.md) | How projects and Inbox work |
-| [Sub-tasks](docs/subtasks.md) | Adding and managing sub-tasks |
-| [Recurring tasks](docs/recurring-tasks.md) | Repeat rules and behavior |
-| [Labels and priorities](docs/labels-and-priorities.md) | Labeling tasks and setting priority |
-| [Sorting and filtering](docs/sorting-and-filtering.md) | Sorting, grouping, and filtering |
-| [Attachments](docs/attachments.md) | Adding files and images to tasks |
-| [Activity](docs/activity.md) | Completed task history and stats |
-| [Daily Notes](docs/daily-notes.md) | Show completed tasks for a daily note date |
-| [Mobile](docs/mobile.md) | Using belki on mobile |
-| [Settings](docs/settings.md) | Configuration options |
-| [Markdown storage](docs/markdown-storage.md) | How belki stores task data |
-| [FAQ](docs/faq.md) | Common questions |
+| [开始](docs/getting-started.md) | 安装并进行第一步 |
+| [任务](docs/tasks.md) | 创建、编辑和完成任务 |
+| [项目和收件箱](docs/projects-and-inbox.md) | 项目和收件箱的工作原理 |
+| [子任务](docs/subtasks.md) | 添加和管理子任务 |
+| [重复任务](docs/recurring-tasks.md) | 重复规则和行为 |
+| [标记与优先级](docs/labels-and-priorities.md) | 标记任务并设置优先级 |
+| [排序和筛选](docs/sorting-and-filtering.md) | 排序、分组和筛选 |
+| [附件](docs/attachments.md) | 将文件和图像添加到任务中 |
+| [活动](docs/activity.md) | 已完成任务历史记录和统计数据 |
+| [每日笔记](docs/daily-notes.md) | 显示每日笔记日期已完成的任务 |
+| [移动端](docs/mobile.md) | 在移动端上使用 Belki |
+| [设置](docs/settings.md) | 配置选项 |
+| [Markdown 储存](docs/markdown-storage.md) | Belki 如何存储任务数据 |
+| [FAQ](docs/faq.md) | 常见问题 |
 
 ---
 
@@ -243,13 +242,13 @@ pnpm install
 pnpm run build
 ```
 
-During development:
+开发过程中：
 
 ```bash
 pnpm run dev
 ```
 
-Build output is written to:
+构建输出将写入：
 
 - `main.js`
 - `styles.css`
@@ -257,7 +256,7 @@ Build output is written to:
 
 ---
 
-## Release Checklist
+## 发布清单
 
 - Update `manifest.json`, `package.json`, and `versions.json`.
 - Run `pnpm install --frozen-lockfile`.
@@ -270,7 +269,7 @@ See [RELEASE.md](RELEASE.md) for the full process.
 
 ---
 
-## Privacy and Network Usage
+## 隐私和网络使用
 
 belki does not add telemetry and does not require an account. It reads and writes task data only inside its configured vault data folder.
 
@@ -278,7 +277,7 @@ If you enable optional calendar subscriptions, belki fetches only the iCal feed 
 
 ---
 
-## Planned Improvements
+## 改进计划
 
 These are directions being explored, not commitments:
 
@@ -290,18 +289,18 @@ These are directions being explored, not commitments:
 
 ---
 
-## Contributing and Feedback
+## 贡献与反馈
 
 Bug reports and feature requests are welcome at [github.com/aribuga/obsidian-belki-tasks/issues](https://github.com/aribuga/obsidian-belki-tasks/issues).
 
 ---
 
-## Author
+## 作者
 
 Created by Yasin Aribuga.
 
 ---
 
-## License
+## 许可证
 
 MIT. See [LICENSE](LICENSE).
